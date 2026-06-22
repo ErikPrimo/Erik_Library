@@ -128,14 +128,13 @@ RETURN
 			-Width[i-1]/2,										0,													3001
 	ELSE
 		EXTRUDE 7,0,0,0.1,1+2+4+16+32,
-			-Width[i-1]/2,										0,													1,
-			 Width[i-1]/2,										0,													1,
-			 cx,												0, 													900,  
-			 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle), 						3001,
-			 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],		1,
-			 cx,												Width[i] - Width[i-1], 											900,
-			!-Width[i-1]/2,										0,													1,
-			-Width[i-1]/2,										Width[i] - Width[i-1],											3001
+			-Width[i-1]/2,										0,																		1,
+			 Width[i-1]/2,										0,																		1,
+			 cx,												0, 																		900,  
+			 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle), 											3001,
+			 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
+			 cx,												Width[i] - Width[i-1], 													900,
+			-Width[i-1]/2,										Width[i] - Width[i-1],													3001
 		ADDY Width[i] - Width[i-1]
 	ENDIF
 	ADDX cx - rCenter * COS(Angle)
@@ -145,16 +144,29 @@ RETURN
 
 "CurveLeft":
 	Angle = LeftAngle[i]
-	cx = -Width[i]/2 - CurveLeft[i-1]
-	rCenter = CurveLeft[i-1] + Width[i]/2
-	EXTRUDE 7,0,0,0.1,1+2+4+16+32,
-		 Width[i]/2,										0,												1,
-		-Width[i]/2,										0,												1,
-		 cx,												0, 												900,  
-		 cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle), 					3001,
-		 cx + (CurveLeft[i-1] + Width[i]) * COS(Angle),		(CurveLeft[i-1] + Width[i]) * SIN(Angle),		1,
-		 cx,												0, 												900,
-		 Width[i]/2,										0,												3001
+	cx = -Width[i-1]/2 - CurveLeft[i-1]
+	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
+	IF Width[i] <= Width[i-1] THEN
+		EXTRUDE 8,0,0,0.1,1+2+4+16+32,
+			 Width[i-1]/2,										0,													1,
+			-Width[i-1]/2,										0,													1,
+			-Width[i-1]/2,										Width[i-1]-Width[i],								1,
+			 cx,												Width[i-1]-Width[i], 								900,
+			 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
+			 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),		1,
+			 cx,												0, 													900,
+			 Width[i-1]/2,										0,													3001
+	ELSE
+		EXTRUDE 7,0,0,0.1,1+2+4+16+32,
+			 Width[i-1]/2,										0,																		1,
+			-Width[i-1]/2,										0,																		1,
+			 cx,												0, 																		900,
+			 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle), 											3001,
+			 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
+			 cx,												Width[i] - Width[i-1], 													900,
+			 Width[i-1]/2,										Width[i] - Width[i-1],													3001
+		ADDY Width[i] - Width[i-1]
+	ENDIF
 	ADDX cx + rCenter * COS(Angle)
 	ADDY rCenter * SIN(Angle)
 	ROTZ Angle
@@ -180,7 +192,7 @@ RETURN
 	IF CurveRight[i] < ESP THEN 
 		HOTSPOT -0.5-Width[i]/2,  0, 0, unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT -0.5-Width[i]/2,  0, 0, unID, Width[i], 2 : unID = unID + 1
-		HOTSPOT -0.5-Width[i]/2-1,  0, 0, unID, Width[i], 3 : unID = unID + 1
+		HOTSPOT -0.5-Width[i]/2-1,0, 0, unID, Width[i], 3 : unID = unID + 1
 	ENDIF
 RETURN
 
@@ -204,7 +216,7 @@ RETURN
 	IF CurveLeft[i] < ESP THEN 
 		HOTSPOT 0.5+Width[i]/2,  0,	0, unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT 0.5+Width[i]/2,  0, 0, unID, Width[i], 2 : unID = unID + 1
-		HOTSPOT 0.5+Width[i]/2, -1,	0, unID, Width[i], 3 : unID = unID + 1
+		HOTSPOT 0.5+Width[i]/2+1,0,	0, unID, Width[i], 3 : unID = unID + 1
 	ENDIF
 RETURN
 
