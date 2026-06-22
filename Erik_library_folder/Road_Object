@@ -15,6 +15,7 @@
 MATERIAL 133
 DIM StraightLength[100]
 DIM CurvetWidth[100]
+Orietation = 0
 FOR i = 1 TO 100
 	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
 NEXT i
@@ -44,10 +45,9 @@ FOR i = 1 TO 100
 	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
 NEXT i
 
-
 HOTSPOT  -Width[1]/2,	0,	0, unID, Width[1], 1 : unID = unID + 1
 HOTSPOT   Width[1]/2,	0,	0, unID, Width[1], 2 : unID = unID + 1
-HOTSPOT  -10,		0,	0, unID, Width[1], 3 : unID = unID + 1
+HOTSPOT  -10,			0,	0, unID, Width[1], 3 : unID = unID + 1
 
 CurvetWidth[1] = Width[1]
 
@@ -59,11 +59,12 @@ WHILE ObjectOrder[i] <> 0 DO
 		GOSUB "RightHotSpot"
 		GOSUB "LeftHotSpot"
 	ENDIF
-	IF NextLength[i] > 0 THEN  ObjectOrder[i+1] = 2
-	IF CurveLeft[i] > 0  THEN  ObjectOrder[i+1] = 3
-	IF CurveRight[i] > 0 THEN  ObjectOrder[i+1] = 4
+	IF NextLength[i] > 0 THEN ObjectOrder[i+1] = 2
+	IF CurveLeft[i]  > 0 THEN ObjectOrder[i+1] = 3
+	IF CurveRight[i] > 0 THEN ObjectOrder[i+1] = 4
 	IF ObjectOrder[i] = 2 THEN
 		GOSUB "Straight"
+		GOSUB "RemoveHotSpot"
 		GOSUB "RightHotSpot"
 		GOSUB "LeftHotSpot"
 		GOSUB "StraightHotSpot"
@@ -71,6 +72,7 @@ WHILE ObjectOrder[i] <> 0 DO
 	ENDIF
 	IF ObjectOrder[i] = 3 THEN
 		GOSUB "CurveLeft"
+		GOSUB "RemoveCornerHotSpot"
 		GOSUB "RightHotSpot"
 		GOSUB "LeftHotSpot"
 		GOSUB "LeftAngleHotSpot"
@@ -80,6 +82,7 @@ WHILE ObjectOrder[i] <> 0 DO
 	ENDIF
 	IF ObjectOrder[i] = 4 THEN
 		GOSUB "CurveRight"
+		GOSUB "RemoveCornerHotSpot"
 		GOSUB "RightHotSpot"
 		GOSUB "RightAngleHotSpot"
 		GOSUB "RightWidthHotSpot"
@@ -103,73 +106,93 @@ END
 RETURN
 
 "Straight":
-	EXTRUDE 4, 0, 0, 0.1, 1+2+4+16+32,
-			-Width[i]/2,	0,					1,
-			 Width[i]/2,	0,					1,
-			 Width[i]/2,	NextLength[i-1], 	1,
-			-Width[i]/2,	NextLength[i-1],	1
-
+	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
+		EXTRUDE 4, 0, 0, 0.1, 1+2+4+16+32,
+				-Width[i]/2,	0,					1,
+				 Width[i]/2,	0,					1,
+				 Width[i]/2,	NextLength[i-1], 	1,
+				-Width[i]/2,	NextLength[i-1],	1
+	ENDIF
 	ADDY NextLength[i-1]
+
+	ROTZ Orietation
+	ADDX MoveX[i]
+	ADDY MoveY[i]
+	ROTZ -Orietation
 RETURN
 
 "CurveRight":
 	Angle = RightAngle[i]
 	cx = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
-	IF Width[i] <= Width[i-1] THEN 
-		EXTRUDE 8,0,0,0.1,1+2+4+16+32,
-			-Width[i-1]/2,										0,													1,
-			 Width[i-1]/2,										0,													1,
-			 Width[i-1]/2,										Width[i-1]-Width[i],								1,
-			 cx,												Width[i-1]-Width[i], 								900,  
-			 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle) + Width[i-1]-Width[i], 3001,
-			 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle),		1,
-			 cx,												0, 													900,
-			-Width[i-1]/2,										0,													3001
-	ELSE
-		EXTRUDE 7,0,0,0.1,1+2+4+16+32,
-			-Width[i-1]/2,										0,																		1,
-			 Width[i-1]/2,										0,																		1,
-			 cx,												0, 																		900,  
-			 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle), 											3001,
-			 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
-			 cx,												Width[i] - Width[i-1], 													900,
-			-Width[i-1]/2,										Width[i] - Width[i-1],													3001
-		ADDY Width[i] - Width[i-1]
+	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
+		IF Width[i] <= Width[i-1] THEN 
+			EXTRUDE 8,0,0,0.1,1+2+4+16+32,
+				-Width[i-1]/2,										0,													1,
+				Width[i-1]/2,										0,													1,
+				Width[i-1]/2,										Width[i-1]-Width[i],								1,
+				cx,													Width[i-1]-Width[i], 								900,  
+				cx - CurveRight[i-1] * COS(Angle), 					CurveRight[i-1] * SIN(Angle) + Width[i-1]-Width[i], 3001,
+				cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle),		1,
+				cx,													0, 													900,
+				-Width[i-1]/2,										0,													3001
+		ELSE
+			EXTRUDE 7,0,0,0.1,1+2+4+16+32,
+				-Width[i-1]/2,										0,																		1,
+				Width[i-1]/2,										0,																		1,
+				cx,													0, 																		900,  
+				cx - CurveRight[i-1] * COS(Angle), 					CurveRight[i-1] * SIN(Angle), 											3001,
+				cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
+				cx,													Width[i] - Width[i-1], 													900,
+				-Width[i-1]/2,										Width[i] - Width[i-1],													3001
+			ADDY Width[i] - Width[i-1]
+		ENDIF
 	ENDIF
 	ADDX cx - rCenter * COS(Angle)
 	ADDY rCenter * SIN(Angle)
 	ROTZ -Angle
+	Orietation = Orietation - Angle
+	ROTZ Orietation
+	ADDX MoveX[i]
+	ADDY MoveY[i]
+	ROTZ -Orietation
 RETURN
 
 "CurveLeft":
 	Angle = LeftAngle[i]
 	cx = -Width[i-1]/2 - CurveLeft[i-1]
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
-	IF Width[i] <= Width[i-1] THEN
-		EXTRUDE 8,0,0,0.1,1+2+4+16+32,
-			 Width[i-1]/2,										0,													1,
-			-Width[i-1]/2,										0,													1,
-			-Width[i-1]/2,										Width[i-1]-Width[i],								1,
-			 cx,												Width[i-1]-Width[i], 								900,
-			 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
-			 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),		1,
-			 cx,												0, 													900,
-			 Width[i-1]/2,										0,													3001
-	ELSE
-		EXTRUDE 7,0,0,0.1,1+2+4+16+32,
-			 Width[i-1]/2,										0,																		1,
-			-Width[i-1]/2,										0,																		1,
-			 cx,												0, 																		900,
-			 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle), 											3001,
-			 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
-			 cx,												Width[i] - Width[i-1], 													900,
-			 Width[i-1]/2,										Width[i] - Width[i-1],													3001
-		ADDY Width[i] - Width[i-1]
+	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
+		IF Width[i] <= Width[i-1] THEN
+			EXTRUDE 8,0,0,0.1,1+2+4+16+32,
+				Width[i-1]/2,										0,													1,
+				-Width[i-1]/2,										0,													1,
+				-Width[i-1]/2,										Width[i-1]-Width[i],								1,
+				cx,													Width[i-1]-Width[i], 								900,
+				cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
+				cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),			1,
+				cx,												0, 														900,
+				Width[i-1]/2,										0,													3001
+		ELSE
+			EXTRUDE 7,0,0,0.1,1+2+4+16+32,
+				Width[i-1]/2,										0,																		1,
+				-Width[i-1]/2,										0,																		1,
+				cx,													0, 																		900,
+				cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle), 											3001,
+				cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],		1,
+				cx,													Width[i] - Width[i-1], 													900,
+				Width[i-1]/2,										Width[i] - Width[i-1],													3001
+			ADDY Width[i] - Width[i-1]
+		ENDIF
 	ENDIF
 	ADDX cx + rCenter * COS(Angle)
 	ADDY rCenter * SIN(Angle)
 	ROTZ Angle
+	Orietation = Orietation + Angle
+	ROTZ Orietation
+	ADDX MoveX[i]
+	ADDY MoveY[i]
+	ROTZ -Orietation
 RETURN
 
 "RightHotSpot":
@@ -180,8 +203,9 @@ RETURN
 	ENDIF
 RETURN
 
+
 "RightAngleHotSpot":
-	IF CurveRight[i] < ESP THEN 
+	IF CurveRight[i] < ESP AND Width[i] = Width[i-1] THEN 
 		HOTSPOT 0.5+Width[i]/2,  0,	0, unID, RightAngle[i], 1 : unID = unID + 1
 		HOTSPOT 0.5+Width[i]/2,  0, 0, unID, RightAngle[i], 2 : unID = unID + 1
 		HOTSPOT 0.5+Width[i]/2, -1,	0, unID, RightAngle[i], 3 : unID = unID + 1
@@ -205,7 +229,7 @@ RETURN
 RETURN
 
 "LeftAngleHotSpot":
-	IF CurveLeft[i] < ESP THEN 
+	IF CurveLeft[i] < ESP AND Width[i] = Width[i-1] THEN 
 		HOTSPOT -0.5-Width[i]/2,  0, 0, unID, LeftAngle[i], 1 : unID = unID + 1
 		HOTSPOT -0.5-Width[i]/2,  0, 0, unID, LeftAngle[i], 2 : unID = unID + 1
 		HOTSPOT -0.5-Width[i]/2, -1, 0, unID, LeftAngle[i], 3 : unID = unID + 1
@@ -227,9 +251,41 @@ RETURN
 RETURN
 
 "StraightHotSpot1":
-	HOTSPOT 0,  0,				0, unID, NextLength[i], 1 : unID = unID + 1
-	HOTSPOT 0,  1, 				0, unID, NextLength[i], 2 : unID = unID + 1
-	HOTSPOT 0, -1,				0, unID, NextLength[i], 3 : unID = unID + 1
+	HOTSPOT 0,  0,	0, unID, NextLength[i], 1 : unID = unID + 1
+	HOTSPOT 0,  1, 	0, unID, NextLength[i], 2 : unID = unID + 1
+	HOTSPOT 0, -1,	0, unID, NextLength[i], 3 : unID = unID + 1
+RETURN
+
+"RemoveHotSpot":
+		HOTSPOT 0,  NextLength[i]-1,	0, unID, RemovePart[i], 1 : unID = unID + 1
+		HOTSPOT 0,  NextLength[i]-1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
+		HOTSPOT -1, NextLength[i]-1,	0, unID, RemovePart[i], 3 : unID = unID + 1
+		GOSUB "MoveSegmentHotSpot"
+		IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
+RETURN
+
+"RemoveCornerHotSpot":
+		HOTSPOT 0,  -1,		0, unID, RemovePart[i], 1 : unID = unID + 1
+		HOTSPOT 0,  -1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
+		HOTSPOT -1, -1,		0, unID, RemovePart[i], 3 : unID = unID + 1
+		GOSUB "MoveSegmentHotSpot"
+		IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
+RETURN
+
+"MoveSegmentHotSpot":
+	IF ABS(RemovePart[i]) > Width[i]/2 THEN
+		ROTZ RightAngle[i]
+		ROTZ Orietation
+		HOTSPOT  0,  0,	0, unID, MoveY[i], 1 : unID = unID + 1
+		HOTSPOT  0,  0, 0, unID, MoveY[i], 2 : unID = unID + 1
+		HOTSPOT -100,0,	0, unID, MoveY[i], 3 : unID = unID + 1
+
+		HOTSPOT 0,  0,	0, unID, MoveX[i], 1 : unID = unID + 1
+		HOTSPOT 0,  0,	0, unID, MoveX[i], 2 : unID = unID + 1
+		HOTSPOT 0, 100, 0, unID, MoveX[i], 3 : unID = unID + 1
+		ROTZ -Orietation
+		DEL 3
+	ENDIF
 RETURN
 ]]>
 </Script_3D>
@@ -238,157 +294,277 @@ RETURN
 
 <Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
-! PEN 1
-! FILL "Solid Fill"
+! MATERIAL 133
+! DIM StraightLength[100]
+! DIM CurvetWidth[100]
+! Orietation = 0
+! FOR i = 1 TO 100
+! 	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
+! NEXT i
 
-! ObjectOrder[1] = 1
+! FOR i = 1 TO 100
+! 	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
+! NEXT i
+
+! FOR i = 1 TO 100
+!     IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
+! NEXT i
+
+! TempWidth = Width[1]
+! IF TempWidth = 0 THEN TempWidth = 7
+
+! h = 1
+! WHILE h <= 100 DO
+! 	IF Width[h] > 0 AND Width[h] <> TempWidth THEN
+! 		TempWidth = Width[h]
+! 	ENDIF
+! 	Width[h] = TempWidth
+! 	h = h + 1
+! ENDWHILE
+
+! FOR i = 1 TO 100
+! 	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
+! 	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
+! NEXT i
+
+! HOTSPOT2  -Width[1]/2,	0,	unID, Width[1], 1 : unID = unID + 1
+! HOTSPOT2   Width[1]/2,	0,	unID, Width[1], 2 : unID = unID + 1
+! HOTSPOT2  -10,			0,	unID, Width[1], 3 : unID = unID + 1
+
+! CurvetWidth[1] = Width[1]
 
 ! i = 1
 ! WHILE ObjectOrder[i] <> 0 DO
-
 ! 	IF ObjectOrder[i] = 1 THEN
-! 		GOSUB "StraightHotSpot1_2D"
-! 		GOSUB "Straight1_2D"
-! 		GOSUB "RightHotSpot_2D"
-! 		GOSUB "LeftHotSpot_2D"
+! 		GOSUB "StraightHotSpot1"
+! 		GOSUB "Straight1"
+! 		GOSUB "RightHotSpot"
+! 		GOSUB "LeftHotSpot"
 ! 	ENDIF
-
 ! 	IF NextLength[i] > 0 THEN ObjectOrder[i+1] = 2
-! 	IF CurveLeft[i] > 0 THEN ObjectOrder[i+1] = 3
+! 	IF CurveLeft[i]  > 0 THEN ObjectOrder[i+1] = 3
 ! 	IF CurveRight[i] > 0 THEN ObjectOrder[i+1] = 4
-
 ! 	IF ObjectOrder[i] = 2 THEN
-! 		GOSUB "Straight_2D"
-! 		GOSUB "RightHotSpot_2D"
-! 		GOSUB "LeftHotSpot_2D"
-! 		GOSUB "StraightHotSpot_2D"
+! 		GOSUB "Straight"
+! 		GOSUB "RemoveHotSpot"
+! 		GOSUB "RightHotSpot"
+! 		GOSUB "LeftHotSpot"
+! 		GOSUB "StraightHotSpot"
+! 		GOTO "NextIter"
 ! 	ENDIF
-
 ! 	IF ObjectOrder[i] = 3 THEN
-! 		GOSUB "CurveLeft_2D"
-! 		GOSUB "RightHotSpot_2D"
-! 		GOSUB "LeftHotSpot_2D"
-! 		GOSUB "LeftAngleHotSpot_2D"
-! 		GOSUB "StraightHotSpot_2D"
+! 		GOSUB "CurveLeft"
+! 		GOSUB "RemoveCornerHotSpot"
+! 		GOSUB "RightHotSpot"
+! 		GOSUB "LeftHotSpot"
+! 		GOSUB "LeftAngleHotSpot"
+! 		GOSUB "LeftWidthHotSpot"
+! 		GOSUB "StraightHotSpot"
+! 		GOTO "NextIter"
 ! 	ENDIF
-
 ! 	IF ObjectOrder[i] = 4 THEN
-! 		GOSUB "CurveRight_2D"
-! 		GOSUB "RightHotSpot_2D"
-! 		GOSUB "RightAngleHotSpot_2D"
-! 		GOSUB "LeftHotSpot_2D"
-! 		GOSUB "StraightHotSpot_2D"
+! 		GOSUB "CurveRight"
+! 		GOSUB "RemoveCornerHotSpot"
+! 		GOSUB "RightHotSpot"
+! 		GOSUB "RightAngleHotSpot"
+! 		GOSUB "RightWidthHotSpot"
+! 		GOSUB "LeftHotSpot"
+! 		GOSUB "StraightHotSpot"
+! 		GOTO "NextIter"
 ! 	ENDIF
-
+! 	"NextIter":
 ! 	i = i + 1
 ! ENDWHILE
 
 ! END
 
-
-! "Straight1_2D":
-! 	POLY2_ 4,1+2+64,
-! 		-Width/2,0,1,
-! 		 Width/2,0,1,
-! 		 Width/2,1,1,
-! 		-Width/2,1,1
-
-! 	ADD2 0,1
+! "Straight1":
+! 	POLY2_ 4, 1+2+4,
+! 		-Width[i]/2,	0,	1,
+! 		 Width[i]/2,	0,	1,
+! 		 Width[i]/2,	1, 	1,
+! 		-Width[i]/2,	1,	1
+! 	ADDY 1
 ! RETURN
 
-
-! "Straight_2D":
-! 	POLY2_ 4,1+2+64,
-! 		-Width/2,0,1,
-! 		 Width/2,0,1,
-! 		 Width/2,NextLength[i-1],1,
-! 		-Width/2,NextLength[i-1],1
-
-! 	ADD2 0,NextLength[i-1]
+! "Straight":
+! 	IF ABS(RemovePart[i]) < Width[i]/2 THEN
+! 		POLY2_ 4, 1+2+4,
+! 			-Width[i]/2,	0,				1,
+! 			 Width[i]/2,	0,				1,
+! 			 Width[i]/2,	NextLength[i-1],1,
+! 			-Width[i]/2,	NextLength[i-1],1
+! 	ENDIF
+! 	ADDY NextLength[i-1]
+! 	ROTZ Orietation
+! 	ADDX MoveX[i]
+! 	ADDY MoveY[i]
+! 	ROTZ -Orietation
 ! RETURN
 
-
-! "CurveRight_2D":
+! "CurveRight":
 ! 	Angle = RightAngle[i]
-
-! 	rIn = CurveRight[i-1]
-! 	rOut = CurveRight[i-1] + Width
-! 	rCenter = CurveRight[i-1] + Width/2
-
-! 	cx = Width/2 + CurveRight[i-1]
-
-! 	ARC2 cx,0,rIn,180,180-Angle
-! 	ARC2 cx,0,rOut,180,180-Angle
-
-! 	ADD2 cx - rCenter * COS(Angle), rCenter * SIN(Angle)
-! 	ROT2 -Angle
+! 	cx = Width[i-1]/2 + CurveRight[i-1]
+! 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
+! 	IF ABS(RemovePart[i]) < Width[i]/2 THEN
+! 		IF Width[i] <= Width[i-1] THEN
+! 			POLY2_ 8, 1+2+4,
+! 				-Width[i-1]/2,										0,													1,
+! 				 Width[i-1]/2,										0,													1,
+! 				 Width[i-1]/2,										Width[i-1]-Width[i],								1,
+! 				 cx,												Width[i-1]-Width[i], 								900,
+! 				 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
+! 				 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle),		1,
+! 				 cx,												0, 													900,
+! 				-Width[i-1]/2,										0,													3001
+! 		ELSE
+! 			POLY2_ 7, 1+2+4,
+! 				-Width[i-1]/2,										0,																	1,
+! 				 Width[i-1]/2,										0,																	1,
+! 				 cx,												0, 																	900,
+! 				 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle), 										3001,
+! 				 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
+! 				 cx,												Width[i] - Width[i-1], 											900,
+! 				-Width[i-1]/2,										Width[i] - Width[i-1],											3001
+! 			ADDY Width[i] - Width[i-1]
+! 		ENDIF
+! 	ENDIF
+! 	ADDX cx - rCenter * COS(Angle)
+! 	ADDY rCenter * SIN(Angle)
+! 	ROTZ -Angle
+! 	Orietation = Orietation - Angle
+! 	ROTZ Orietation
+! 	ADDX MoveX[i]
+! 	ADDY MoveY[i]
+! 	ROTZ -Orietation
 ! RETURN
 
-
-! "CurveLeft_2D":
+! "CurveLeft":
 ! 	Angle = LeftAngle[i]
-
-! 	rIn = CurveLeft[i-1]
-! 	rOut = CurveLeft[i-1] + Width
-! 	rCenter = CurveLeft[i-1] + Width/2
-
-! 	cx = -Width/2 - CurveLeft[i-1]
-
-! 	ARC2 cx,0,rIn,0,Angle
-! 	ARC2 cx,0,rOut,0,Angle
-
-! 	ADD2 cx + rCenter * COS(Angle), rCenter * SIN(Angle)
-! 	ROT2 Angle
+! 	cx = -Width[i-1]/2 - CurveLeft[i-1]
+! 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
+! 	IF ABS(RemovePart[i]) < Width[i]/2 THEN
+! 		IF Width[i] <= Width[i-1] THEN
+! 			POLY2_ 8, 1+2+4,
+! 				 Width[i-1]/2,										0,													1,
+! 				-Width[i-1]/2,										0,													1,
+! 				-Width[i-1]/2,										Width[i-1]-Width[i],								1,
+! 				 cx,												Width[i-1]-Width[i], 								900,
+! 				 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
+! 				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),		1,
+! 				 cx,												0, 													900,
+! 				 Width[i-1]/2,										0,													3001
+! 		ELSE
+! 			POLY2_ 7, 1+2+4,
+! 				 Width[i-1]/2,										0,																	1,
+! 				-Width[i-1]/2,										0,																	1,
+! 				 cx,												0, 																	900,
+! 				 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle), 										3001,
+! 				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
+! 				 cx,												Width[i] - Width[i-1], 											900,
+! 				 Width[i-1]/2,										Width[i] - Width[i-1],											3001
+! 			ADDY Width[i] - Width[i-1]
+! 		ENDIF
+! 	ENDIF
+! 	ADDX cx + rCenter * COS(Angle)
+! 	ADDY rCenter * SIN(Angle)
+! 	ROTZ Angle
+! 	Orietation = Orietation + Angle
+! 	ROTZ Orietation
+! 	ADDX MoveX[i]
+! 	ADDY MoveY[i]
+! 	ROTZ -Orietation
 ! RETURN
 
-
-! "RightHotSpot_2D":
-! 	IF CurveRight[i] < EPS THEN
-! 		HOTSPOT2 Width/2,0,unID,CurveRight[i],1 : unID = unID + 1
-! 		HOTSPOT2 Width/2,0,unID,CurveRight[i],2 : unID = unID + 1
-! 		HOTSPOT2 Width/2,-1,unID,CurveRight[i],3 : unID = unID + 1
+! "RightHotSpot":
+! 	IF CurveRight[i] < ESP THEN
+! 		HOTSPOT2  Width[i]/2,  0,	unID, CurveRight[i], 1 : unID = unID + 1
+! 		HOTSPOT2  Width[i]/2,  0,	unID, CurveRight[i], 2 : unID = unID + 1
+! 		HOTSPOT2  Width[i]/2, -1,	unID, CurveRight[i], 3 : unID = unID + 1
 ! 	ENDIF
 ! RETURN
 
-
-! "RightAngleHotSpot_2D":
-! 	IF CurveRight[i] < EPS THEN
-! 		HOTSPOT2 Width/2+0.5,0,unID,RightAngle[i],1 : unID = unID + 1
-! 		HOTSPOT2 Width/2+0.5,0,unID,RightAngle[i],2 : unID = unID + 1
-! 		HOTSPOT2 Width/2+0.5,-1,unID,RightAngle[i],3 : unID = unID + 1
+! "RightAngleHotSpot":
+! 	IF CurveRight[i] < ESP AND Width[i] = Width[i-1] THEN
+! 		HOTSPOT2  0.5+Width[i]/2,  0,	unID, RightAngle[i], 1 : unID = unID + 1
+! 		HOTSPOT2  0.5+Width[i]/2,  0,	unID, RightAngle[i], 2 : unID = unID + 1
+! 		HOTSPOT2  0.5+Width[i]/2, -1,	unID, RightAngle[i], 3 : unID = unID + 1
 ! 	ENDIF
 ! RETURN
 
-
-! "LeftHotSpot_2D":
-! 	IF CurveLeft[i] < EPS THEN
-! 		HOTSPOT2 -Width/2,0,unID,CurveLeft[i],1 : unID = unID + 1
-! 		HOTSPOT2 -Width/2,0,unID,CurveLeft[i],2 : unID = unID + 1
-! 		HOTSPOT2 -Width/2,-1,unID,CurveLeft[i],3 : unID = unID + 1
+! "RightWidthHotSpot":
+! 	IF CurveRight[i] < ESP THEN
+! 		HOTSPOT2 -0.5-Width[i]/2,   0,	unID, Width[i], 1 : unID = unID + 1
+! 		HOTSPOT2 -0.5-Width[i]/2,   0,	unID, Width[i], 2 : unID = unID + 1
+! 		HOTSPOT2 -0.5-Width[i]/2-1, 0,	unID, Width[i], 3 : unID = unID + 1
 ! 	ENDIF
 ! RETURN
 
-
-! "LeftAngleHotSpot_2D":
-! 	IF CurveLeft[i] < EPS THEN
-! 		HOTSPOT2 -Width/2-0.5,0,unID,LeftAngle[i],1 : unID = unID + 1
-! 		HOTSPOT2 -Width/2-0.5,0,unID,LeftAngle[i],2 : unID = unID + 1
-! 		HOTSPOT2 -Width/2-0.5,-1,unID,LeftAngle[i],3 : unID = unID + 1
+! "LeftHotSpot":
+! 	IF CurveLeft[i] < ESP THEN
+! 		HOTSPOT2 -Width[i]/2,  0,	unID, CurveLeft[i], 1 : unID = unID + 1
+! 		HOTSPOT2 -Width[i]/2,  0,	unID, CurveLeft[i], 2 : unID = unID + 1
+! 		HOTSPOT2 -Width[i]/2, -1,	unID, CurveLeft[i], 3 : unID = unID + 1
 ! 	ENDIF
 ! RETURN
 
-
-! "StraightHotSpot_2D":
-! 	HOTSPOT2 0,0,unID,NextLength[i],1 : unID = unID + 1
-! 	HOTSPOT2 0,NextLength[i],unID,NextLength[i],2 : unID = unID + 1
-! 	HOTSPOT2 0,-1,unID,NextLength[i],3 : unID = unID + 1
+! "LeftAngleHotSpot":
+! 	IF CurveLeft[i] < ESP AND Width[i] = Width[i-1] THEN
+! 		HOTSPOT2 -0.5-Width[i]/2,  0,	unID, LeftAngle[i], 1 : unID = unID + 1
+! 		HOTSPOT2 -0.5-Width[i]/2,  0,	unID, LeftAngle[i], 2 : unID = unID + 1
+! 		HOTSPOT2 -0.5-Width[i]/2, -1,	unID, LeftAngle[i], 3 : unID = unID + 1
+! 	ENDIF
 ! RETURN
 
+! "LeftWidthHotSpot":
+! 	IF CurveLeft[i] < ESP THEN
+! 		HOTSPOT2  0.5+Width[i]/2,   0,	unID, Width[i], 1 : unID = unID + 1
+! 		HOTSPOT2  0.5+Width[i]/2,   0,	unID, Width[i], 2 : unID = unID + 1
+! 		HOTSPOT2  0.5+Width[i]/2+1, 0,	unID, Width[i], 3 : unID = unID + 1
+! 	ENDIF
+! RETURN
 
-! "StraightHotSpot1_2D":
-! 	HOTSPOT2 0,0,unID,NextLength[i],1 : unID = unID + 1
-! 	HOTSPOT2 0,1,unID,NextLength[i],2 : unID = unID + 1
-! 	HOTSPOT2 0,-1,unID,NextLength[i],3 : unID = unID + 1
+! "StraightHotSpot":
+! 	HOTSPOT2 0,  0,				unID, NextLength[i], 1 : unID = unID + 1
+! 	HOTSPOT2 0,  NextLength[i],	unID, NextLength[i], 2 : unID = unID + 1
+! 	HOTSPOT2 0, -1,				unID, NextLength[i], 3 : unID = unID + 1
+! RETURN
+
+! "StraightHotSpot1":
+! 	HOTSPOT2 0,  0,	unID, NextLength[i], 1 : unID = unID + 1
+! 	HOTSPOT2 0,  1,	unID, NextLength[i], 2 : unID = unID + 1
+! 	HOTSPOT2 0, -1,	unID, NextLength[i], 3 : unID = unID + 1
+! RETURN
+
+! "RemoveHotSpot":
+! 	HOTSPOT2  0,  NextLength[i]-1,	unID, RemovePart[i], 1 : unID = unID + 1
+! 	HOTSPOT2  0,  NextLength[i]-1,	unID, RemovePart[i], 2 : unID = unID + 1
+! 	HOTSPOT2 -1,  NextLength[i]-1,	unID, RemovePart[i], 3 : unID = unID + 1
+! 	GOSUB "MoveSegmentHotSpot"
+! 	IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
+! RETURN
+
+! "RemoveCornerHotSpot":
+! 	HOTSPOT2  0, -1,	unID, RemovePart[i], 1 : unID = unID + 1
+! 	HOTSPOT2  0, -1,	unID, RemovePart[i], 2 : unID = unID + 1
+! 	HOTSPOT2 -1, -1,	unID, RemovePart[i], 3 : unID = unID + 1
+! 	GOSUB "MoveSegmentHotSpot"
+! 	IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
+! RETURN
+
+! "MoveSegmentHotSpot":
+! 	IF ABS(RemovePart[i]) > Width[i]/2 THEN
+! 		ROTZ RightAngle[i]
+! 		ROTZ Orietation
+! 		HOTSPOT2  0,    0,	unID, MoveY[i], 1 : unID = unID + 1
+! 		HOTSPOT2  0,    0,	unID, MoveY[i], 2 : unID = unID + 1
+! 		HOTSPOT2 -100,  0,	unID, MoveY[i], 3 : unID = unID + 1
+! 		HOTSPOT2  0,    0,	unID, MoveX[i], 1 : unID = unID + 1
+! 		HOTSPOT2  0,    0,	unID, MoveX[i], 2 : unID = unID + 1
+! 		HOTSPOT2  0,  100,	unID, MoveX[i], 3 : unID = unID + 1
+! 		ROTZ -Orietation
+! 		DEL 2
+! 	ENDIF
 ! RETURN
 ]]>
 </Script_2D>
@@ -1463,6 +1639,279 @@ UI_INFIELD "Width", 160, 60, 40, 18
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
 		</Boolean>
+		<Length Name="RemovePart">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="101" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="MoveX">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="56" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="MoveY">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="101" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+			</ArrayValues>
+		</Length>
 	</Parameters>
 </ParamSection>
 
