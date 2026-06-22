@@ -1,0 +1,1473 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Symbol IsArchivable="false" IsPlaceable="true" MainGUID="82258C97-6185-48F9-A75E-965FF887E8A0" MigrationValue="Normal" Owner="1196638531" Signature="1196644685" Version="46">
+<Ancestry SectVersion="1" SectionFlags="0" SubIdent="0" Template="false">
+	<MainGUID>F938E33A-329D-4A36-BE3E-85E126820996</MainGUID>
+	<MainGUID>103E8D2C-8230-42E1-9597-46F84CCE28C0</MainGUID>
+</Ancestry>
+
+<CalledMacros SectVersion="2" SectionFlags="0" SubIdent="0">
+</CalledMacros>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_3D SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+MATERIAL 133
+DIM StraightLength[100]
+DIM CurvetWidth[100]
+FOR i = 1 TO 100
+	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
+NEXT i
+
+FOR i = 1 TO 100
+	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
+NEXT i
+
+FOR i = 1 TO 100
+    IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
+NEXT i
+
+TempWidth = Width[1]
+IF TempWidth = 0 THEN TempWidth = 7
+
+h = 1
+WHILE h <= 100 DO
+	IF Width[h] > 0 AND Width[h] <> TempWidth THEN
+		TempWidth = Width[h]
+	ENDIF
+	Width[h] = TempWidth
+	h = h + 1
+ENDWHILE
+
+FOR i = 1 TO 100
+	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
+	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
+NEXT i
+
+
+HOTSPOT  -Width[1]/2,	0,	0, unID, Width[1], 1 : unID = unID + 1
+HOTSPOT   Width[1]/2,	0,	0, unID, Width[1], 2 : unID = unID + 1
+HOTSPOT  -10,		0,	0, unID, Width[1], 3 : unID = unID + 1
+
+CurvetWidth[1] = Width[1]
+
+i = 1
+WHILE ObjectOrder[i] <> 0 DO
+	IF ObjectOrder[i] = 1 THEN
+		GOSUB "StraightHotSpot1"
+		GOSUB "Straight1"
+		GOSUB "RightHotSpot"
+		GOSUB "LeftHotSpot"
+	ENDIF
+	IF NextLength[i] > 0 THEN  ObjectOrder[i+1] = 2
+	IF CurveLeft[i] > 0  THEN  ObjectOrder[i+1] = 3
+	IF CurveRight[i] > 0 THEN  ObjectOrder[i+1] = 4
+	IF ObjectOrder[i] = 2 THEN
+		GOSUB "Straight"
+		GOSUB "RightHotSpot"
+		GOSUB "LeftHotSpot"
+		GOSUB "StraightHotSpot"
+		GOTO "NextIter"
+	ENDIF
+	IF ObjectOrder[i] = 3 THEN
+		GOSUB "CurveLeft"
+		GOSUB "RightHotSpot"
+		GOSUB "LeftHotSpot"
+		GOSUB "LeftAngleHotSpot"
+		GOSUB "LeftWidthHotSpot"
+		GOSUB "StraightHotSpot"
+		GOTO "NextIter"
+	ENDIF
+	IF ObjectOrder[i] = 4 THEN
+		GOSUB "CurveRight"
+		GOSUB "RightHotSpot"
+		GOSUB "RightAngleHotSpot"
+		GOSUB "RightWidthHotSpot"
+		GOSUB "LeftHotSpot"
+		GOSUB "StraightHotSpot"
+		GOTO "NextIter"
+	ENDIF
+	"NextIter":
+	i = i + 1
+ENDWHILE
+
+END
+
+"Straight1":
+	EXTRUDE 4, 0, 0, 0.1, 1+2+4+16+32,
+			-Width[i]/2,	0,	1,
+			 Width[i]/2,	0,	1,
+			 Width[i]/2,	1, 	1,
+			-Width[i]/2,	1,	1
+	ADDY 1
+RETURN
+
+"Straight":
+	EXTRUDE 4, 0, 0, 0.1, 1+2+4+16+32,
+			-Width[i]/2,	0,					1,
+			 Width[i]/2,	0,					1,
+			 Width[i]/2,	NextLength[i-1], 	1,
+			-Width[i]/2,	NextLength[i-1],	1
+
+	ADDY NextLength[i-1]
+RETURN
+
+"CurveRight":
+	Angle = RightAngle[i]
+	cx = Width[i-1]/2 + CurveRight[i-1]
+	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
+	IF Width[i] <= Width[i-1] THEN 
+		EXTRUDE 8,0,0,0.1,1+2+4+16+32,
+			-Width[i-1]/2,										0,													1,
+			 Width[i-1]/2,										0,													1,
+			 Width[i-1]/2,										Width[i-1]-Width[i],								1,
+			 cx,												Width[i-1]-Width[i], 								900,  
+			 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle) + Width[i-1]-Width[i], 3001,
+			 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle),		1,
+			 cx,												0, 													900,
+			-Width[i-1]/2,										0,													3001
+	ELSE
+		EXTRUDE 7,0,0,0.1,1+2+4+16+32,
+			-Width[i-1]/2,										0,													1,
+			 Width[i-1]/2,										0,													1,
+			 cx,												0, 													900,  
+			 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle), 						3001,
+			 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],		1,
+			 cx,												Width[i] - Width[i-1], 											900,
+			!-Width[i-1]/2,										0,													1,
+			-Width[i-1]/2,										Width[i] - Width[i-1],											3001
+		ADDY Width[i] - Width[i-1]
+	ENDIF
+	ADDX cx - rCenter * COS(Angle)
+	ADDY rCenter * SIN(Angle)
+	ROTZ -Angle
+RETURN
+
+"CurveLeft":
+	Angle = LeftAngle[i]
+	cx = -Width[i]/2 - CurveLeft[i-1]
+	rCenter = CurveLeft[i-1] + Width[i]/2
+	EXTRUDE 7,0,0,0.1,1+2+4+16+32,
+		 Width[i]/2,										0,												1,
+		-Width[i]/2,										0,												1,
+		 cx,												0, 												900,  
+		 cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle), 					3001,
+		 cx + (CurveLeft[i-1] + Width[i]) * COS(Angle),		(CurveLeft[i-1] + Width[i]) * SIN(Angle),		1,
+		 cx,												0, 												900,
+		 Width[i]/2,										0,												3001
+	ADDX cx + rCenter * COS(Angle)
+	ADDY rCenter * SIN(Angle)
+	ROTZ Angle
+RETURN
+
+"RightHotSpot":
+	IF CurveRight[i] < ESP THEN 
+		HOTSPOT Width[i]/2,  0,	0, unID, CurveRight[i], 1 : unID = unID + 1
+		HOTSPOT Width[i]/2,  0, 0, unID, CurveRight[i], 2 : unID = unID + 1
+		HOTSPOT Width[i]/2, -1,	0, unID, CurveRight[i], 3 : unID = unID + 1
+	ENDIF
+RETURN
+
+"RightAngleHotSpot":
+	IF CurveRight[i] < ESP THEN 
+		HOTSPOT 0.5+Width[i]/2,  0,	0, unID, RightAngle[i], 1 : unID = unID + 1
+		HOTSPOT 0.5+Width[i]/2,  0, 0, unID, RightAngle[i], 2 : unID = unID + 1
+		HOTSPOT 0.5+Width[i]/2, -1,	0, unID, RightAngle[i], 3 : unID = unID + 1
+	ENDIF
+RETURN
+
+"RightWidthHotSpot":
+	IF CurveRight[i] < ESP THEN 
+		HOTSPOT -0.5-Width[i]/2,  0, 0, unID, Width[i], 1 : unID = unID + 1
+		HOTSPOT -0.5-Width[i]/2,  0, 0, unID, Width[i], 2 : unID = unID + 1
+		HOTSPOT -0.5-Width[i]/2-1,  0, 0, unID, Width[i], 3 : unID = unID + 1
+	ENDIF
+RETURN
+
+"LeftHotSpot":
+	IF CurveLeft[i] < ESP THEN 
+		HOTSPOT -Width[i]/2,  0, 0, unID, CurveLeft[i], 1 : unID = unID + 1
+		HOTSPOT -Width[i]/2,  0, 0, unID, CurveLeft[i], 2 : unID = unID + 1
+		HOTSPOT -Width[i]/2, -1, 0, unID, CurveLeft[i], 3 : unID = unID + 1
+	ENDIF
+RETURN
+
+"LeftAngleHotSpot":
+	IF CurveLeft[i] < ESP THEN 
+		HOTSPOT -0.5-Width[i]/2,  0, 0, unID, LeftAngle[i], 1 : unID = unID + 1
+		HOTSPOT -0.5-Width[i]/2,  0, 0, unID, LeftAngle[i], 2 : unID = unID + 1
+		HOTSPOT -0.5-Width[i]/2, -1, 0, unID, LeftAngle[i], 3 : unID = unID + 1
+	ENDIF
+RETURN
+
+"LeftWidthHotSpot":
+	IF CurveLeft[i] < ESP THEN 
+		HOTSPOT 0.5+Width[i]/2,  0,	0, unID, Width[i], 1 : unID = unID + 1
+		HOTSPOT 0.5+Width[i]/2,  0, 0, unID, Width[i], 2 : unID = unID + 1
+		HOTSPOT 0.5+Width[i]/2, -1,	0, unID, Width[i], 3 : unID = unID + 1
+	ENDIF
+RETURN
+
+"StraightHotSpot":
+	HOTSPOT 0,  0,				0, unID, NextLength[i], 1 : unID = unID + 1
+	HOTSPOT 0,  NextLength[i], 	0, unID, NextLength[i], 2 : unID = unID + 1
+	HOTSPOT 0, -1,				0, unID, NextLength[i], 3 : unID = unID + 1
+RETURN
+
+"StraightHotSpot1":
+	HOTSPOT 0,  0,				0, unID, NextLength[i], 1 : unID = unID + 1
+	HOTSPOT 0,  1, 				0, unID, NextLength[i], 2 : unID = unID + 1
+	HOTSPOT 0, -1,				0, unID, NextLength[i], 3 : unID = unID + 1
+RETURN
+]]>
+</Script_3D>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+! PEN 1
+! FILL "Solid Fill"
+
+! ObjectOrder[1] = 1
+
+! i = 1
+! WHILE ObjectOrder[i] <> 0 DO
+
+! 	IF ObjectOrder[i] = 1 THEN
+! 		GOSUB "StraightHotSpot1_2D"
+! 		GOSUB "Straight1_2D"
+! 		GOSUB "RightHotSpot_2D"
+! 		GOSUB "LeftHotSpot_2D"
+! 	ENDIF
+
+! 	IF NextLength[i] > 0 THEN ObjectOrder[i+1] = 2
+! 	IF CurveLeft[i] > 0 THEN ObjectOrder[i+1] = 3
+! 	IF CurveRight[i] > 0 THEN ObjectOrder[i+1] = 4
+
+! 	IF ObjectOrder[i] = 2 THEN
+! 		GOSUB "Straight_2D"
+! 		GOSUB "RightHotSpot_2D"
+! 		GOSUB "LeftHotSpot_2D"
+! 		GOSUB "StraightHotSpot_2D"
+! 	ENDIF
+
+! 	IF ObjectOrder[i] = 3 THEN
+! 		GOSUB "CurveLeft_2D"
+! 		GOSUB "RightHotSpot_2D"
+! 		GOSUB "LeftHotSpot_2D"
+! 		GOSUB "LeftAngleHotSpot_2D"
+! 		GOSUB "StraightHotSpot_2D"
+! 	ENDIF
+
+! 	IF ObjectOrder[i] = 4 THEN
+! 		GOSUB "CurveRight_2D"
+! 		GOSUB "RightHotSpot_2D"
+! 		GOSUB "RightAngleHotSpot_2D"
+! 		GOSUB "LeftHotSpot_2D"
+! 		GOSUB "StraightHotSpot_2D"
+! 	ENDIF
+
+! 	i = i + 1
+! ENDWHILE
+
+! END
+
+
+! "Straight1_2D":
+! 	POLY2_ 4,1+2+64,
+! 		-Width/2,0,1,
+! 		 Width/2,0,1,
+! 		 Width/2,1,1,
+! 		-Width/2,1,1
+
+! 	ADD2 0,1
+! RETURN
+
+
+! "Straight_2D":
+! 	POLY2_ 4,1+2+64,
+! 		-Width/2,0,1,
+! 		 Width/2,0,1,
+! 		 Width/2,NextLength[i-1],1,
+! 		-Width/2,NextLength[i-1],1
+
+! 	ADD2 0,NextLength[i-1]
+! RETURN
+
+
+! "CurveRight_2D":
+! 	Angle = RightAngle[i]
+
+! 	rIn = CurveRight[i-1]
+! 	rOut = CurveRight[i-1] + Width
+! 	rCenter = CurveRight[i-1] + Width/2
+
+! 	cx = Width/2 + CurveRight[i-1]
+
+! 	ARC2 cx,0,rIn,180,180-Angle
+! 	ARC2 cx,0,rOut,180,180-Angle
+
+! 	ADD2 cx - rCenter * COS(Angle), rCenter * SIN(Angle)
+! 	ROT2 -Angle
+! RETURN
+
+
+! "CurveLeft_2D":
+! 	Angle = LeftAngle[i]
+
+! 	rIn = CurveLeft[i-1]
+! 	rOut = CurveLeft[i-1] + Width
+! 	rCenter = CurveLeft[i-1] + Width/2
+
+! 	cx = -Width/2 - CurveLeft[i-1]
+
+! 	ARC2 cx,0,rIn,0,Angle
+! 	ARC2 cx,0,rOut,0,Angle
+
+! 	ADD2 cx + rCenter * COS(Angle), rCenter * SIN(Angle)
+! 	ROT2 Angle
+! RETURN
+
+
+! "RightHotSpot_2D":
+! 	IF CurveRight[i] < EPS THEN
+! 		HOTSPOT2 Width/2,0,unID,CurveRight[i],1 : unID = unID + 1
+! 		HOTSPOT2 Width/2,0,unID,CurveRight[i],2 : unID = unID + 1
+! 		HOTSPOT2 Width/2,-1,unID,CurveRight[i],3 : unID = unID + 1
+! 	ENDIF
+! RETURN
+
+
+! "RightAngleHotSpot_2D":
+! 	IF CurveRight[i] < EPS THEN
+! 		HOTSPOT2 Width/2+0.5,0,unID,RightAngle[i],1 : unID = unID + 1
+! 		HOTSPOT2 Width/2+0.5,0,unID,RightAngle[i],2 : unID = unID + 1
+! 		HOTSPOT2 Width/2+0.5,-1,unID,RightAngle[i],3 : unID = unID + 1
+! 	ENDIF
+! RETURN
+
+
+! "LeftHotSpot_2D":
+! 	IF CurveLeft[i] < EPS THEN
+! 		HOTSPOT2 -Width/2,0,unID,CurveLeft[i],1 : unID = unID + 1
+! 		HOTSPOT2 -Width/2,0,unID,CurveLeft[i],2 : unID = unID + 1
+! 		HOTSPOT2 -Width/2,-1,unID,CurveLeft[i],3 : unID = unID + 1
+! 	ENDIF
+! RETURN
+
+
+! "LeftAngleHotSpot_2D":
+! 	IF CurveLeft[i] < EPS THEN
+! 		HOTSPOT2 -Width/2-0.5,0,unID,LeftAngle[i],1 : unID = unID + 1
+! 		HOTSPOT2 -Width/2-0.5,0,unID,LeftAngle[i],2 : unID = unID + 1
+! 		HOTSPOT2 -Width/2-0.5,-1,unID,LeftAngle[i],3 : unID = unID + 1
+! 	ENDIF
+! RETURN
+
+
+! "StraightHotSpot_2D":
+! 	HOTSPOT2 0,0,unID,NextLength[i],1 : unID = unID + 1
+! 	HOTSPOT2 0,NextLength[i],unID,NextLength[i],2 : unID = unID + 1
+! 	HOTSPOT2 0,-1,unID,NextLength[i],3 : unID = unID + 1
+! RETURN
+
+
+! "StraightHotSpot1_2D":
+! 	HOTSPOT2 0,0,unID,NextLength[i],1 : unID = unID + 1
+! 	HOTSPOT2 0,1,unID,NextLength[i],2 : unID = unID + 1
+! 	HOTSPOT2 0,-1,unID,NextLength[i],3 : unID = unID + 1
+! RETURN
+]]>
+</Script_2D>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_1D SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+unID = 1
+ESP = 0.000001
+]]>
+</Script_1D>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_PR SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_PR>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_UI SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+UI_DIALOG "Settings", 480, 300
+
+UI_PAGE 1
+
+UI_OUTFIELD "NextLength", 160, 2, 40, 15
+UI_INFIELD "NextLength", 160, 20, 40, 18
+
+UI_OUTFIELD "Width", 160, 40, 40, 15
+UI_INFIELD "Width", 160, 60, 40, 18
+]]>
+</Script_UI>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_VL SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+! IF GLOB_MODPAR_NAME = "NextLength" THEN
+!     NodeCount = NodeCount + 1
+!     PARAMETERS NodeCount = NodeCount
+! ENDIF
+
+! ! IF GLOB_MODPAR_NAME = "CurveRight" THEN
+! !     CurveRightCount = CurveRightCount + 1
+! !     PARAMETERS CurveRightCount = CurveRightCount
+! ! ENDIF
+
+! IF GLOB_MODPAR_NAME = "CurveRight" THEN
+! 	RightEdited = 1
+! ELSE
+! 	RightEdited = 0
+! ENDIF
+
+!VALUES "Width" 4 , 5, 6, 7, 8, 9
+]]>
+</Script_VL>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_FWM SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_FWM>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_BWM SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_BWM>
+
+<ParamSection SectVersion="27" SectionFlags="0" SubIdent="0">
+	<ParamSectHeader>
+		<AutoHotspots>false</AutoHotspots>
+		<StatBits>
+			<STBit_UIDefault/>
+			<STBit_FixSize/>
+			<STBit_OneRunVLScript/>
+			<STBit_UIUseHierarchicalPages/>
+		</StatBits>
+		<WDLeftFrame>0</WDLeftFrame>
+		<WDRightFrame>0</WDRightFrame>
+		<WDTopFrame>0</WDTopFrame>
+		<WDBotFrame>0</WDBotFrame>
+		<LayFlags>65535</LayFlags>
+		<WDMirrorThickness>0</WDMirrorThickness>
+		<WDWallInset>0</WDWallInset>
+	</ParamSectHeader>
+	<Parameters>
+		<Length Name="A">
+			<Description><![CDATA["Dimension 1"]]></Description>
+			<Fix/>
+			<Value>1</Value>
+		</Length>
+		<Length Name="B">
+			<Description><![CDATA["Dimension 2"]]></Description>
+			<Fix/>
+			<Value>1</Value>
+		</Length>
+		<Length Name="ZZYZX">
+			<Description><![CDATA["Height"]]></Description>
+			<Fix/>
+			<Value>1</Value>
+		</Length>
+		<Boolean Name="AC_show2DHotspotsIn3D">
+			<Description><![CDATA["Show 2D Hotspots in 3D"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Hidden/>
+			</Flags>
+			<Value>1</Value>
+		</Boolean>
+		<Length Name="ac_bottomlevel">
+			<Description><![CDATA["Bottom Level"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Hidden/>
+			</Flags>
+			<Value>1</Value>
+		</Length>
+		<Length Name="ac_toplevel">
+			<Description><![CDATA["Top Level"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Hidden/>
+			</Flags>
+			<Value>0</Value>
+		</Length>
+		<Length Name="NextLength">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="75" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="CurveRight">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="75" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="CurveLeft">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="75" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="RightAngle">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="100" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="LeftAngle">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="100" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="Width1">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="124" SecondDimension="0">
+				<AVal Row="1">4</AVal>
+				<AVal Row="2">4</AVal>
+				<AVal Row="3">4</AVal>
+				<AVal Row="4">4</AVal>
+				<AVal Row="5">4</AVal>
+				<AVal Row="6">4</AVal>
+				<AVal Row="7">4</AVal>
+				<AVal Row="8">4</AVal>
+				<AVal Row="9">4</AVal>
+				<AVal Row="10">4</AVal>
+				<AVal Row="11">4</AVal>
+				<AVal Row="12">4</AVal>
+				<AVal Row="13">4</AVal>
+				<AVal Row="14">4</AVal>
+				<AVal Row="15">4</AVal>
+				<AVal Row="16">4</AVal>
+				<AVal Row="17">4</AVal>
+				<AVal Row="18">4</AVal>
+				<AVal Row="19">4</AVal>
+				<AVal Row="20">4</AVal>
+				<AVal Row="21">4</AVal>
+				<AVal Row="22">4</AVal>
+				<AVal Row="23">4</AVal>
+				<AVal Row="24">4</AVal>
+				<AVal Row="25">4</AVal>
+				<AVal Row="26">4</AVal>
+				<AVal Row="27">4</AVal>
+				<AVal Row="28">4</AVal>
+				<AVal Row="29">4</AVal>
+				<AVal Row="30">4</AVal>
+				<AVal Row="31">4</AVal>
+				<AVal Row="32">4</AVal>
+				<AVal Row="33">4</AVal>
+				<AVal Row="34">4</AVal>
+				<AVal Row="35">4</AVal>
+				<AVal Row="36">4</AVal>
+				<AVal Row="37">4</AVal>
+				<AVal Row="38">4</AVal>
+				<AVal Row="39">4</AVal>
+				<AVal Row="40">4</AVal>
+				<AVal Row="41">4</AVal>
+				<AVal Row="42">4</AVal>
+				<AVal Row="43">4</AVal>
+				<AVal Row="44">4</AVal>
+				<AVal Row="45">4</AVal>
+				<AVal Row="46">4</AVal>
+				<AVal Row="47">4</AVal>
+				<AVal Row="48">4</AVal>
+				<AVal Row="49">4</AVal>
+				<AVal Row="50">4</AVal>
+				<AVal Row="51">4</AVal>
+				<AVal Row="52">4</AVal>
+				<AVal Row="53">4</AVal>
+				<AVal Row="54">4</AVal>
+				<AVal Row="55">4</AVal>
+				<AVal Row="56">4</AVal>
+				<AVal Row="57">4</AVal>
+				<AVal Row="58">4</AVal>
+				<AVal Row="59">4</AVal>
+				<AVal Row="60">4</AVal>
+				<AVal Row="61">4</AVal>
+				<AVal Row="62">4</AVal>
+				<AVal Row="63">4</AVal>
+				<AVal Row="64">4</AVal>
+				<AVal Row="65">4</AVal>
+				<AVal Row="66">4</AVal>
+				<AVal Row="67">4</AVal>
+				<AVal Row="68">4</AVal>
+				<AVal Row="69">4</AVal>
+				<AVal Row="70">4</AVal>
+				<AVal Row="71">4</AVal>
+				<AVal Row="72">4</AVal>
+				<AVal Row="73">4</AVal>
+				<AVal Row="74">4</AVal>
+				<AVal Row="75">4</AVal>
+				<AVal Row="76">4</AVal>
+				<AVal Row="77">4</AVal>
+				<AVal Row="78">4</AVal>
+				<AVal Row="79">4</AVal>
+				<AVal Row="80">4</AVal>
+				<AVal Row="81">4</AVal>
+				<AVal Row="82">4</AVal>
+				<AVal Row="83">4</AVal>
+				<AVal Row="84">4</AVal>
+				<AVal Row="85">4</AVal>
+				<AVal Row="86">4</AVal>
+				<AVal Row="87">4</AVal>
+				<AVal Row="88">4</AVal>
+				<AVal Row="89">4</AVal>
+				<AVal Row="90">4</AVal>
+				<AVal Row="91">4</AVal>
+				<AVal Row="92">4</AVal>
+				<AVal Row="93">4</AVal>
+				<AVal Row="94">4</AVal>
+				<AVal Row="95">4</AVal>
+				<AVal Row="96">4</AVal>
+				<AVal Row="97">4</AVal>
+				<AVal Row="98">4</AVal>
+				<AVal Row="99">4</AVal>
+				<AVal Row="100">4</AVal>
+				<AVal Row="101">4</AVal>
+				<AVal Row="102">4</AVal>
+				<AVal Row="103">4</AVal>
+				<AVal Row="104">4</AVal>
+				<AVal Row="105">4</AVal>
+				<AVal Row="106">4</AVal>
+				<AVal Row="107">4</AVal>
+				<AVal Row="108">4</AVal>
+				<AVal Row="109">4</AVal>
+				<AVal Row="110">4</AVal>
+				<AVal Row="111">4</AVal>
+				<AVal Row="112">4</AVal>
+				<AVal Row="113">4</AVal>
+				<AVal Row="114">4</AVal>
+				<AVal Row="115">4</AVal>
+				<AVal Row="116">4</AVal>
+				<AVal Row="117">4</AVal>
+				<AVal Row="118">4</AVal>
+				<AVal Row="119">4</AVal>
+				<AVal Row="120">4</AVal>
+				<AVal Row="121">4</AVal>
+				<AVal Row="122">4</AVal>
+				<AVal Row="123">4</AVal>
+				<AVal Row="124">4</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="Width">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="140" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Boolean Name="NegativeWidth">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="104" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+			</ArrayValues>
+		</Boolean>
+		<Integer Name="NodeCount">
+			<Description><![CDATA[""]]></Description>
+			<Value>48</Value>
+		</Integer>
+		<Integer Name="ObjectOrder">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="100" SecondDimension="0">
+				<AVal Row="1">1</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+			</ArrayValues>
+		</Integer>
+		<Boolean Name="RightEdited">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Boolean>
+	</Parameters>
+</ParamSection>
+
+<Copyright SectVersion="1" SectionFlags="0" SubIdent="0">
+	<Author></Author>
+	<License>
+		<Type>CC BY</Type>
+		<Version>4.0</Version>
+	</License>
+</Copyright>
+
+<Keywords SectVersion="1" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Keywords>
+
+<Comment SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Comment>
+
+</Symbol>
