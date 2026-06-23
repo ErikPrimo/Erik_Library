@@ -294,7 +294,7 @@ RETURN
 
 <Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
-MATERIAL 133
+PEN 1
 DIM StraightLength[100]
 DIM CurvetWidth[100]
 Orietation = 0
@@ -376,6 +376,8 @@ WHILE ObjectOrder[i] <> 0 DO
 	i = i + 1
 ENDWHILE
 
+TEXT2 0, -2, STR(TotalLength, 10, 3) + " m"
+
 END
 
 "Straight1":
@@ -394,7 +396,11 @@ RETURN
 			 Width[i]/2,	0,				1,
 			 Width[i]/2,	NextLength[i-1],1,
 			-Width[i]/2,	NextLength[i-1],1
+		
+		LINE2 0, 0,		0, NextLength[i-1]
 	ENDIF
+
+	TotalLength = TotalLength + NextLength[i-1]
 	ADD2 0, NextLength[i-1]
 
 	ROT2 Orietation
@@ -417,15 +423,27 @@ RETURN
 				 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle),		1,
 				 cx,												0, 													900,
 				-Width[i-1]/2,										0,													3001
+			LINE2 0, 0,	
+				  0, (Width[i-1]-Width[i])/2
+			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
+			ARC2 cx, (Width[i-1]-Width[i])/2,
+				 cx, 180-Angle, 180
+			TotalLength = TotalLength + (Angle * PI * ABS(cx) / 180)
 		ELSE
 			POLY2_ 7, 1+2+4,
 				-Width[i-1]/2,										0,																	1,
 				 Width[i-1]/2,										0,																	1,
 				 cx,												0, 																	900,
 				 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle), 										3001,
-				 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
-				 cx,												Width[i] - Width[i-1], 											900,
-				-Width[i-1]/2,										Width[i] - Width[i-1],											3001
+				 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],1,
+				 cx,												Width[i] - Width[i-1], 												900,
+				-Width[i-1]/2,										Width[i] - Width[i-1],												3001
+			LINE2 0, 0,
+				  0, (Width[i] - Width[i-1])/2
+			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
+			ARC2 cx, (Width[i] - Width[i-1])/2,
+				 cx, Angle, 180
+			TotalLength = TotalLength + (Angle * PI * ABS(cx) / 180)
 			ADD2 0, Width[i] - Width[i-1]
 		ENDIF
 	ENDIF
@@ -452,6 +470,13 @@ RETURN
 				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),		1,
 				 cx,												0, 													900,
 				 Width[i-1]/2,										0,													3001
+			LINE2 0, 0,
+				  0, (Width[i-1] - Width[i])/2
+			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
+			ARC2 cx, (Width[i-1] - Width[i])/2,
+				 -cx, 0, Angle
+			TotalLength = TotalLength + (Angle * PI * ABS(cx) / 180)
+
 		ELSE
 			POLY2_ 7, 1+2+4,
 				 Width[i-1]/2,										0,																	1,
@@ -461,6 +486,13 @@ RETURN
 				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
 				 cx,												Width[i] - Width[i-1], 											900,
 				 Width[i-1]/2,										Width[i] - Width[i-1],											3001
+			LINE2 0, 0,	
+				  0, (Width[i] - Width[i-1])/2
+			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
+			ARC2 cx, (Width[i] - Width[i-1])/2,
+				 -cx, 0, Angle
+			TotalLength = TotalLength + (Angle * PI * ABS(cx) / 180)
+
 			ADD2 0, Width[i] - Width[i-1]
 		ENDIF
 	ENDIF
@@ -1778,6 +1810,10 @@ UI_INFIELD "Width", 160, 60, 40, 18
 				<AVal Row="100">0</AVal>
 				<AVal Row="101">0</AVal>
 			</ArrayValues>
+		</Length>
+		<Length Name="TotalLength">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
 		</Length>
 	</Parameters>
 </ParamSection>
