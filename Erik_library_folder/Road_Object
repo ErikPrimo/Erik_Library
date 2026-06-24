@@ -53,45 +53,51 @@ CurvetWidth[1] = Width[1]
 
 i = 1
 WHILE ObjectOrder[i] <> 0 DO
-	IF ObjectOrder[i] = 1 THEN
-		GOSUB "StraightHotSpot1"
-		GOSUB "Straight1"
-		GOSUB "RightHotSpot"
-		GOSUB "LeftHotSpot"
-	ENDIF
-	IF NextLength[i] > 0 THEN ObjectOrder[i+1] = 2
-	IF CurveLeft[i]  > 0 THEN ObjectOrder[i+1] = 3
-	IF CurveRight[i] > 0 THEN ObjectOrder[i+1] = 4
-	IF ObjectOrder[i] = 2 THEN
-		GOSUB "Straight"
-		GOSUB "RemoveHotSpot"
-		GOSUB "StraightHotSpot"
-		GOSUB "RightHotSpot"
-		GOSUB "LeftHotSpot"
-		GOTO "NextIter"
-	ENDIF
-	IF ObjectOrder[i] = 3 THEN
-		GOSUB "CurveLeft"
-		GOSUB "RemoveCornerHotSpot"
-		GOSUB "RightHotSpot"
-		GOSUB "LeftHotSpot"
-		GOSUB "LeftAngleHotSpot"
-		GOSUB "LeftWidthHotSpot"
-		GOSUB "StraightHotSpot"
-		GOTO "NextIter"
-	ENDIF
-	IF ObjectOrder[i] = 4 THEN
-		GOSUB "CurveRight"
-		GOSUB "RemoveCornerHotSpot"
-		GOSUB "RightHotSpot"
-		GOSUB "RightAngleHotSpot"
-		GOSUB "RightWidthHotSpot"
-		GOSUB "LeftHotSpot"
-		GOSUB "StraightHotSpot"
-		GOTO "NextIter"
-	ENDIF
-	"NextIter":
-	i = i + 1
+    IF ObjectOrder[i] = 1 THEN
+        GOSUB "StraightHotSpot1"
+        GOSUB "Straight1"
+        GOSUB "RightHotSpot"
+        GOSUB "LeftHotSpot"
+    ENDIF
+
+    IF NextLength[i] > 0 THEN ObjectOrder[i+1] = 2
+    IF CurveLeft[i]  > 0 THEN ObjectOrder[i+1] = 3
+    IF CurveRight[i] > 0 THEN ObjectOrder[i+1] = 4
+
+    IF ObjectOrder[i] = 2 THEN
+        GOSUB "Straight"
+        GOSUB "RemoveHotSpot"
+        GOSUB "RightHotSpot"
+        GOSUB "LeftHotSpot"
+        GOSUB "StraightHotSpot"
+        GOTO "NextIter"
+    ENDIF
+
+    IF ObjectOrder[i] = 3 THEN
+        GOSUB "CurveLeft"
+        GOSUB "RemoveCornerHotSpot"
+
+        GOSUB "LeftAngleHotSpot"
+        GOSUB "LeftWidthHotSpot"
+        GOSUB "StraightHotSpot"
+        ObjectOrder[i+1] = 2 
+        IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+        GOTO "NextIter"
+    ENDIF
+
+    IF ObjectOrder[i] = 4 THEN
+        GOSUB "CurveRight"
+        GOSUB "RemoveCornerHotSpot"
+        GOSUB "RightAngleHotSpot"
+        GOSUB "RightWidthHotSpot"
+        GOSUB "StraightHotSpot"
+        ObjectOrder[i+1] = 2 
+        IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+        GOTO "NextIter"
+    ENDIF
+
+    "NextIter":
+    i = i + 1
 ENDWHILE
 
 END
@@ -332,48 +338,53 @@ HOTSPOT2   Width[1]/2,	0,	unID, Width[1], 2 : unID = unID + 1
 HOTSPOT2  -10,			0,	unID, Width[1], 3 : unID = unID + 1
 
 CurvetWidth[1] = Width[1]
-
 i = 1
 WHILE ObjectOrder[i] <> 0 DO
-	IF ObjectOrder[i] = 1 THEN
-		GOSUB "StraightHotSpot1"
-		GOSUB "Straight1"
-		GOSUB "RightHotSpot"
-		GOSUB "LeftHotSpot"
-	ENDIF
-	IF NextLength[i] > 0 THEN ObjectOrder[i+1] = 2
-	IF CurveLeft[i]  > 0 THEN ObjectOrder[i+1] = 3
-	IF CurveRight[i] > 0 THEN ObjectOrder[i+1] = 4
-	IF ObjectOrder[i] = 2 THEN
-		GOSUB "Straight"
-		GOSUB "RemoveHotSpot"
-		GOSUB "RightHotSpot"
-		GOSUB "LeftHotSpot"
-		GOSUB "StraightHotSpot"
-		GOTO "NextIter"
-	ENDIF
-	IF ObjectOrder[i] = 3 THEN
-		GOSUB "CurveLeft"
-		GOSUB "RemoveCornerHotSpot"
-		GOSUB "RightHotSpot"
-		GOSUB "LeftHotSpot"
-		GOSUB "LeftAngleHotSpot"
-		GOSUB "LeftWidthHotSpot"
-		GOSUB "StraightHotSpot"
-		GOTO "NextIter"
-	ENDIF
-	IF ObjectOrder[i] = 4 THEN
-		GOSUB "CurveRight"
-		GOSUB "RemoveCornerHotSpot"
-		GOSUB "RightHotSpot"
-		GOSUB "RightAngleHotSpot"
-		GOSUB "RightWidthHotSpot"
-		GOSUB "LeftHotSpot"
-		GOSUB "StraightHotSpot"
-		GOTO "NextIter"
-	ENDIF
-	"NextIter":
-	i = i + 1
+    IF ObjectOrder[i] = 1 THEN
+        GOSUB "StraightHotSpot1"
+        GOSUB "Straight1"
+        GOSUB "RightHotSpot"
+        GOSUB "LeftHotSpot"
+    ENDIF
+
+    IF NextLength[i] > 0 THEN ObjectOrder[i+1] = 2
+    IF CurveLeft[i]  > 0 THEN ObjectOrder[i+1] = 3
+    IF CurveRight[i] > 0 THEN ObjectOrder[i+1] = 4
+
+    IF ObjectOrder[i] = 2 THEN
+        GOSUB "Straight"
+        GOSUB "RemoveHotSpot"
+        GOSUB "RightHotSpot"
+        GOSUB "LeftHotSpot"
+        GOSUB "StraightHotSpot"
+        GOTO "NextIter"
+    ENDIF
+
+    IF ObjectOrder[i] = 3 THEN
+        GOSUB "CurveLeft"
+        GOSUB "RemoveCornerHotSpot"
+
+        GOSUB "LeftAngleHotSpot"
+        GOSUB "LeftWidthHotSpot"
+        GOSUB "StraightHotSpot"
+        ObjectOrder[i+1] = 2 
+        IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+        GOTO "NextIter"
+    ENDIF
+
+    IF ObjectOrder[i] = 4 THEN
+        GOSUB "CurveRight"
+        GOSUB "RemoveCornerHotSpot"
+        GOSUB "RightAngleHotSpot"
+        GOSUB "RightWidthHotSpot"
+        GOSUB "StraightHotSpot"
+        ObjectOrder[i+1] = 2 
+        IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+        GOTO "NextIter"
+    ENDIF
+
+    "NextIter":
+    i = i + 1
 ENDWHILE
 
 TEXT2 0, -2, STR(TotalLength, 10, 3) + " m"
