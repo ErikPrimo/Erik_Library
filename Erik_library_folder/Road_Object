@@ -13,9 +13,13 @@
 <Script_3D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
 MATERIAL 133
-DIM StraightLength[100]
-DIM CurvetWidth[100]
+LineWidth = 0.1
+LineMargin = 0.8
+LineThickness = 0.01
 Orietation = 0
+TrackThickness = 0.1
+
+!----Sets Every Angle To Default 90 Degrees------------------------------------------------------------------------------------------------------------------------------------
 FOR i = 1 TO 100
 	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
 NEXT i
@@ -23,14 +27,17 @@ NEXT i
 FOR i = 1 TO 100
 	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
 NEXT i
+!----------------------------------------------------------------------------------------------------------------------------------------
 
+!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
 FOR i = 1 TO 100
     IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
 NEXT i
+!----------------------------------------------------------------------------------------------------------------------------------------
 
+!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------------------------------------------------
 TempWidth = Width[1]
 IF TempWidth = 0 THEN TempWidth = 7
-
 h = 1
 WHILE h <= 100 DO
 	IF Width[h] > 0 AND Width[h] <> TempWidth THEN
@@ -39,18 +46,23 @@ WHILE h <= 100 DO
 	Width[h] = TempWidth
 	h = h + 1
 ENDWHILE
+!----------------------------------------------------------------------------------------------------------------------------------------
 
+!-----Sets Limit On Angle-----------------------------------------------------------------------------------------------------------------------------------
 FOR i = 1 TO 100
 	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
 	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
 NEXT i
+!----------------------------------------------------------------------------------------------------------------------------------------
+
+!-------HotSpot For The Beggining Width--------------------------------------------------------------------------------------------------------------------
 
 HOTSPOT  -Width[1]/2,	0,	0, unID, Width[1], 1 : unID = unID + 1
 HOTSPOT   Width[1]/2,	0,	0, unID, Width[1], 2 : unID = unID + 1
 HOTSPOT  -10,			0,	0, unID, Width[1], 3 : unID = unID + 1
+!----------------------------------------------------------------------------------------------------------------------------------------
 
-CurvetWidth[1] = Width[1]
-
+!-------Main Loop Places All Objects--------------------------------------------------------------------------------------------------------------------
 i = 1
 WHILE ObjectOrder[i] <> 0 DO
     IF ObjectOrder[i] = 1 THEN
@@ -76,7 +88,6 @@ WHILE ObjectOrder[i] <> 0 DO
     IF ObjectOrder[i] = 3 THEN
         GOSUB "CurveLeft"
         GOSUB "RemoveCornerHotSpot"
-
         GOSUB "LeftAngleHotSpot"
         GOSUB "LeftWidthHotSpot"
         GOSUB "StraightHotSpot"
@@ -101,24 +112,45 @@ WHILE ObjectOrder[i] <> 0 DO
 ENDWHILE
 
 END
-
+!----Makes The Frist Staright------------------------------------------------------------------------------------------------------------------------------------
 "Straight1":
-	EXTRUDE 4, 0, 0, 0.1, 1+2+4+16+32,
+	EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
 			-Width[i]/2,	0,	1,
 			 Width[i]/2,	0,	1,
-			 Width[i]/2,	1, 	1,
-			-Width[i]/2,	1,	1
-	ADDY 1
+			 Width[i]/2,	BeginningDistance, 	1,
+			-Width[i]/2,	BeginningDistance,	1
+	ADDY BeginningDistance
 RETURN
+!----------------------------------------------------------------------------------------------------------------------------------------
 
+!-----Makes The Straight-----------------------------------------------------------------------------------------------------------------------------------
 "Straight":
 	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
-		EXTRUDE 4, 0, 0, 0.1, 1+2+4+16+32,
-				-Width[i]/2,	0,					1,
-				 Width[i]/2,	0,					1,
-				 Width[i]/2,	NextLength[i-1], 	1,
-				-Width[i]/2,	NextLength[i-1],	1
+		EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
+				-Width[i]/2,	0,				 1,
+				 Width[i]/2,	0,				 1,
+				 Width[i]/2,	NextLength[i-1], 1,
+				-Width[i]/2,	NextLength[i-1], 1
+		MATERIAL 2
+		ADDX -Width[i]/2 + LineMargin
+		ADDZ TrackThickness
+		EXTRUDE 4, 0, 0, LineThickness, ExtrudeValues,
+				-LineWidth,	0,					1,
+				 LineWidth,	0,					1,
+				 LineWidth,	NextLength[i-1], 	1,
+				-LineWidth,	NextLength[i-1],	1
+		DEL 2
+		ADDX Width[i]/2 - LineMargin
+		ADDZ TrackThickness
+		EXTRUDE 4, 0, 0, LineThickness, ExtrudeValues,
+				-LineWidth,	0,					1,
+				 LineWidth,	0,					1,
+				 LineWidth,	NextLength[i-1], 	1,
+				-LineWidth,	NextLength[i-1],	1
+		DEL 2
+		MATERIAL 133
 	ENDIF
+
 	ADDY NextLength[i-1]
 
 	ROTZ Orietation
@@ -126,24 +158,34 @@ RETURN
 	ADDY MoveY[i]
 	ROTZ -Orietation
 RETURN
+!----------------------------------------------------------------------------------------------------------------------------------------
 
+!-----Makes The Right Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveRight":
 	Angle = RightAngle[i]
 	cx = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
 		IF Width[i] <= Width[i-1] THEN 
-			EXTRUDE 8,0,0,0.1,1+2+4+16+32,
-				-Width[i-1]/2,										0,													1,
-				Width[i-1]/2,										0,													1,
-				Width[i-1]/2,										Width[i-1]-Width[i],								1,
-				cx,													Width[i-1]-Width[i], 								900,  
-				cx - CurveRight[i-1] * COS(Angle), 					CurveRight[i-1] * SIN(Angle) + Width[i-1]-Width[i], 3001,
-				cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle),		1,
-				cx,													0, 													900,
-				-Width[i-1]/2,										0,													3001
+			_yTrans = Width[i-1] - Width[i]
+			_rInner = CurveRight[i-1]
+			_rOuter = CurveRight[i-1] + Width[i-1]
+			EXTRUDE 8, 0, 0, TrackThickness, ExtrudeValues,
+				-Width[i-1]/2,              0,                          	1,    ! 1: Start Inner corner
+				 Width[i-1]/2,              0,                          	1,    ! 2: Start Outer corner
+				 Width[i-1]/2,              _yTrans,                    	1,    ! 3: Shift to transition plane
+				 cx,                        _yTrans,                    	900,  ! 4: Center point for inner arc
+				 cx - _rInner * COS(Angle), _rInner * SIN(Angle) + _yTrans, 3001, ! 5: Sweep inner radius
+				 cx - _rOuter * COS(Angle), _rOuter * SIN(Angle),       	1,    ! 6: Jump to outer radius end
+				 cx,                        0,                          	900,  ! 7: Center point for outer arc
+				-Width[i-1]/2,              0,                          	3001  ! 8: Sweep outer radius back to close
+			
+			_yTransIn = Width[i-1] - Width[i]
+			_yTransOut = 0
+			GOSUB "RightLines"
+
 		ELSE
-			EXTRUDE 7,0,0,0.1,1+2+4+16+32,
+			EXTRUDE 7,0,0,TrackThickness, ExtrudeValues,
 				-Width[i-1]/2,										0,																		1,
 				Width[i-1]/2,										0,																		1,
 				cx,													0, 																		900,  
@@ -151,7 +193,11 @@ RETURN
 				cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
 				cx,													Width[i] - Width[i-1], 													900,
 				-Width[i-1]/2,										Width[i] - Width[i-1],													3001
+			_yTransIn = 0
+			_yTransOut = Width[i] - Width[i-1]
+			GOSUB "RightLines"
 			ADDY Width[i] - Width[i-1]
+
 		ENDIF
 	ENDIF
 	ADDX cx - rCenter * COS(Angle)
@@ -164,43 +210,127 @@ RETURN
 	ROTZ -Orietation
 RETURN
 
+"RightLines":
+		MATERIAL 2
+		ADDZ TrackThickness
+		_rInner = CurveRight[i-1] + LineMargin - LineWidth
+		_rOuter = CurveRight[i-1] + LineMargin + LineWidth
+		_xLineLeft  = cx - _rOuter
+		_xLineRight = cx - _rInner
+		EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+			_xLineLeft,                0,                 					1,   
+			_xLineRight,               0,                 					1,   
+			_xLineRight,               _yTransIn,           				1,   
+			cx,                        _yTransIn,           				900, 
+			cx - _rInner * COS(Angle), _rInner * SIN(Angle) + _yTransIn, 	3001,
+			cx - _rOuter * COS(Angle), _rOuter * SIN(Angle) + _yTransIn, 	1,   
+			cx,                        _yTransIn,            				900, 
+			_xLineLeft,                _yTransIn,            				3001 
+
+		_rOuterInner = CurveRight[i-1] + Width[i-1] - LineMargin - LineWidth
+		_rOuterOuter = CurveRight[i-1] + Width[i-1] - LineMargin + LineWidth
+		_xLineLeftOut  = cx - _rOuterOuter
+		_xLineRightOut = cx - _rOuterInner
+		EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+			_xLineLeftOut,                0,                  							1,    
+			_xLineRightOut,               0,                  							1,    
+			_xLineRightOut,               _yTransOut,            						1,    
+			cx,                           _yTransOut,            						900,  
+			cx - _rOuterInner * COS(Angle), _rOuterInner * SIN(Angle) + _yTransOut, 	3001, 
+			cx - _rOuterOuter * COS(Angle), _rOuterOuter * SIN(Angle) + _yTransOut, 	1,    
+			cx,                           _yTransOut,            						900,  
+			_xLineLeftOut,                _yTransOut,            						3001  
+		DEL 1
+		MATERIAL 133
+RETURN
+!----------------------------------------------------------------------------------------------------------------------------------------
+
+!-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveLeft":
-	Angle = LeftAngle[i]
-	cx = -Width[i-1]/2 - CurveLeft[i-1]
-	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
-	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
-		IF Width[i] <= Width[i-1] THEN
-			EXTRUDE 8,0,0,0.1,1+2+4+16+32,
-				Width[i-1]/2,										0,													1,
-				-Width[i-1]/2,										0,													1,
-				-Width[i-1]/2,										Width[i-1]-Width[i],								1,
-				cx,													Width[i-1]-Width[i], 								900,
-				cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
-				cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),			1,
-				cx,												0, 														900,
-				Width[i-1]/2,										0,													3001
-		ELSE
-			EXTRUDE 7,0,0,0.1,1+2+4+16+32,
-				Width[i-1]/2,										0,																		1,
-				-Width[i-1]/2,										0,																		1,
-				cx,													0, 																		900,
-				cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle), 											3001,
-				cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],		1,
-				cx,													Width[i] - Width[i-1], 													900,
-				Width[i-1]/2,										Width[i] - Width[i-1],													3001
-			ADDY Width[i] - Width[i-1]
-		ENDIF
-	ENDIF
-	ADDX cx + rCenter * COS(Angle)
-	ADDY rCenter * SIN(Angle)
-	ROTZ Angle
-	Orietation = Orietation + Angle
-	ROTZ Orietation
-	ADDX MoveX[i]
-	ADDY MoveY[i]
-	ROTZ -Orietation
+    Angle = LeftAngle[i]
+    cx = -Width[i-1]/2 - CurveLeft[i-1]
+    rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
+    IF ABS(RemovePart[i]) < Width[i]/2  THEN 
+        IF Width[i] <= Width[i-1] THEN 
+            _yTrans = Width[i-1] - Width[i]
+            _rInner = CurveLeft[i-1]
+            _rOuter = CurveLeft[i-1] + Width[i-1]
+            EXTRUDE 8, 0, 0, TrackThickness, ExtrudeValues,
+                Width[i-1]/2,              0,                              1,   
+               -Width[i-1]/2,              0,                              1,   
+               -Width[i-1]/2,              _yTrans,                        1,   
+                cx,                        _yTrans,                        900, 
+                cx + _rInner * COS(Angle), _rInner * SIN(Angle) + _yTrans, 3001,
+                cx + _rOuter * COS(Angle), _rOuter * SIN(Angle),           1,   
+                cx,                        0,                              900, 
+                Width[i-1]/2,              0,                              3001 
+            
+            _yTransIn = Width[i-1] - Width[i]
+            _yTransOut = 0
+            GOSUB "LeftLines"
+
+        ELSE
+            EXTRUDE 7,0,0,TrackThickness,  ExtrudeValues,
+                Width[i-1]/2,                                       0,                      											1,
+               -Width[i-1]/2,                                       0,                      											1,
+                cx,                                                 0,                      											900,
+                cx + CurveLeft[i-1] * COS(Angle),                   CurveLeft[i-1] * SIN(Angle), 										3001,
+                cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),   (CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
+                cx,                                                 Width[i] - Width[i-1],  											900,
+                Width[i-1]/2,                                       Width[i] - Width[i-1],  											3001
+            _yTransIn = 0
+            _yTransOut = Width[i] - Width[i-1]
+            GOSUB "LeftLines"
+            ADDY Width[i] - Width[i-1]
+
+        ENDIF
+    ENDIF
+    ADDX cx + rCenter * COS(Angle)
+    ADDY rCenter * SIN(Angle)
+    ROTZ Angle
+    Orietation = Orietation + Angle
+    ROTZ Orietation
+    ADDX MoveX[i]
+    ADDY MoveY[i]
+    ROTZ -Orietation
 RETURN
 
+"LeftLines":
+        MATERIAL 2
+        ADDZ TrackThickness
+        _rInner = CurveLeft[i-1] + LineMargin - LineWidth
+        _rOuter = CurveLeft[i-1] + LineMargin + LineWidth
+        _xLineLeft  = cx + _rInner
+        _xLineRight = cx + _rOuter
+        EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+            _xLineLeft,                0,                           		1,   
+            _xLineRight,               0,                           		1,   
+            _xLineRight,               _yTransIn,                   		1,   
+            cx,                        _yTransIn,                   		900, 
+            cx + _rOuter * COS(Angle), _rOuter * SIN(Angle) + _yTransIn, 	3001,
+            cx + _rInner * COS(Angle), _rInner * SIN(Angle) + _yTransIn, 	1,   
+            cx,                        _yTransIn,                   		900, 
+            _xLineLeft,                _yTransIn,                   		3001 
+
+        _rOuterInner = CurveLeft[i-1] + Width[i-1] - LineMargin - LineWidth
+        _rOuterOuter = CurveLeft[i-1] + Width[i-1] - LineMargin + LineWidth
+        _xLineLeftOut  = cx + _rOuterInner
+        _xLineRightOut = cx + _rOuterOuter
+        EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+            _xLineLeftOut,                 0,                          				1,    
+            _xLineRightOut,                0,                          				1,    
+            _xLineRightOut,                _yTransOut,                 				1,    
+            cx,                            _yTransOut,                 				900,  
+            cx + _rOuterOuter * COS(Angle), _rOuterOuter * SIN(Angle) + _yTransOut, 3001, 
+            cx + _rOuterInner * COS(Angle), _rOuterInner * SIN(Angle) + _yTransOut, 1,    
+            cx,                            _yTransOut,                  			900,  
+            _xLineLeftOut,                 _yTransOut,                  			3001  
+        DEL 1
+        MATERIAL 133
+RETURN
+!----------------------------------------------------------------------------------------------------------------------------------------
+
+!---Hot Spots-------------------------------------------------------------------------------------------------------------------------------------
 "RightHotSpot":
 	!IF CurveRight[i] < ESP THEN 
 		HOTSPOT Width[i]/2,  0,	0, unID, CurveRight[i], 1 : unID = unID + 1
@@ -209,17 +339,16 @@ RETURN
 	!ENDIF
 RETURN
 
-
 "RightAngleHotSpot":
 	IF CurveRight[i] < ESP AND Width[i] = Width[i-1] THEN 
-		HOTSPOT 1+Width[i]/2,  0,	0, unID, RightAngle[i], 1 : unID = unID + 1
+		HOTSPOT 1+Width[i]/2,  0, 0, unID, RightAngle[i], 1 : unID = unID + 1
 		HOTSPOT 1+Width[i]/2,  0, 0, unID, RightAngle[i], 2 : unID = unID + 1
-		HOTSPOT 1+Width[i]/2, -1,	0, unID, RightAngle[i], 3 : unID = unID + 1
+		HOTSPOT 1+Width[i]/2, -1, 0, unID, RightAngle[i], 3 : unID = unID + 1
 	ENDIF
 RETURN
 
 "RightWidthHotSpot":
-	IF CurveRight[i] < ESP THEN 
+	IF CurveRight[i] < ESP AND RightAngle[i] = 90 THEN 
 		HOTSPOT -1-Width[i]/2,  0, 0, unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT -1-Width[i]/2,  0, 0, unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT -1-Width[i]/2-1,0, 0, unID, Width[i], 3 : unID = unID + 1
@@ -243,7 +372,7 @@ RETURN
 RETURN
 
 "LeftWidthHotSpot":
-	IF CurveLeft[i] < ESP THEN 
+	IF CurveLeft[i] < ESP AND LeftAngle[i] = 90 THEN 
 		HOTSPOT 1+Width[i]/2,  0,	0, unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT 1+Width[i]/2,  0,	0, unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT 1+Width[i]/2+1,0,	0, unID, Width[i], 3 : unID = unID + 1
@@ -257,9 +386,9 @@ RETURN
 RETURN
 
 "StraightHotSpot1":
-	HOTSPOT 0,  0,	0, unID, NextLength[i], 1 : unID = unID + 1
-	HOTSPOT 0,  1, 	0, unID, NextLength[i], 2 : unID = unID + 1
-	HOTSPOT 0, -1,	0, unID, NextLength[i], 3 : unID = unID + 1
+	HOTSPOT 0,  0,					0, unID, NextLength[i], 1 : unID = unID + 1
+	HOTSPOT 0,  BeginningDistance, 	0, unID, NextLength[i], 2 : unID = unID + 1
+	HOTSPOT 0, -1,					0, unID, NextLength[i], 3 : unID = unID + 1
 RETURN
 
 "RemoveHotSpot":
@@ -293,6 +422,7 @@ RETURN
 		DEL 3
 	ENDIF
 RETURN
+!----------------------------------------------------------------------------------------------------------------------------------------
 ]]>
 </Script_3D>
 
@@ -386,18 +516,18 @@ WHILE ObjectOrder[i] <> 0 DO
     "NextIter":
     i = i + 1
 ENDWHILE
-
+ROT2 -Orietation
 TEXT2 0, -2, STR(TotalLength, 10, 3) + " m"
 
 END
 
 "Straight1":
 	POLY2_ 4, 1+2+4,
-		-Width[i]/2,	0,	1,
-		 Width[i]/2,	0,	1,
-		 Width[i]/2,	1, 	1,
-		-Width[i]/2,	1,	1
-	ADD2 0, 1
+		-Width[i]/2,	0,					1,
+		 Width[i]/2,	0,					1,
+		 Width[i]/2,	BeginningDistance, 	1,
+		-Width[i]/2,	BeginningDistance,	1
+	ADD2 0, BeginningDistance
 RETURN
 
 "Straight":
@@ -477,8 +607,8 @@ RETURN
 				-Width[i-1]/2,										0,													1,
 				-Width[i-1]/2,										Width[i-1]-Width[i],								1,
 				 cx,												Width[i-1]-Width[i], 								900,
-				 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
-				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),		1,
+				 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],		3001,
+				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),			1,
 				 cx,												0, 													900,
 				 Width[i-1]/2,										0,													3001
 			LINE2 0, 0,
@@ -493,9 +623,9 @@ RETURN
 				 Width[i-1]/2,										0,																	1,
 				-Width[i-1]/2,										0,																	1,
 				 cx,												0, 																	900,
-				 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle), 										3001,
+				 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle), 												3001,
 				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
-				 cx,												Width[i] - Width[i-1], 											900,
+				 cx,												Width[i] - Width[i-1], 												900,
 				 Width[i-1]/2,										Width[i] - Width[i-1],											3001
 			LINE2 0, 0,	
 				  0, (Width[i] - Width[i-1])/2
@@ -532,7 +662,7 @@ RETURN
 RETURN
 
 "RightWidthHotSpot":
-	IF CurveRight[i] < ESP THEN
+	IF CurveRight[i] < ESP AND RightAngle[i] = 90 THEN
 		HOTSPOT2 -1-Width[i]/2,   0,	unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT2 -1-Width[i]/2,   0,	unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT2 -1-Width[i]/2-1, 0,	unID, Width[i], 3 : unID = unID + 1
@@ -556,7 +686,7 @@ RETURN
 RETURN
 
 "LeftWidthHotSpot":
-	IF CurveLeft[i] < ESP THEN
+	IF CurveLeft[i] < ESP AND LeftAngle[i] = 90 THEN
 		HOTSPOT2  1+Width[i]/2,   0,	unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT2  1+Width[i]/2,   0,	unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT2  1+Width[i]/2+1, 0,	unID, Width[i], 3 : unID = unID + 1
@@ -570,9 +700,9 @@ RETURN
 RETURN
 
 "StraightHotSpot1":
-	HOTSPOT2 0,  0,	unID, NextLength[i], 1 : unID = unID + 1
-	HOTSPOT2 0,  1,	unID, NextLength[i], 2 : unID = unID + 1
-	HOTSPOT2 0, -1,	unID, NextLength[i], 3 : unID = unID + 1
+	HOTSPOT2 0,  0,					unID, NextLength[i], 1 : unID = unID + 1
+	HOTSPOT2 0,  BeginningDistance,	unID, NextLength[i], 2 : unID = unID + 1
+	HOTSPOT2 0, -1,					unID, NextLength[i], 3 : unID = unID + 1
 RETURN
 
 "RemoveHotSpot":
@@ -602,7 +732,7 @@ RETURN
 		HOTSPOT2  0,    0,	unID, MoveX[i], 2 : unID = unID + 1
 		HOTSPOT2  0,  100,	unID, MoveX[i], 3 : unID = unID + 1
 		ROT2 -Orietation
-		DEL 2
+		DEL 3
 	ENDIF
 RETURN
 ]]>
@@ -614,6 +744,14 @@ RETURN
 <![CDATA[
 unID = 1
 ESP = 0.000001
+ExtrudeValues = 0
+BeginningDistance = 0.2
+
+IF Simple THEN
+	ExtrudeValues =  1+2+4
+ELSE
+	ExtrudeValues =  1+2+4+16+32
+ENDIF
 ]]>
 </Script_1D>
 
@@ -631,36 +769,23 @@ UI_DIALOG "Settings", 480, 300
 
 UI_PAGE 1
 
-UI_OUTFIELD "NextLength", 160, 2, 40, 15
-UI_INFIELD "NextLength", 160, 20, 40, 18
+UI_OUTFIELD "NextLength", 20, 2, 80, 15
+UI_INFIELD "NextLength", 20, 20, 80, 18
 
-UI_OUTFIELD "Width", 160, 40, 40, 15
-UI_INFIELD "Width", 160, 60, 40, 18
+UI_OUTFIELD "Width", 20, 40, 80, 15
+UI_INFIELD "Width", 20, 60, 80, 18
+
+UI_OUTFIELD "Simple", 20, 80, 80, 15
+UI_INFIELD "Simple", 20, 100, 80, 18
+
+
 ]]>
 </Script_UI>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
 
 <Script_VL SectVersion="20" SectionFlags="0" SubIdent="0">
-<![CDATA[
-! IF GLOB_MODPAR_NAME = "NextLength" THEN
-!     NodeCount = NodeCount + 1
-!     PARAMETERS NodeCount = NodeCount
-! ENDIF
-
-! ! IF GLOB_MODPAR_NAME = "CurveRight" THEN
-! !     CurveRightCount = CurveRightCount + 1
-! !     PARAMETERS CurveRightCount = CurveRightCount
-! ! ENDIF
-
-! IF GLOB_MODPAR_NAME = "CurveRight" THEN
-! 	RightEdited = 1
-! ELSE
-! 	RightEdited = 0
-! ENDIF
-
-!VALUES "Width" 0
-]]>
+<![CDATA[]]>
 </Script_VL>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
@@ -1545,10 +1670,6 @@ UI_INFIELD "Width", 160, 60, 40, 18
 				<AVal Row="100">0</AVal>
 			</ArrayValues>
 		</Integer>
-		<Boolean Name="RightEdited">
-			<Description><![CDATA[""]]></Description>
-			<Value>0</Value>
-		</Boolean>
 		<Length Name="RemovePart">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="101" SecondDimension="0">
@@ -1826,6 +1947,10 @@ UI_INFIELD "Width", 160, 60, 40, 18
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
 		</Length>
+		<Boolean Name="Simple">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Boolean>
 	</Parameters>
 </ParamSection>
 
