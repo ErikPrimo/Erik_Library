@@ -14,18 +14,16 @@
 <![CDATA[
 MATERIAL 133
 LineWidth = 0.1
-LineMargin = 0.8
 LineThickness = 0.01
 Orietation = 0
 TrackThickness = 0.1
 
-!----Sets Every Angle To Default 90 Degrees------------------------------------------------------------------------------------------------------------------------------------
+!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
 FOR i = 1 TO 100
 	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-NEXT i
-
-FOR i = 1 TO 100
+	IF RightAngle[i] < 18 THEN RightAngle[i] = RightAngle[i]*10
 	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
+	IF LeftAngle[i] < 18 THEN LeftAngle[i] = LeftAngle[i]*10
 NEXT i
 !----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -56,16 +54,21 @@ NEXT i
 !----------------------------------------------------------------------------------------------------------------------------------------
 
 !-------HotSpot For The Beggining Width--------------------------------------------------------------------------------------------------------------------
-
 HOTSPOT  -Width[1]/2,	0,	0, unID, Width[1], 1 : unID = unID + 1
 HOTSPOT   Width[1]/2,	0,	0, unID, Width[1], 2 : unID = unID + 1
 HOTSPOT  -10,			0,	0, unID, Width[1], 3 : unID = unID + 1
 !----------------------------------------------------------------------------------------------------------------------------------------
 
+!-------HotSpot Line Margin--------------------------------------------------------------------------------------------------------------------
+HOTSPOT  Width[1]/2,			0,	0, unID, LineMargin, 1 : unID = unID + 1
+HOTSPOT  Width[1]/2-LineMargin,	0,	0, unID, LineMargin, 2 : unID = unID + 1
+HOTSPOT  Width[1]/2+10,			0,	0, unID, LineMargin, 3 : unID = unID + 1
+!----------------------------------------------------------------------------------------------------------------------------------------
+
 !-------Main Loop Places All Objects--------------------------------------------------------------------------------------------------------------------
 i = 1
 WHILE ObjectOrder[i] <> 0 DO
-    IF ObjectOrder[i] = 1 THEN
+    IF ObjectOrder[i] = 1 AND ObjectOrder[i+1] = 0 THEN
         GOSUB "StraightHotSpot1"
         GOSUB "Straight1"
         GOSUB "RightHotSpot"
@@ -151,7 +154,7 @@ RETURN
 		DEL 2
 		MATERIAL 133
 		!----------------------------------------------------------------------------------------------------------------------------------------
-		IF NextLength[i-1] > 0.0001 THEN
+		IF NextLength[i-1] > 0.0001 AND BarrierVisible THEN
 			ADDZ .35
 			ADDX -Width[i]/2 + .05
 			PUT 0, -1, 					0, 0, 
@@ -167,11 +170,8 @@ RETURN
 			GOSUB "Barrier"
 			DEL 3
 		ENDIF
-
 	ENDIF
-
 	ADDY NextLength[i-1]
-
 	ROTZ Orietation
 	ADDX MoveX[i]
 	ADDY MoveY[i]
@@ -216,7 +216,7 @@ RETURN
 			GOSUB "RightLines"
 			ADDY Width[i] - Width[i-1]
 		ENDIF
-		GOSUB "RightBarrier"
+		IF BarrierVisible GOSUB "RightBarrier"
 
 	ENDIF
 	ADDX cx - rCenter * COS(Angle)
@@ -358,7 +358,7 @@ RETURN
             ADDY Width[i] - Width[i-1]
 
         ENDIF
-		GOSUB "LeftBarrier"
+		IF BarrierVisible GOSUB "LeftBarrier"
     ENDIF
     ADDX cx + rCenter * COS(Angle)
     ADDY rCenter * SIN(Angle)
@@ -557,31 +557,32 @@ RETURN
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
+!-------Barrier Shape---------------------------------------------------------------------------------------------------------------------------------
 "Barrier":
 	TUBE 45, NSP/4, ExtrudeValues,
 				-0.053495266155, -0.225064470749, 1,
-				0.043073357115, -0.225064470749, 1,
-				0.054260952005, -0.213876875865, 1,
-				0.041004712105, -0.207642665918, 1,
-				0.041089046155, -0.121696229470, 1,
-				0.027835579645, -0.115919834922, 1,
-				0.027819192115, -0.083403233477, 1,
-				0.041089046155, -0.077928642056, 1,
-				0.041089046155, -0.027518753572, 1,
-				0.027788233515, -0.021974329834, 1,
-				0.027817971335,  0.010794791911, 1,
-				0.041089046155,  0.016269886976, 1,
-				0.041089046155,  0.076556294730, 1,
-				0.053789045485,  0.086556686173, 1,
-				0.048358769035,  0.161849843719, 1,
-				0.043826236975,  0.178704416145, 1,
-				0.037383697335,  0.193379883373, 1,
-				0.028340436525,  0.206924853139, 1,
-				0.018379954525,  0.217110685738, 1,
-				0.013265917695,  0.220459881199, 1,
-				0.007692225885,  0.222744214605, 1,
-				0.004343201095,  0.223720282956, 1,
-				0.000312219395,  0.224676013693, 1,
+				 0.043073357115, -0.225064470749, 1,
+				 0.054260952005, -0.213876875865, 1,
+				 0.041004712105, -0.207642665918, 1,
+				 0.041089046155, -0.121696229470, 1,
+				 0.027835579645, -0.115919834922, 1,
+				 0.027819192115, -0.083403233477, 1,
+				 0.041089046155, -0.077928642056, 1,
+				 0.041089046155, -0.027518753572, 1,
+				 0.027788233515, -0.021974329834, 1,
+				 0.027817971335,  0.010794791911, 1,
+				 0.041089046155,  0.016269886976, 1,
+				 0.041089046155,  0.076556294730, 1,
+				 0.053789045485,  0.086556686173, 1,
+				 0.048358769035,  0.161849843719, 1,
+				 0.043826236975,  0.178704416145, 1,
+				 0.037383697335,  0.193379883373, 1,
+				 0.028340436525,  0.206924853139, 1,
+				 0.018379954525,  0.217110685738, 1,
+				 0.013265917695,  0.220459881199, 1,
+				 0.007692225885,  0.222744214605, 1,
+				 0.004343201095,  0.223720282956, 1,
+				 0.000312219395,  0.224676013693, 1,
 				-0.006303474015,  0.225064470749, 1,
 				-0.012885941385,  0.224297238358, 1,
 				-0.018735729355,  0.222749284515, 1,
@@ -605,7 +606,8 @@ RETURN
 				-0.064728946065, -0.213488568944, 1,
 				-0.053495266155, -0.225064470749, 1,
 				GET(NSP)
-RETURN				
+RETURN
+!----------------------------------------------------------------------------------------------------------------------------------------
 ]]>
 </Script_3D>
 
@@ -617,12 +619,12 @@ PEN 1
 DIM StraightLength[100]
 DIM CurvetWidth[100]
 Orietation = 0
-FOR i = 1 TO 100
-	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-NEXT i
 
 FOR i = 1 TO 100
+	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
+	IF RightAngle[i] < 18 THEN RightAngle[i] = RightAngle[i]*10
 	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
+	IF LeftAngle[i] < 18 THEN LeftAngle[i] = LeftAngle[i]*10
 NEXT i
 
 FOR i = 1 TO 100
@@ -952,14 +954,17 @@ UI_DIALOG "Settings", 480, 300
 
 UI_PAGE 1
 
-UI_OUTFIELD "NextLength", 20, 2, 80, 15
-UI_INFIELD "NextLength", 20, 20, 80, 18
+UI_OUTFIELD "Object Order", 20, 2, 80, 15
+UI_INFIELD "ObjectOrder", 20, 20, 80, 18
 
 UI_OUTFIELD "Width", 20, 40, 80, 15
 UI_INFIELD "Width", 20, 60, 80, 18
 
 UI_OUTFIELD "Simple", 20, 80, 80, 15
 UI_INFIELD "Simple", 20, 100, 80, 18
+
+UI_OUTFIELD "Barrier Visible", 20, 120, 80, 15
+UI_INFIELD "BarrierVisible", 20, 140, 80, 18
 
 
 ]]>
@@ -968,7 +973,9 @@ UI_INFIELD "Simple", 20, 100, 80, 18
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
 
 <Script_VL SectVersion="20" SectionFlags="0" SubIdent="0">
-<![CDATA[]]>
+<![CDATA[
+VALUES "LineMargin" RANGE [0.2, 2]:
+]]>
 </Script_VL>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
@@ -2134,6 +2141,14 @@ UI_INFIELD "Simple", 20, 100, 80, 18
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
 		</Boolean>
+		<Boolean Name="BarrierVisible">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
+		<Length Name="LineMargin">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Length>
 	</Parameters>
 </ParamSection>
 
