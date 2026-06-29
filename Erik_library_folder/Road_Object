@@ -131,6 +131,7 @@ RETURN
 				 Width[i]/2,	0,				 1,
 				 Width[i]/2,	NextLength[i-1], 1,
 				-Width[i]/2,	NextLength[i-1], 1
+		!-----Lines-----------------------------------------------------------------------------------------------------------------------------------		
 		MATERIAL 2
 		ADDX -Width[i]/2 + LineMargin
 		ADDZ TrackThickness
@@ -149,6 +150,24 @@ RETURN
 				-LineWidth,	NextLength[i-1],	1
 		DEL 2
 		MATERIAL 133
+		!----------------------------------------------------------------------------------------------------------------------------------------
+		IF NextLength[i-1] > 0.0001 THEN
+			ADDZ .35
+			ADDX -Width[i]/2 + .05
+			PUT 0, -1, 					0, 0, 
+				0,  0, 					0, 0, 
+				0,  NextLength[i-1], 	0, 0, 
+				0,  NextLength[i-1]+1, 	0, 0 
+			GOSUB "Barrier"
+			ADDX Width[i] - .05*2
+			PUT 0, -1, 					0, 0, 
+				0,  0, 					0, 0, 
+				0,  NextLength[i-1], 	0, 0, 
+				0,  NextLength[i-1]+1, 	0, 0 
+			GOSUB "Barrier"
+			DEL 3
+		ENDIF
+
 	ENDIF
 
 	ADDY NextLength[i-1]
@@ -183,7 +202,6 @@ RETURN
 			_yTransIn = Width[i-1] - Width[i]
 			_yTransOut = 0
 			GOSUB "RightLines"
-
 		ELSE
 			EXTRUDE 7,0,0,TrackThickness, ExtrudeValues,
 				-Width[i-1]/2,										0,																		1,
@@ -197,8 +215,9 @@ RETURN
 			_yTransOut = Width[i] - Width[i-1]
 			GOSUB "RightLines"
 			ADDY Width[i] - Width[i-1]
-
 		ENDIF
+		GOSUB "RightBarrier"
+
 	ENDIF
 	ADDX cx - rCenter * COS(Angle)
 	ADDY rCenter * SIN(Angle)
@@ -243,6 +262,61 @@ RETURN
 		DEL 1
 		MATERIAL 133
 RETURN
+
+"RightBarrier":
+    ADDZ 0.35
+    _segments = 12
+	Reset = 0
+    ! --- LEFT SIDE BARRIER (Outer Path) ---
+    _rOuter = CurveRight[i-1] + Width[i-1] - .05
+    
+    ! Only shift outer side if the track WIDENS
+    _yTransOut = 0
+    IF Width[i] > Width[i-1] THEN
+		 _yTransOut = Width[i] - Width[i-1]
+		ADDY Width[i-1] - Width[i]
+		Reset = 1
+	ENDIF
+
+    PUT cx - _rOuter, -1, 0, 0
+    PUT cx - _rOuter, 0, 0, 0
+    
+    IF _yTransOut > ESP THEN PUT cx - _rOuter, _yTransOut, 0, 0
+    
+    FOR n = 0 TO _segments
+        _a = (n / _segments) * RightAngle[i]
+        PUT cx - _rOuter * COS(_a), _rOuter * SIN(_a) + _yTransOut, 0, 0
+    NEXT n
+    
+    _xEndOut = cx - _rOuter * COS(RightAngle[i]) + SIN(RightAngle[i])
+    _yEndOut = _rOuter * SIN(RightAngle[i]) + COS(RightAngle[i]) + _yTransOut
+    PUT _xEndOut, _yEndOut, 0, 0
+    GOSUB "Barrier"
+    
+    
+    ! --- RIGHT SIDE BARRIER (Inner Path) ---
+    _rInner = CurveRight[i-1] + .05
+    
+    _yTransIn = 0
+    IF Width[i] < Width[i-1] THEN _yTransIn = Width[i-1] - Width[i]
+
+    PUT cx - _rInner, -1, 0, 0
+    PUT cx - _rInner, 0, 0, 0
+    
+    IF _yTransIn > ESP THEN PUT cx - _rInner, _yTransIn, 0, 0
+    
+    FOR n = 0 TO _segments
+        _a = (n / _segments) * RightAngle[i]
+        PUT cx - _rInner * COS(_a), _rInner * SIN(_a) + _yTransIn, 0, 0
+    NEXT n
+    
+    _xEndIn = cx - _rInner * COS(RightAngle[i]) + SIN(RightAngle[i])
+    _yEndIn = _rInner * SIN(RightAngle[i]) + COS(RightAngle[i]) + _yTransIn
+    PUT _xEndIn, _yEndIn, 0, 0
+    GOSUB "Barrier"
+    IF Reset THEN DEL 1
+    DEL 1
+RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
 !-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
@@ -284,6 +358,7 @@ RETURN
             ADDY Width[i] - Width[i-1]
 
         ENDIF
+		GOSUB "LeftBarrier"
     ENDIF
     ADDX cx + rCenter * COS(Angle)
     ADDY rCenter * SIN(Angle)
@@ -327,6 +402,64 @@ RETURN
             _xLineLeftOut,                 _yTransOut,                  			3001  
         DEL 1
         MATERIAL 133
+RETURN
+
+"LeftBarrier":
+    ADDZ 0.35
+    _segments = 15
+    Reset = 0
+
+    ! --- RIGHT SIDE BARRIER (Outer Path) ---
+    _rOuter = CurveLeft[i-1] + Width[i-1] - .05
+    
+    ! Only shift outer side if the track WIDENS
+    _yTransOut = 0
+    IF Width[i] > Width[i-1] THEN
+        _yTransOut = Width[i] - Width[i-1]
+        ADDY Width[i-1] - Width[i]
+        Reset = 1
+    ENDIF
+
+    PUT cx + _rOuter, -1, 0, 0
+    PUT cx + _rOuter, 0, 0, 0
+    
+    IF _yTransOut > ESP THEN PUT cx + _rOuter, _yTransOut, 0, 0
+    
+    FOR n = 0 TO _segments
+        _a = (n / _segments) * LeftAngle[i]
+        PUT cx + _rOuter * COS(_a), _rOuter * SIN(_a) + _yTransOut, 0, 0
+    NEXT n
+    
+    _xEndOut = cx + _rOuter * COS(LeftAngle[i]) - SIN(LeftAngle[i])
+    _yEndOut = _rOuter * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + _yTransOut
+    PUT _xEndOut, _yEndOut, 0, 0
+    GOSUB "Barrier"
+    
+    
+    ! --- LEFT SIDE BARRIER (Inner Path) ---
+    _rInner = CurveLeft[i-1] + .05
+    
+    ! Only shift inner side if the track NARROWS
+    _yTransIn = 0
+    IF Width[i] < Width[i-1] THEN _yTransIn = Width[i-1] - Width[i]
+
+    PUT cx + _rInner, -1, 0, 0
+    PUT cx + _rInner, 0, 0, 0
+    
+    IF _yTransIn > ESP THEN PUT cx + _rInner, _yTransIn, 0, 0
+    
+    FOR n = 0 TO _segments
+        _a = (n / _segments) * LeftAngle[i]
+        PUT cx + _rInner * COS(_a), _rInner * SIN(_a) + _yTransIn, 0, 0
+    NEXT n
+    
+    _xEndIn = cx + _rInner * COS(LeftAngle[i]) - SIN(LeftAngle[i])
+    _yEndIn = _rInner * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + _yTransIn
+    PUT _xEndIn, _yEndIn, 0, 0
+    GOSUB "Barrier"
+    
+    IF Reset THEN DEL 1
+    DEL 1
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -423,6 +556,56 @@ RETURN
 	ENDIF
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
+
+"Barrier":
+	TUBE 45, NSP/4, ExtrudeValues,
+				-0.053495266155, -0.225064470749, 1,
+				0.043073357115, -0.225064470749, 1,
+				0.054260952005, -0.213876875865, 1,
+				0.041004712105, -0.207642665918, 1,
+				0.041089046155, -0.121696229470, 1,
+				0.027835579645, -0.115919834922, 1,
+				0.027819192115, -0.083403233477, 1,
+				0.041089046155, -0.077928642056, 1,
+				0.041089046155, -0.027518753572, 1,
+				0.027788233515, -0.021974329834, 1,
+				0.027817971335,  0.010794791911, 1,
+				0.041089046155,  0.016269886976, 1,
+				0.041089046155,  0.076556294730, 1,
+				0.053789045485,  0.086556686173, 1,
+				0.048358769035,  0.161849843719, 1,
+				0.043826236975,  0.178704416145, 1,
+				0.037383697335,  0.193379883373, 1,
+				0.028340436525,  0.206924853139, 1,
+				0.018379954525,  0.217110685738, 1,
+				0.013265917695,  0.220459881199, 1,
+				0.007692225885,  0.222744214605, 1,
+				0.004343201095,  0.223720282956, 1,
+				0.000312219395,  0.224676013693, 1,
+				-0.006303474015,  0.225064470749, 1,
+				-0.012885941385,  0.224297238358, 1,
+				-0.018735729355,  0.222749284515, 1,
+				-0.025224097625,  0.219599897150, 1,
+				-0.030475232625,  0.215513175833, 1,
+				-0.042214634965,  0.202090541516, 1,
+				-0.050581204645,  0.187900666846, 1,
+				-0.056304275365,  0.172195061098, 1,
+				-0.059341670575,  0.156397945006, 1,
+				-0.064209954515,  0.086903924945, 1,
+				-0.051425621145,  0.076489887365, 1,
+				-0.051425621145,  0.016235094245, 1,
+				-0.038221997015,  0.010787826537, 1,
+				-0.038257400585, -0.021841676342, 1,
+				-0.051425621145, -0.027285187497, 1,
+				-0.051425621145, -0.077963434787, 1,
+				-0.038223217245, -0.083410199075, 1,
+				-0.038255531905, -0.115793540182, 1,
+				-0.051425621145, -0.121333775987, 1,
+				-0.051425621145, -0.207642665918, 1,
+				-0.064728946065, -0.213488568944, 1,
+				-0.053495266155, -0.225064470749, 1,
+				GET(NSP)
+RETURN				
 ]]>
 </Script_3D>
 
