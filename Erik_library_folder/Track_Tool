@@ -636,15 +636,18 @@ RETURN
 
 <Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
-PEN 1
-FILL "Solid Fill"
+! 1. Define the paint settings
+!SET FILL "Background"  
+SET FILL "Solid Fill"           ! Clear/Solid fill type
+PEN 1                             ! Border contour pen color
 DIM StraightLength[100]
 DIM CurvetWidth[100]
 Orietation = 0
 TempWidth = Width[1]
 DefaultPen = 1
 CircleSize = 0.09
-
+TrackColor = 22
+CircleColor = 11
 IF TempWidth = 0 THEN TempWidth = 7
 
 FOR i = 1 TO 100
@@ -676,20 +679,11 @@ HOTSPOT2  -Width[1]/2,		0,	unID, Width[1], 1 : unID = unID + 1
 HOTSPOT2   Width[1]/2,		0,	unID, Width[1], 2 : unID = unID + 1
 HOTSPOT2  -1-Width[1]/2,	0,	unID, Width[1], 3 : unID = unID + 1
 IF ColorCircles THEN
-	PEN 2
-	CIRCLE2 Width[1]/2, 0, CircleSize
-	PEN DefaultPen
+	POLY2_B 2, 1+2+4,
+		TrackColor, 0,
+		Width[1]/2,              0, 900,
+		CircleSize,            360, 4001
 ENDIF
-
-! Place this where you want to draw the circle
-IF s_lastEdited = "LeftAngle" THEN
-    CIRCLE2 0, 0, 2
-ENDIF
-
-! ... Rest of your 2D geometry drawing here ...
-
-! At the VERY LAST LINE of your 2D script, clear it out
-
 
 CurvetWidth[1] = Width[1]
 i = 1
@@ -743,26 +737,28 @@ ENDWHILE
 ROT2 -Orietation
 TEXT2 0, -2, STR(TotalLength, 10, 3) + " m"
 
-
-
 END
 
 "Straight1":
-	POLY2_ 4, 1+2+4,
-		-Width[i]/2,	0,					1,
-		 Width[i]/2,	0,					1,
-		 Width[i]/2,	BeginningDistance, 	1,
-		-Width[i]/2,	BeginningDistance,	1
+	POLY2_B 5, 1+2+4,
+		TrackColor, 0,
+		-Width[i]/2,    0,                  1,
+		 Width[i]/2,    0,                  1,
+		 Width[i]/2,    BeginningDistance,  1,
+		-Width[i]/2,    BeginningDistance,  1,
+		-Width[i]/2,    0,                 -1
 	ADD2 0, BeginningDistance
 RETURN
 
 "Straight":
 	IF ABS(RemovePart[i]) < Width[i]/2 THEN
-		POLY2_ 4, 1+2+4,
-			-Width[i]/2,	0,				1,
-			 Width[i]/2,	0,				1,
-			 Width[i]/2,	NextLength[i-1],1,
-			-Width[i]/2,	NextLength[i-1],1
+		POLY2_B 5, 1+2+4, 
+			TrackColor, 0,    ! 10 = Gray Foreground Pen, 0 = Transparent Background Pen
+			-Width[i]/2,    0,               1,
+			 Width[i]/2,    0,               1,
+			 Width[i]/2,    NextLength[i-1], 1,
+			-Width[i]/2,    NextLength[i-1], 1,
+			-Width[i]/2,    0,              -1  ! Closes the loop back to the first point
 		
 		LINE2 0, 0,		0, NextLength[i-1]
 	ENDIF
@@ -781,15 +777,17 @@ RETURN
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	IF ABS(RemovePart[i]) < Width[i]/2 THEN
 		IF Width[i] <= Width[i-1] THEN
-			POLY2_ 8, 1+2+4,
-				-Width[i-1]/2,										0,													1,
-				 Width[i-1]/2,										0,													1,
-				 Width[i-1]/2,										Width[i-1]-Width[i],								1,
-				 cx,												Width[i-1]-Width[i], 								900,
-				 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
-				 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle),		1,
-				 cx,												0, 													900,
-				-Width[i-1]/2,										0,													3001
+		POLY2_B 9, 1+2+4,
+			 TrackColor, 0,
+			-Width[i-1]/2,                                     0,                                                   1,
+			 Width[i-1]/2,                                     0,                                                   1,
+			 Width[i-1]/2,                                     Width[i-1]-Width[i],                                 1,
+			 cx,                                               Width[i-1]-Width[i],                                 900,
+			 cx - CurveRight[i-1] * COS(Angle),                CurveRight[i-1] * SIN(Angle) + Width[i-1]-Width[i],  3001,
+			 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle), (CurveRight[i-1] + Width[i-1]) * SIN(Angle),         1,
+			 cx,                                               0,                                                   900,
+			-Width[i-1]/2,                                     0,                                                   3001,
+			-Width[i-1]/2,                                     0,                                                   -1
 			LINE2 0, 0,	
 				  0, (Width[i-1]-Width[i])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
@@ -797,14 +795,16 @@ RETURN
 				 cx, 180-Angle, 180
 			TotalLength = TotalLength + (Angle * PI * ABS(cx) / 180)
 		ELSE
-			POLY2_ 7, 1+2+4,
+			POLY2_B 8, 1+2+4,
+			 	TrackColor, 0,
 				-Width[i-1]/2,										0,																	1,
 				 Width[i-1]/2,										0,																	1,
 				 cx,												0, 																	900,
 				 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle), 										3001,
 				 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],1,
 				 cx,												Width[i] - Width[i-1], 												900,
-				-Width[i-1]/2,										Width[i] - Width[i-1],												3001
+				-Width[i-1]/2,										Width[i] - Width[i-1],												3001,
+				-Width[i-1]/2,										Width[i] - Width[i-1],												-1
 			LINE2 0, 0,
 				  0, (Width[i] - Width[i-1])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
@@ -828,7 +828,8 @@ RETURN
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	IF ABS(RemovePart[i]) < Width[i]/2 THEN
 		IF Width[i] <= Width[i-1] THEN
-			POLY2_ 8, 1+2+4,
+			POLY2_B 9, 1+2+4,
+			 	TrackColor, 0,
 				 Width[i-1]/2,										0,													1,
 				-Width[i-1]/2,										0,													1,
 				-Width[i-1]/2,										Width[i-1]-Width[i],								1,
@@ -836,7 +837,8 @@ RETURN
 				 cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
 				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),			1,
 				 cx,												0, 													900,
-				 Width[i-1]/2,										0,													3001
+				 Width[i-1]/2,										0,													3001,
+				 Width[i-1]/2,										0,													-1
 			LINE2 0, 0,
 				  0, (Width[i-1] - Width[i])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
@@ -845,14 +847,16 @@ RETURN
 			TotalLength = TotalLength + (Angle * PI * ABS(cx) / 180)
 
 		ELSE
-			POLY2_ 7, 1+2+4,
+			POLY2_B 8, 1+2+4,
+			 	 TrackColor, 0,
 				 Width[i-1]/2,										0,																	1,
 				-Width[i-1]/2,										0,																	1,
 				 cx,												0, 																	900,
 				 cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle), 										3001,
 				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
 				 cx,												Width[i] - Width[i-1], 												900,
-				 Width[i-1]/2,										Width[i] - Width[i-1],												3001
+				 Width[i-1]/2,										Width[i] - Width[i-1],												3001,
+				 Width[i-1]/2,										Width[i] - Width[i-1],												-1
 			LINE2 0, 0,	
 				  0, (Width[i] - Width[i-1])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
@@ -877,9 +881,10 @@ RETURN
 		HOTSPOT2  Width[i]/2,  0,	unID, CurveRight[i], 2 : unID = unID + 1
 		HOTSPOT2  Width[i]/2, -1,	unID, CurveRight[i], 3 : unID = unID + 1
 		IF ColorCircles THEN
-			PEN 8
-			CIRCLE2 Width[i]/2, 0, CircleSize
-			PEN DefaultPen
+			POLY2_B 2, 1+2+4,
+				8, 0,
+				Width[i]/2,              0, 900,
+				CircleSize,            360, 4001
 		ENDIF
 	!ENDIF
 RETURN
@@ -895,9 +900,10 @@ RETURN
 		HOTSPOT2 refX,    refY,     unID, RightAngle[i], 4 + 128  	: unID = unID + 1
 		HOTSPOT2 Width[i]/2 + 1, 0, unID, RightAngle[i], 5   		: unID = unID + 1
 		IF ColorCircles THEN
-			PEN 6
-			CIRCLE2 1+Width[i]/2, 0, CircleSize
-			PEN DefaultPen
+			POLY2_B 2, 1+2+4,
+				6, 0,
+				1+Width[i]/2,              0, 900,
+				CircleSize,            360, 4001
 		ENDIF
 	ENDIF
 RETURN
@@ -908,9 +914,10 @@ RETURN
 		HOTSPOT2 -1-Width[i]/2,   0,	unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT2 -1-Width[i]/2-1, 0,	unID, Width[i], 3 : unID = unID + 1
 		IF ColorCircles THEN
-			PEN 3
-			CIRCLE2 -1-Width[i]/2, 0, CircleSize
-			PEN DefaultPen
+			POLY2_B 2, 1+2+4,
+				3, 0,
+				-1-Width[i]/2,              0, 900,
+				CircleSize,            360, 4001
 		ENDIF
 	ENDIF
 RETURN
@@ -921,14 +928,16 @@ RETURN
 		HOTSPOT2 -Width[i]/2, 0,	unID, CurveLeft[i], 2 : unID = unID + 1
 		HOTSPOT2 -Width[i]/2, -1,	unID, CurveLeft[i], 3 : unID = unID + 1
 		IF ColorCircles THEN
-			PEN 5
-			CIRCLE2 -Width[i]/2, 0, CircleSize
-			PEN DefaultPen
+			POLY2_B 2, 1+2+4,
+				5, 0,
+				-Width[i]/2,              0, 900,
+				CircleSize,            360, 4001
 		ENDIF
 	!ENDIF
 RETURN
 
 "LeftAngleHotSpot":
+	IF CurveLeft[i] < ESP AND Width[i] = Width[i-1] THEN 
 		centerX = - Width[i] / 2 - CurveLeft[i-1]
 		centerY = 0
 		LeftRadius = CurveLeft[i-1] - 1 
@@ -938,9 +947,10 @@ RETURN
 		HOTSPOT2 refX,    refY,    		unID, LeftAngle[i], 4 + 128 : unID = unID + 1
 		HOTSPOT2 - Width[i] / 2 - 1, 0, unID, LeftAngle[i], 5 		: unID = unID + 1
 		IF ColorCircles THEN
-			PEN 6
-			CIRCLE2 -1-Width[i]/2, 0, CircleSize
-			PEN DefaultPen
+			POLY2_B 2, 1+2+4,
+				6, 0,
+				-1-Width[i]/2,              0, 900,
+				CircleSize,            360, 4001
 		ENDIF
 	ENDIF
 RETURN
@@ -952,9 +962,10 @@ RETURN
 		HOTSPOT2  1+Width[i]/2+1, 0,	unID, Width[i], 3 : unID = unID + 1
 
 		IF ColorCircles THEN
-			PEN 3
-			CIRCLE2 1+Width[i]/2, 0, CircleSize
-			PEN DefaultPen
+			POLY2_B 2, 1+2+4,
+				3, 0,
+				1+Width[i]/2,              0, 900,
+				CircleSize,            360, 4001
 		ENDIF
 	ENDIF
 RETURN
@@ -969,9 +980,10 @@ RETURN
 		LINE2  0.3, NextLength[i] - 0.3, 0, NextLength[i]
 	ENDIF
 	IF ColorCircles THEN
-		PEN 4
-		CIRCLE2 0, NextLength[i], CircleSize
-		PEN DefaultPen
+		POLY2_B 2, 1+2+4,
+				4, 0,
+				0,			NextLength[i],	900,
+				CircleSize,	360, 			4001
 	ENDIF
 RETURN
 
@@ -980,9 +992,10 @@ RETURN
 	HOTSPOT2 0,  BeginningDistance,	unID, NextLength[i], 2 : unID = unID + 1
 	HOTSPOT2 0, -1,					unID, NextLength[i], 3 : unID = unID + 1
 	IF ColorCircles THEN
-		PEN 4
-		CIRCLE2 0, NextLength[i], CircleSize
-		PEN DefaultPen
+		POLY2_B 2, 1+2+4,
+				4, 0,
+				0,			BeginningDistance,	900,
+				CircleSize,	360, 			4001
 	ENDIF
 RETURN
 
@@ -2254,7 +2267,7 @@ ENDIF
 			<Flags>
 				<ParFlg_Hidden/>
 			</Flags>
-			<Value><![CDATA["s_lastEdited"]]></Value>
+			<Value><![CDATA["NextLength"]]></Value>
 		</String>
 		<Integer Name="i_activeEdit">
 			<Description><![CDATA[""]]></Description>
