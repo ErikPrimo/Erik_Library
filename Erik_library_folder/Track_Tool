@@ -13,20 +13,21 @@
 <Script_3D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
 MATERIAL 133
-LineWidth = 0.1
+LineWidth = 0.05
 LineThickness = 0.01
+LineMargin = 0.2
 Orietation = 0
-TrackThickness = 0.1
-
+TrackThickness = 0.01
 TempWidth = Width[1]
+BarrierHeight = .24
 IF TempWidth = 0 THEN TempWidth = 7
 
 FOR i = 1 TO 100
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
 	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-	IF RightAngle[i] < 18 THEN RightAngle[i] = RightAngle[i]*10
+	!IF RightAngle[i] < 18 THEN RightAngle[i] = RightAngle[i]*10
 	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
-	IF LeftAngle[i] < 18 THEN LeftAngle[i] = LeftAngle[i]*10
+	!IF LeftAngle[i] < 18 THEN LeftAngle[i] = LeftAngle[i]*10
 	!----------------------------------------------------------------------------------------------------------------------------------------
 
 	!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
@@ -52,11 +53,11 @@ HOTSPOT   Width[1]/2,	0,	0, unID, Width[1], 2 : unID = unID + 1
 HOTSPOT  -10,			0,	0, unID, Width[1], 3 : unID = unID + 1
 !----------------------------------------------------------------------------------------------------------------------------------------
 
-!-------HotSpot Line Margin--------------------------------------------------------------------------------------------------------------------
-HOTSPOT  Width[1]/2,			0,	0, unID, LineMargin, 1 : unID = unID + 1
-HOTSPOT  Width[1]/2-LineMargin,	0,	0, unID, LineMargin, 2 : unID = unID + 1
-HOTSPOT  Width[1]/2+10,			0,	0, unID, LineMargin, 3 : unID = unID + 1
-!----------------------------------------------------------------------------------------------------------------------------------------
+! !-------HotSpot Line Margin--------------------------------------------------------------------------------------------------------------------
+! HOTSPOT  Width[1]/2,			0,	0, unID, LineMargin, 1 : unID = unID + 1
+! HOTSPOT  Width[1]/2-LineMargin,	0,	0, unID, LineMargin, 2 : unID = unID + 1
+! HOTSPOT  Width[1]/2+10,			0,	0, unID, LineMargin, 3 : unID = unID + 1
+! !----------------------------------------------------------------------------------------------------------------------------------------
 
 !-------Main Loop Places All Objects--------------------------------------------------------------------------------------------------------------------
 i = 1
@@ -129,26 +130,31 @@ RETURN
 				-Width[i]/2,	NextLength[i-1], 1
 		!-----Lines-----------------------------------------------------------------------------------------------------------------------------------		
 		MATERIAL 2
-		ADDX -Width[i]/2 + LineMargin
-		ADDZ TrackThickness
-		EXTRUDE 4, 0, 0, LineThickness, ExtrudeValues,
-				-LineWidth,	0,					1,
-				 LineWidth,	0,					1,
-				 LineWidth,	NextLength[i-1], 	1,
-				-LineWidth,	NextLength[i-1],	1
-		DEL 2
-		ADDX Width[i]/2 - LineMargin
-		ADDZ TrackThickness
-		EXTRUDE 4, 0, 0, LineThickness, ExtrudeValues,
-				-LineWidth,	0,					1,
-				 LineWidth,	0,					1,
-				 LineWidth,	NextLength[i-1], 	1,
-				-LineWidth,	NextLength[i-1],	1
-		DEL 2
+		ConstantLineMargin = LineMargin
+		FOR h = 1 TO 2
+			ADDX -Width[i]/2 + LineMargin
+			ADDZ TrackThickness
+			EXTRUDE 4, 0, 0, LineThickness, ExtrudeValues,
+					-LineWidth,	0,					1,
+					LineWidth,	0,					1,
+					LineWidth,	NextLength[i-1], 	1,
+					-LineWidth,	NextLength[i-1],	1
+			DEL 2
+			ADDX Width[i]/2 - LineMargin
+			ADDZ TrackThickness
+			EXTRUDE 4, 0, 0, LineThickness, ExtrudeValues,
+					-LineWidth,	0,					1,
+					LineWidth,	0,					1,
+					LineWidth,	NextLength[i-1], 	1,
+					-LineWidth,	NextLength[i-1],	1
+			DEL 2
+			LineMargin = LineMargin + LineWidth*4
+		NEXT h
+		LineMargin = ConstantLineMargin
 		MATERIAL 133
 		!----------------------------------------------------------------------------------------------------------------------------------------
 		IF NextLength[i-1] > 0.0001 AND BarrierVisible THEN
-			ADDZ .35
+			ADDZ BarrierHeight
 			ADDX -Width[i]/2 + .05
 			PUT 0, -1, 					0, 0, 
 				0,  0, 					0, 0, 
@@ -195,6 +201,9 @@ RETURN
 			_yTransIn = Width[i-1] - Width[i]
 			_yTransOut = 0
 			GOSUB "RightLines"
+			LineMargin = LineMargin + LineWidth*4
+			GOSUB "RightLines"
+			LineMargin = ConstantLineMargin
 		ELSE
 			EXTRUDE 7,0,0,TrackThickness, ExtrudeValues,
 				-Width[i-1]/2,										0,																		1,
@@ -207,6 +216,9 @@ RETURN
 			_yTransIn = 0
 			_yTransOut = Width[i] - Width[i-1]
 			GOSUB "RightLines"
+			LineMargin = LineMargin + LineWidth*4
+			GOSUB "RightLines"
+			LineMargin = ConstantLineMargin
 			ADDY Width[i] - Width[i-1]
 		ENDIF
 		IF BarrierVisible GOSUB "RightBarrier"
@@ -257,7 +269,7 @@ RETURN
 RETURN
 
 "RightBarrier":
-    ADDZ 0.35
+    ADDZ BarrierHeight
     _segments = 12
 	Reset = 0
     ! --- LEFT SIDE BARRIER (Outer Path) ---
@@ -335,6 +347,9 @@ RETURN
             _yTransIn = Width[i-1] - Width[i]
             _yTransOut = 0
             GOSUB "LeftLines"
+			LineMargin = LineMargin + LineWidth*4
+			GOSUB "LeftLines"
+			LineMargin = ConstantLineMargin
 
         ELSE
             EXTRUDE 7,0,0,TrackThickness,  ExtrudeValues,
@@ -348,6 +363,9 @@ RETURN
             _yTransIn = 0
             _yTransOut = Width[i] - Width[i-1]
             GOSUB "LeftLines"
+			LineMargin = LineMargin + LineWidth*4
+			GOSUB "LeftLines"
+			LineMargin = ConstantLineMargin
             ADDY Width[i] - Width[i-1]
 
         ENDIF
@@ -398,7 +416,7 @@ RETURN
 RETURN
 
 "LeftBarrier":
-    ADDZ 0.35
+    ADDZ BarrierHeight
     _segments = 15
     Reset = 0
 
@@ -467,9 +485,14 @@ RETURN
 
 "RightAngleHotSpot":
 	IF CurveRight[i] < ESP AND Width[i] = Width[i-1] THEN 
-		HOTSPOT 1+Width[i]/2,  0, 0, unID, RightAngle[i], 1 : unID = unID + 1
-		HOTSPOT 1+Width[i]/2,  0, 0, unID, RightAngle[i], 2 : unID = unID + 1
-		HOTSPOT 1+Width[i]/2, -1, 0, unID, RightAngle[i], 3 : unID = unID + 1
+		centerX = Width[i] / 2 + CurveRight[i-1]
+		centerY = 0
+		RightRadius = CurveRight[i-1] - 1
+		refX = centerX - RightRadius * COS(RightAngle[i])
+		refY = centerY - RightRadius * SIN(RightAngle[i])
+		HOTSPOT centerX, centerY,  0, unID, RightAngle[i], 518 		: unID = unID + 1
+		HOTSPOT refX,    refY,     0, unID, RightAngle[i], 4 + 128  : unID = unID + 1
+		HOTSPOT Width[i]/2 + 1, 0, 0, unID, RightAngle[i], 5   		: unID = unID + 1
 	ENDIF
 RETURN
 
@@ -491,9 +514,14 @@ RETURN
 
 "LeftAngleHotSpot":
 	IF CurveLeft[i] < ESP AND Width[i] = Width[i-1] THEN 
-		HOTSPOT -1-Width[i]/2,  0, 0, unID, LeftAngle[i], 1 : unID = unID + 1
-		HOTSPOT -1-Width[i]/2,  0, 0, unID, LeftAngle[i], 2 : unID = unID + 1
-		HOTSPOT -1-Width[i]/2, -1, 0, unID, LeftAngle[i], 3 : unID = unID + 1
+		centerX = - Width[i] / 2 - CurveLeft[i-1]
+		centerY = 0
+		LeftRadius = CurveLeft[i-1] - 1 
+		refX = centerX + LeftRadius * COS(-LeftAngle[i])
+		refY = centerY + LeftRadius * SIN(-LeftAngle[i])
+		HOTSPOT centerX, centerY, 		0, unID, LeftAngle[i], 6 		: unID = unID + 1
+		HOTSPOT refX,    refY,    		0, unID, LeftAngle[i], 4 + 128  : unID = unID + 1
+		HOTSPOT - Width[i] / 2 - 1, 0,  0, nID, LeftAngle[i], 5 		: unID = unID + 1
 	ENDIF
 RETURN
 
@@ -609,19 +637,22 @@ RETURN
 <Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
 PEN 1
+FILL "Solid Fill"
 DIM StraightLength[100]
 DIM CurvetWidth[100]
 Orietation = 0
- 
 TempWidth = Width[1]
+DefaultPen = 1
+CircleSize = 0.09
+
 IF TempWidth = 0 THEN TempWidth = 7
 
 FOR i = 1 TO 100
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
 	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-	IF RightAngle[i] < 18 THEN RightAngle[i] = RightAngle[i]*10
+	!IF RightAngle[i] < 18 THEN RightAngle[i] = RightAngle[i]*10
 	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
-	IF LeftAngle[i] < 18 THEN LeftAngle[i] = LeftAngle[i]*10
+	!IF LeftAngle[i] < 18 THEN LeftAngle[i] = LeftAngle[i]*10
 	!----------------------------------------------------------------------------------------------------------------------------------------
 
 	!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
@@ -641,9 +672,24 @@ FOR i = 1 TO 100
 	!----------------------------------------------------------------------------------------------------------------------------------------
 NEXT i
 
-HOTSPOT2  -Width[1]/2,	0,	unID, Width[1], 1 : unID = unID + 1
-HOTSPOT2   Width[1]/2,	0,	unID, Width[1], 2 : unID = unID + 1
-HOTSPOT2  -10,			0,	unID, Width[1], 3 : unID = unID + 1
+HOTSPOT2  -Width[1]/2,		0,	unID, Width[1], 1 : unID = unID + 1
+HOTSPOT2   Width[1]/2,		0,	unID, Width[1], 2 : unID = unID + 1
+HOTSPOT2  -1-Width[1]/2,	0,	unID, Width[1], 3 : unID = unID + 1
+IF ColorCircles THEN
+	PEN 2
+	CIRCLE2 Width[1]/2, 0, CircleSize
+	PEN DefaultPen
+ENDIF
+
+! Place this where you want to draw the circle
+IF s_lastEdited = "LeftAngle" THEN
+    CIRCLE2 0, 0, 2
+ENDIF
+
+! ... Rest of your 2D geometry drawing here ...
+
+! At the VERY LAST LINE of your 2D script, clear it out
+
 
 CurvetWidth[1] = Width[1]
 i = 1
@@ -696,6 +742,8 @@ WHILE ObjectOrder[i] <> 0 DO
 ENDWHILE
 ROT2 -Orietation
 TEXT2 0, -2, STR(TotalLength, 10, 3) + " m"
+
+
 
 END
 
@@ -785,7 +833,7 @@ RETURN
 				-Width[i-1]/2,										0,													1,
 				-Width[i-1]/2,										Width[i-1]-Width[i],								1,
 				 cx,												Width[i-1]-Width[i], 								900,
-				 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],		3001,
+				 cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
 				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),			1,
 				 cx,												0, 													900,
 				 Width[i-1]/2,										0,													3001
@@ -801,10 +849,10 @@ RETURN
 				 Width[i-1]/2,										0,																	1,
 				-Width[i-1]/2,										0,																	1,
 				 cx,												0, 																	900,
-				 cx + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle), 												3001,
+				 cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle), 										3001,
 				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
 				 cx,												Width[i] - Width[i-1], 												900,
-				 Width[i-1]/2,										Width[i] - Width[i-1],											3001
+				 Width[i-1]/2,										Width[i] - Width[i-1],												3001
 			LINE2 0, 0,	
 				  0, (Width[i] - Width[i-1])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
@@ -828,14 +876,29 @@ RETURN
 		HOTSPOT2  Width[i]/2,  0,	unID, CurveRight[i], 1 : unID = unID + 1
 		HOTSPOT2  Width[i]/2,  0,	unID, CurveRight[i], 2 : unID = unID + 1
 		HOTSPOT2  Width[i]/2, -1,	unID, CurveRight[i], 3 : unID = unID + 1
+		IF ColorCircles THEN
+			PEN 8
+			CIRCLE2 Width[i]/2, 0, CircleSize
+			PEN DefaultPen
+		ENDIF
 	!ENDIF
 RETURN
 
 "RightAngleHotSpot":
 	IF CurveRight[i] < ESP AND Width[i] = Width[i-1] THEN
-		HOTSPOT2  1+Width[i]/2,  0,	unID, RightAngle[i], 1 : unID = unID + 1
-		HOTSPOT2  1+Width[i]/2,  0,	unID, RightAngle[i], 2 : unID = unID + 1
-		HOTSPOT2  1+Width[i]/2, -1,	unID, RightAngle[i], 3 : unID = unID + 1
+		centerX = Width[i] / 2 + CurveRight[i-1]
+		centerY = 0
+		RightRadius = CurveRight[i-1] - 1
+		refX = centerX - RightRadius * COS(RightAngle[i])
+		refY = centerY - RightRadius * SIN(RightAngle[i])
+		HOTSPOT2 centerX, centerY,  unID, RightAngle[i], 518 		: unID = unID + 1
+		HOTSPOT2 refX,    refY,     unID, RightAngle[i], 4 + 128  	: unID = unID + 1
+		HOTSPOT2 Width[i]/2 + 1, 0, unID, RightAngle[i], 5   		: unID = unID + 1
+		IF ColorCircles THEN
+			PEN 6
+			CIRCLE2 1+Width[i]/2, 0, CircleSize
+			PEN DefaultPen
+		ENDIF
 	ENDIF
 RETURN
 
@@ -844,6 +907,11 @@ RETURN
 		HOTSPOT2 -1-Width[i]/2,   0,	unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT2 -1-Width[i]/2,   0,	unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT2 -1-Width[i]/2-1, 0,	unID, Width[i], 3 : unID = unID + 1
+		IF ColorCircles THEN
+			PEN 3
+			CIRCLE2 -1-Width[i]/2, 0, CircleSize
+			PEN DefaultPen
+		ENDIF
 	ENDIF
 RETURN
 
@@ -852,14 +920,28 @@ RETURN
 		HOTSPOT2 -Width[i]/2, 0,	unID, CurveLeft[i], 1 : unID = unID + 1
 		HOTSPOT2 -Width[i]/2, 0,	unID, CurveLeft[i], 2 : unID = unID + 1
 		HOTSPOT2 -Width[i]/2, -1,	unID, CurveLeft[i], 3 : unID = unID + 1
+		IF ColorCircles THEN
+			PEN 5
+			CIRCLE2 -Width[i]/2, 0, CircleSize
+			PEN DefaultPen
+		ENDIF
 	!ENDIF
 RETURN
 
 "LeftAngleHotSpot":
-	IF CurveLeft[i] < ESP AND Width[i] = Width[i-1] THEN
-		HOTSPOT2 -1-Width[i]/2,  0,	unID, LeftAngle[i], 1 : unID = unID + 1
-		HOTSPOT2 -1-Width[i]/2,  0,	unID, LeftAngle[i], 2 : unID = unID + 1
-		HOTSPOT2 -1-Width[i]/2, -1,	unID, LeftAngle[i], 3 : unID = unID + 1
+		centerX = - Width[i] / 2 - CurveLeft[i-1]
+		centerY = 0
+		LeftRadius = CurveLeft[i-1] - 1 
+		refX = centerX + LeftRadius * COS(-LeftAngle[i])
+		refY = centerY + LeftRadius * SIN(-LeftAngle[i])
+		HOTSPOT2 centerX, centerY, 		unID, LeftAngle[i], 6 		: unID = unID + 1
+		HOTSPOT2 refX,    refY,    		unID, LeftAngle[i], 4 + 128 : unID = unID + 1
+		HOTSPOT2 - Width[i] / 2 - 1, 0, unID, LeftAngle[i], 5 		: unID = unID + 1
+		IF ColorCircles THEN
+			PEN 6
+			CIRCLE2 -1-Width[i]/2, 0, CircleSize
+			PEN DefaultPen
+		ENDIF
 	ENDIF
 RETURN
 
@@ -868,6 +950,12 @@ RETURN
 		HOTSPOT2  1+Width[i]/2,   0,	unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT2  1+Width[i]/2,   0,	unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT2  1+Width[i]/2+1, 0,	unID, Width[i], 3 : unID = unID + 1
+
+		IF ColorCircles THEN
+			PEN 3
+			CIRCLE2 1+Width[i]/2, 0, CircleSize
+			PEN DefaultPen
+		ENDIF
 	ENDIF
 RETURN
 
@@ -875,12 +963,27 @@ RETURN
 	HOTSPOT2 0,  0,				unID, NextLength[i], 1 : unID = unID + 1
 	HOTSPOT2 0,  NextLength[i],	unID, NextLength[i], 2 : unID = unID + 1
 	HOTSPOT2 0, -1,				unID, NextLength[i], 3 : unID = unID + 1
+	IF GLOB_CONTEXT = 22 THEN
+		LINE2  0, 	0, 					 0, NextLength[i]
+		LINE2 -0.3, NextLength[i] - 0.3, 0, NextLength[i]
+		LINE2  0.3, NextLength[i] - 0.3, 0, NextLength[i]
+	ENDIF
+	IF ColorCircles THEN
+		PEN 4
+		CIRCLE2 0, NextLength[i], CircleSize
+		PEN DefaultPen
+	ENDIF
 RETURN
 
 "StraightHotSpot1":
 	HOTSPOT2 0,  0,					unID, NextLength[i], 1 : unID = unID + 1
 	HOTSPOT2 0,  BeginningDistance,	unID, NextLength[i], 2 : unID = unID + 1
 	HOTSPOT2 0, -1,					unID, NextLength[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		PEN 4
+		CIRCLE2 0, NextLength[i], CircleSize
+		PEN DefaultPen
+	ENDIF
 RETURN
 
 "RemoveHotSpot":
@@ -953,8 +1056,8 @@ UI_INFIELD "Simple", 20, 20, 80, 18
 UI_OUTFIELD "Barrier Visible", 20, 40, 80, 15
 UI_INFIELD "BarrierVisible", 20, 60, 80, 18
 
-
-
+UI_OUTFIELD "Color Circles", 20, 80, 80, 15
+UI_INFIELD "ColorCircles", 20, 100, 80, 18
 
 ]]>
 </Script_UI>
@@ -963,7 +1066,11 @@ UI_INFIELD "BarrierVisible", 20, 60, 80, 18
 
 <Script_VL SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
-VALUES "LineMargin" RANGE [0.2, 2]:
+!VALUES "LineMargin" RANGE [0.1, 2]:
+
+IF GLOB_MODPAR_NAME <> "" THEN
+	PARAMETERS s_lastEdited = GLOB_MODPAR_NAME
+ENDIF
 ]]>
 </Script_VL>
 
@@ -2136,8 +2243,23 @@ VALUES "LineMargin" RANGE [0.2, 2]:
 		</Boolean>
 		<Length Name="LineMargin">
 			<Description><![CDATA[""]]></Description>
-			<Value>1</Value>
+			<Value>0.01</Value>
 		</Length>
+		<Boolean Name="ColorCircles">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
+		<String Name="s_lastEdited">
+			<Description><![CDATA[""]]></Description>
+			<Flags>
+				<ParFlg_Hidden/>
+			</Flags>
+			<Value><![CDATA["s_lastEdited"]]></Value>
+		</String>
+		<Integer Name="i_activeEdit">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Integer>
 	</Parameters>
 </ParamSection>
 
