@@ -129,9 +129,9 @@ RETURN
 				 Width[i]/2,	NextLength[i-1], 1,
 				-Width[i]/2,	NextLength[i-1], 1
 		!-----Lines-----------------------------------------------------------------------------------------------------------------------------------		
-		MATERIAL 2
 		ConstantLineMargin = LineMargin
 		FOR h = 1 TO 2
+			IF h = 1 THEN MATERIAL 19
 			ADDX -Width[i]/2 + LineMargin
 			ADDZ TrackThickness
 			EXTRUDE 4, 0, 0, LineThickness, ExtrudeValues,
@@ -149,6 +149,7 @@ RETURN
 					-LineWidth,	NextLength[i-1],	1
 			DEL 2
 			LineMargin = LineMargin + LineWidth*4
+			MATERIAL 18
 		NEXT h
 		LineMargin = ConstantLineMargin
 		MATERIAL 133
@@ -160,13 +161,13 @@ RETURN
 				0,  0, 					0, 0, 
 				0,  NextLength[i-1], 	0, 0, 
 				0,  NextLength[i-1]+1, 	0, 0 
-			GOSUB "Barrier"
+			GOSUB "SlimBarrier"
 			ADDX Width[i] - .05*2
 			PUT 0, -1, 					0, 0, 
 				0,  0, 					0, 0, 
 				0,  NextLength[i-1], 	0, 0, 
 				0,  NextLength[i-1]+1, 	0, 0 
-			GOSUB "Barrier"
+			GOSUB "SlimBarrier"
 			DEL 3
 		ENDIF
 	ENDIF
@@ -200,9 +201,12 @@ RETURN
 			
 			_yTransIn = Width[i-1] - Width[i]
 			_yTransOut = 0
+			MATERIAL 19
 			GOSUB "RightLines"
 			LineMargin = LineMargin + LineWidth*4
+			MATERIAL 18
 			GOSUB "RightLines"
+			MATERIAL 133
 			LineMargin = ConstantLineMargin
 		ELSE
 			EXTRUDE 7,0,0,TrackThickness, ExtrudeValues,
@@ -215,9 +219,12 @@ RETURN
 				-Width[i-1]/2,										Width[i] - Width[i-1],													3001
 			_yTransIn = 0
 			_yTransOut = Width[i] - Width[i-1]
+			MATERIAL 19
 			GOSUB "RightLines"
 			LineMargin = LineMargin + LineWidth*4
+			MATERIAL 18
 			GOSUB "RightLines"
+			MATERIAL 133
 			LineMargin = ConstantLineMargin
 			ADDY Width[i] - Width[i-1]
 		ENDIF
@@ -235,7 +242,6 @@ RETURN
 RETURN
 
 "RightLines":
-		MATERIAL 2
 		ADDZ TrackThickness
 		_rInner = CurveRight[i-1] + LineMargin - LineWidth
 		_rOuter = CurveRight[i-1] + LineMargin + LineWidth
@@ -265,7 +271,6 @@ RETURN
 			cx,                           _yTransOut,            						900,  
 			_xLineLeftOut,                _yTransOut,            						3001  
 		DEL 1
-		MATERIAL 133
 RETURN
 
 "RightBarrier":
@@ -296,7 +301,7 @@ RETURN
     _xEndOut = cx - _rOuter * COS(RightAngle[i]) + SIN(RightAngle[i])
     _yEndOut = _rOuter * SIN(RightAngle[i]) + COS(RightAngle[i]) + _yTransOut
     PUT _xEndOut, _yEndOut, 0, 0
-    GOSUB "Barrier"
+    GOSUB "SlimBarrier"
     
     
     ! --- RIGHT SIDE BARRIER (Inner Path) ---
@@ -346,9 +351,12 @@ RETURN
             
             _yTransIn = Width[i-1] - Width[i]
             _yTransOut = 0
+			MATERIAL 19
             GOSUB "LeftLines"
 			LineMargin = LineMargin + LineWidth*4
+			MATERIAL 18
 			GOSUB "LeftLines"
+			MATERIAL 133
 			LineMargin = ConstantLineMargin
 
         ELSE
@@ -362,9 +370,12 @@ RETURN
                 Width[i-1]/2,                                       Width[i] - Width[i-1],  											3001
             _yTransIn = 0
             _yTransOut = Width[i] - Width[i-1]
+			MATERIAL 19
             GOSUB "LeftLines"
 			LineMargin = LineMargin + LineWidth*4
+			MATERIAL 18
 			GOSUB "LeftLines"
+			MATERIAL 133
 			LineMargin = ConstantLineMargin
             ADDY Width[i] - Width[i-1]
 
@@ -382,7 +393,6 @@ RETURN
 RETURN
 
 "LeftLines":
-        MATERIAL 2
         ADDZ TrackThickness
         _rInner = CurveLeft[i-1] + LineMargin - LineWidth
         _rOuter = CurveLeft[i-1] + LineMargin + LineWidth
@@ -402,6 +412,7 @@ RETURN
         _rOuterOuter = CurveLeft[i-1] + Width[i-1] - LineMargin + LineWidth
         _xLineLeftOut  = cx + _rOuterInner
         _xLineRightOut = cx + _rOuterOuter
+		
         EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
             _xLineLeftOut,                 0,                          				1,    
             _xLineRightOut,                0,                          				1,    
@@ -412,7 +423,6 @@ RETURN
             cx,                            _yTransOut,                  			900,  
             _xLineLeftOut,                 _yTransOut,                  			3001  
         DEL 1
-        MATERIAL 133
 RETURN
 
 "LeftBarrier":
@@ -444,7 +454,7 @@ RETURN
     _xEndOut = cx + _rOuter * COS(LeftAngle[i]) - SIN(LeftAngle[i])
     _yEndOut = _rOuter * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + _yTransOut
     PUT _xEndOut, _yEndOut, 0, 0
-    GOSUB "Barrier"
+    GOSUB "SlimBarrier"
     
     
     ! --- LEFT SIDE BARRIER (Inner Path) ---
@@ -580,6 +590,7 @@ RETURN
 
 !-------Barrier Shape---------------------------------------------------------------------------------------------------------------------------------
 "Barrier":
+	MATERIAL 19
 	TUBE 45, NSP/4, ExtrudeValues,
 				-0.053495266155, -0.225064470749, 1,
 				 0.043073357115, -0.225064470749, 1,
@@ -627,6 +638,54 @@ RETURN
 				-0.064728946065, -0.213488568944, 1,
 				-0.053495266155, -0.225064470749, 1,
 				GET(NSP)
+	MATERIAL 133
+RETURN
+
+"SlimBarrier":
+	ADDZ -.12
+	TUBE 40, NSP/4, ExtrudeValues,
+			 0.06693162618, -0.06718562778032, 1,
+			 0.05140745026, -0.08881748932139, 1,
+			 0.02523758065, -0.10433030821310, 1,
+			 0.00806929492, -0.10646130838345, 1,
+			-0.00909899081, -0.10859230855380, 1,
+			-0.04377055183, -0.09615174289987, 1,
+			-0.05560055101, -0.08164352181237, 1,
+			-0.06743056558, -0.06713530072487, 1,
+			-0.07239220925, -0.03136993248768, 1,
+			-0.06241300009,  0.01117932022509, 1,
+			-0.02747786358,  0.08950573001541, 1,
+			-0.02057891363,  0.12012142551530, 1,
+			-0.02562697438,  0.14849151670430, 1,
+			-0.03381391324,  0.16572174722135, 1,
+			-0.04200085210,  0.18295197773840, 1,
+			-0.05740520529,  0.21713343329830, 1,
+			-0.06849688869,  0.25509599802970, 1,
+			-0.06955783749,  0.29237322927010, 1,
+			-0.06228036509,  0.31874170812320, 1,
+			-0.04191505769,  0.33694100905500, 1,
+			-0.01427192552,  0.34758149467780, 1,
+			-0.00707593694,  0.34835334812580, 1,
+			 0.00012005163,  0.34912520157380, 1,
+			 0.02731134151,  0.34409521695440, 1,
+			 0.04144833390,  0.33521130221420, 1,
+			 0.05558532631,  0.32632738747400, 1,
+			 0.07149664392,  0.29599850171430, 1,
+			 0.07132486601,  0.25907547065790, 1,
+			 0.06573435579,  0.24090543777750, 1,
+			 0.06014390549,  0.22273540489710, 1,
+			 0.04118990894,  0.18023953876170, 1,
+			 0.027242,       0.14896984022120, 1,
+			 0.021487,       0.12630637693340, 1,
+			 0.02544299754,  0.09674477541033, 1,
+			 0.03879386222,  0.06467300016915, 1,
+			 0.04448582786,  0.05191131116562, 1,
+			 0.05017779349,  0.03914962216209, 1,
+			 0.06395860984,  0.00825230056142, 1,
+			 0.07139877356, -0.02020399926915, 1,
+			 0.07239220925, -0.04883341388832, 1,
+			GET(NSP)
+	DEL 1
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 ]]>
@@ -1078,13 +1137,7 @@ UI_INFIELD "ColorCircles", 20, 100, 80, 18
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
 
 <Script_VL SectVersion="20" SectionFlags="0" SubIdent="0">
-<![CDATA[
-!VALUES "LineMargin" RANGE [0.1, 2]:
-
-IF GLOB_MODPAR_NAME <> "" THEN
-	PARAMETERS s_lastEdited = GLOB_MODPAR_NAME
-ENDIF
-]]>
+<![CDATA[]]>
 </Script_VL>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
@@ -2262,17 +2315,6 @@ ENDIF
 			<Description><![CDATA[""]]></Description>
 			<Value>1</Value>
 		</Boolean>
-		<String Name="s_lastEdited">
-			<Description><![CDATA[""]]></Description>
-			<Flags>
-				<ParFlg_Hidden/>
-			</Flags>
-			<Value><![CDATA["NextLength"]]></Value>
-		</String>
-		<Integer Name="i_activeEdit">
-			<Description><![CDATA[""]]></Description>
-			<Value>0</Value>
-		</Integer>
 	</Parameters>
 </ParamSection>
 
