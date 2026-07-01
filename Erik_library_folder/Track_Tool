@@ -14,49 +14,13 @@
 <![CDATA[
 MATERIAL 133
 RESOL 64
-LineWidth = 0.05
-LineThickness = 0.01
-LineMargin = 0.2
-Orietation = 0
-TrackThickness = 0.01
-TempWidth = Width[1]
-BarrierHeight = .24
-IF TempWidth = 0 THEN TempWidth = 7
-
-FOR i = 1 TO 100
-	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
-	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
-	!----------------------------------------------------------------------------------------------------------------------------------------
-
-	!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
-    IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
-	!----------------------------------------------------------------------------------------------------------------------------------------
-
-	!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------------------------------------------------
-	IF Width[i] > 0 AND Width[i] <> TempWidth THEN
-		TempWidth = Width[i]
-	ENDIF
-	Width[i] = TempWidth
-	!----------------------------------------------------------------------------------------------------------------------------------------
-
-	!-----Sets Limit On Angle-----------------------------------------------------------------------------------------------------------------------------------
-	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
-	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
-	!----------------------------------------------------------------------------------------------------------------------------------------
-NEXT i
-
-!-------HotSpot For The Beggining Width--------------------------------------------------------------------------------------------------------------------
-HOTSPOT  -Width[1]/2,	0,	0, unID, Width[1], 1 : unID = unID + 1
-HOTSPOT   Width[1]/2,	0,	0, unID, Width[1], 2 : unID = unID + 1
-HOTSPOT  -10,			0,	0, unID, Width[1], 3 : unID = unID + 1
+!------Initial Variables And Limits----------------------------------------------------------------------------------------------------------------------------------
+GOSUB "InitialVariablesAndLimits"
 !----------------------------------------------------------------------------------------------------------------------------------------
 
-! !-------HotSpot Line Margin--------------------------------------------------------------------------------------------------------------------
-! HOTSPOT  Width[1]/2,			0,	0, unID, LineMargin, 1 : unID = unID + 1
-! HOTSPOT  Width[1]/2-LineMargin,	0,	0, unID, LineMargin, 2 : unID = unID + 1
-! HOTSPOT  Width[1]/2+10,			0,	0, unID, LineMargin, 3 : unID = unID + 1
-! !----------------------------------------------------------------------------------------------------------------------------------------
+!----Beggining Width------------------------------------------------------------------------------------------------------------------------------------
+GOSUB "BegginingWidthHotSpot"
+!----------------------------------------------------------------------------------------------------------------------------------------
 
 !-------Main Loop Places All Objects--------------------------------------------------------------------------------------------------------------------
 i = 1
@@ -113,6 +77,42 @@ WHILE ObjectOrder[i] <> 0 DO
 ENDWHILE
 
 END
+!------Initial Variables And Limits----------------------------------------------------------------------------------------------------------------------------------
+"InitialVariablesAndLimits":
+	LineWidth = 0.05
+	LineThickness = 0.01
+	LineMargin = 0.2
+	Orietation = 0
+	TrackThickness = 0.01
+	TempWidth = Width[1]
+	BarrierHeight = .24
+	IF TempWidth = 0 THEN TempWidth = 7
+
+	FOR i = 1 TO 100
+		!----Sets Every Angle To Default 90 Degrees------------------------------------------------------------------------------------------------------------------------------------
+		IF RightAngle[i] = 0 THEN RightAngle[i] = 90
+		IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
+		!----------------------------------------------------------------------------------------------------------------------------------------
+
+		!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
+		IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
+		!----------------------------------------------------------------------------------------------------------------------------------------
+
+		!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------------------------------------------------
+		IF Width[i] > 0 AND Width[i] <> TempWidth THEN
+			TempWidth = Width[i]
+		ENDIF
+		Width[i] = TempWidth
+		!----------------------------------------------------------------------------------------------------------------------------------------
+
+		!-----Sets Limit On Angle-----------------------------------------------------------------------------------------------------------------------------------
+		RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
+		LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
+		!----------------------------------------------------------------------------------------------------------------------------------------
+	NEXT i
+RETURN
+!------------------------------------------------------------------------------------------------------------------------------------------
+
 !----Makes The Frist Staright------------------------------------------------------------------------------------------------------------------------------------
 "Straight1":
 	EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
@@ -158,7 +158,7 @@ RETURN
 		NEXT h
 		LineMargin = ConstantLineMargin
 		MATERIAL 133
-		!----------------------------------------------------------------------------------------------------------------------------------------
+		!-----Barriers-----------------------------------------------------------------------------------------------------------------------------------
 		IF NextLength[i-1] > 0.0001 AND BarrierVisible THEN
 			ADDZ BarrierHeight
 			ADDX -Width[i]/2 + .05
@@ -179,6 +179,7 @@ RETURN
 			ENDIF
 			DEL 3
 		ENDIF
+		!----------------------------------------------------------------------------------------------------------------------------------------
 	ENDIF
 	ADDY NextLength[i-1]
 	ROTZ Orietation
@@ -191,25 +192,25 @@ RETURN
 !-----Makes The Right Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveRight":
 	Angle = RightAngle[i]
-	cx = Width[i-1]/2 + CurveRight[i-1]
+	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
 		IF Width[i] <= Width[i-1] THEN 
-			_yTrans = Width[i-1] - Width[i]
-			_rInner = CurveRight[i-1]
-			_rOuter = CurveRight[i-1] + Width[i-1]
+			WidthDifference = Width[i-1] - Width[i]
+			InnerRadius = CurveRight[i-1]
+			OuterRadius = CurveRight[i-1] + Width[i-1]
 			EXTRUDE 8, 0, 0, TrackThickness, ExtrudeValues,
-				-Width[i-1]/2,              0,                          	1,    ! 1: Start Inner corner
-				 Width[i-1]/2,              0,                          	1,    ! 2: Start Outer corner
-				 Width[i-1]/2,              _yTrans,                    	1,    ! 3: Shift to transition plane
-				 cx,                        _yTrans,                    	900,  ! 4: Center point for inner arc
-				 cx - _rInner * COS(Angle), _rInner * SIN(Angle) + _yTrans, 3001, ! 5: Sweep inner radius
-				 cx - _rOuter * COS(Angle), _rOuter * SIN(Angle),       	1,    ! 6: Jump to outer radius end
-				 cx,                        0,                          	900,  ! 7: Center point for outer arc
-				-Width[i-1]/2,              0,                          	3001  ! 8: Sweep outer radius back to close
+				-Width[i-1]/2,              			 0,                          					1,    ! 1: Start Inner corner
+				 Width[i-1]/2,              			 0,                          					1,    ! 2: Start Outer corner
+				 Width[i-1]/2,              			 WidthDifference,                    			1,    ! 3: Shift to transition plane
+				 CurveRadius,                        	 WidthDifference,                    			900,  ! 4: Center point for inner arc
+				 CurveRadius - InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifference, 	3001, ! 5: Sweep inner radius
+				 CurveRadius - OuterRadius * COS(Angle), OuterRadius * SIN(Angle),       				1,    ! 6: Jump to outer radius end
+				 CurveRadius,                        	 0,                          					900,  ! 7: Center point for outer arc
+				-Width[i-1]/2,              			 0,                          					3001  ! 8: Sweep outer radius back to close
 			
-			_yTransIn = Width[i-1] - Width[i]
-			_yTransOut = 0
+			WidthDifferenceIn = Width[i-1] - Width[i]
+			WidthDifferenceOut = 0
 			MATERIAL 19
 			GOSUB "RightLines"
 			LineMargin = LineMargin + LineWidth*4
@@ -219,15 +220,15 @@ RETURN
 			LineMargin = ConstantLineMargin
 		ELSE
 			EXTRUDE 7,0,0,TrackThickness, ExtrudeValues,
-				-Width[i-1]/2,										0,																		1,
-				Width[i-1]/2,										0,																		1,
-				cx,													0, 																		900,  
-				cx - CurveRight[i-1] * COS(Angle),					CurveRight[i-1] * SIN(Angle), 											3001,
-				cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
-				cx,													Width[i] - Width[i-1], 													900,
-				-Width[i-1]/2,										Width[i] - Width[i-1],													3001
-			_yTransIn = 0
-			_yTransOut = Width[i] - Width[i-1]
+				-Width[i-1]/2,												0,																		1,
+				Width[i-1]/2,												0,																		1,
+				CurveRadius,												0, 																		900,  
+				CurveRadius - CurveRight[i-1] * COS(Angle),					CurveRight[i-1] * SIN(Angle), 											3001,
+				CurveRadius - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
+				CurveRadius,												Width[i] - Width[i-1], 													900,
+				-Width[i-1]/2,												Width[i] - Width[i-1],													3001
+			WidthDifferenceIn = 0
+			WidthDifferenceOut = Width[i] - Width[i-1]
 			MATERIAL 19
 			GOSUB "RightLines"
 			LineMargin = LineMargin + LineWidth*4
@@ -238,9 +239,8 @@ RETURN
 			ADDY Width[i] - Width[i-1]
 		ENDIF
 		IF BarrierVisible GOSUB "RightBarrier"
-
 	ENDIF
-	ADDX cx - rCenter * COS(Angle)
+	ADDX CurveRadius - rCenter * COS(Angle)
 	ADDY rCenter * SIN(Angle)
 	ROTZ -Angle
 	Orietation = Orietation - Angle
@@ -251,86 +251,86 @@ RETURN
 RETURN
 
 "RightLines":
-		ADDZ TrackThickness
-		_rInner = CurveRight[i-1] + LineMargin - LineWidth
-		_rOuter = CurveRight[i-1] + LineMargin + LineWidth
-		_xLineLeft  = cx - _rOuter
-		_xLineRight = cx - _rInner
-		EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
-			_xLineLeft,                0,                 					1,   
-			_xLineRight,               0,                 					1,   
-			_xLineRight,               _yTransIn,           				1,   
-			cx,                        _yTransIn,           				900, 
-			cx - _rInner * COS(Angle), _rInner * SIN(Angle) + _yTransIn, 	3001,
-			cx - _rOuter * COS(Angle), _rOuter * SIN(Angle) + _yTransIn, 	1,   
-			cx,                        _yTransIn,            				900, 
-			_xLineLeft,                _yTransIn,            				3001 
+	ADDZ TrackThickness
+	InnerRadius = CurveRight[i-1] + LineMargin - LineWidth
+	OuterRadius = CurveRight[i-1] + LineMargin + LineWidth
+	_xLineLeft  = CurveRadius - OuterRadius
+	_xLineRight = CurveRadius - InnerRadius
+	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+		_xLineLeft,               				0,                 						1,   
+		_xLineRight,              				0,                 						1,   
+		_xLineRight,              				WidthDifferenceIn,           					1,   
+		CurveRadius,                        	WidthDifferenceIn,           					900, 
+		CurveRadius - InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifferenceIn, 	3001,
+		CurveRadius - OuterRadius * COS(Angle), OuterRadius * SIN(Angle) + WidthDifferenceIn, 	1,   
+		CurveRadius,                       		WidthDifferenceIn,            					900, 
+		_xLineLeft,               				WidthDifferenceIn,            					3001 
 
-		_rOuterInner = CurveRight[i-1] + Width[i-1] - LineMargin - LineWidth
-		_rOuterOuter = CurveRight[i-1] + Width[i-1] - LineMargin + LineWidth
-		_xLineLeftOut  = cx - _rOuterOuter
-		_xLineRightOut = cx - _rOuterInner
-		EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
-			_xLineLeftOut,                0,                  							1,    
-			_xLineRightOut,               0,                  							1,    
-			_xLineRightOut,               _yTransOut,            						1,    
-			cx,                           _yTransOut,            						900,  
-			cx - _rOuterInner * COS(Angle), _rOuterInner * SIN(Angle) + _yTransOut, 	3001, 
-			cx - _rOuterOuter * COS(Angle), _rOuterOuter * SIN(Angle) + _yTransOut, 	1,    
-			cx,                           _yTransOut,            						900,  
-			_xLineLeftOut,                _yTransOut,            						3001  
-		DEL 1
+	_rOuterInner = CurveRight[i-1] + Width[i-1] - LineMargin - LineWidth
+	_rOuterOuter = CurveRight[i-1] + Width[i-1] - LineMargin + LineWidth
+	_xLineLeftOut  = CurveRadius - _rOuterOuter
+	_xLineRightOut = CurveRadius - _rOuterInner
+	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+		_xLineLeftOut,                			 0,                  						1,    
+		_xLineRightOut,               			 0,                  						1,    
+		_xLineRightOut,               			 WidthDifferenceOut,            					1,    
+		CurveRadius,                             WidthDifferenceOut,            					900,  
+		CurveRadius - _rOuterInner * COS(Angle), _rOuterInner * SIN(Angle) + WidthDifferenceOut, 	3001, 
+		CurveRadius - _rOuterOuter * COS(Angle), _rOuterOuter * SIN(Angle) + WidthDifferenceOut, 	1,    
+		CurveRadius,                           	 WidthDifferenceOut,            					900,  
+		_xLineLeftOut,               			 WidthDifferenceOut,            					3001  
+	DEL 1
 RETURN
 
 "RightBarrier":
     ADDZ BarrierHeight
-    _segments = 12
+    Segments = 12
 	Reset = 0
     ! --- LEFT SIDE BARRIER (Outer Path) ---
-    _rOuter = CurveRight[i-1] + Width[i-1] - .05
+    OuterRadius = CurveRight[i-1] + Width[i-1] - .05
     
     ! Only shift outer side if the track WIDENS
-    _yTransOut = 0
+    WidthDifferenceOut = 0
     IF Width[i] > Width[i-1] THEN
-		 _yTransOut = Width[i] - Width[i-1]
+		 WidthDifferenceOut = Width[i] - Width[i-1]
 		ADDY Width[i-1] - Width[i]
 		Reset = 1
 	ENDIF
 
-    PUT cx - _rOuter, -1, 0, 0
-    PUT cx - _rOuter, 0, 0, 0
+    PUT CurveRadius - OuterRadius, -1, 0, 0
+    PUT CurveRadius - OuterRadius, 0, 0, 0
     
-    IF _yTransOut > ESP THEN PUT cx - _rOuter, _yTransOut, 0, 0
+    IF WidthDifferenceOut > ESP THEN PUT CurveRadius - OuterRadius, WidthDifferenceOut, 0, 0
     
-    FOR n = 0 TO _segments
-        _a = (n / _segments) * RightAngle[i]
-        PUT cx - _rOuter * COS(_a), _rOuter * SIN(_a) + _yTransOut, 0, 0
+    FOR n = 0 TO Segments
+        AngleSegment = (n / Segments) * RightAngle[i]
+        PUT CurveRadius - OuterRadius * COS(AngleSegment), OuterRadius * SIN(AngleSegment) + WidthDifferenceOut, 0, 0
     NEXT n
     
-    _xEndOut = cx - _rOuter * COS(RightAngle[i]) + SIN(RightAngle[i])
-    _yEndOut = _rOuter * SIN(RightAngle[i]) + COS(RightAngle[i]) + _yTransOut
+    _xEndOut = CurveRadius - OuterRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
+    _yEndOut = OuterRadius * SIN(RightAngle[i]) + COS(RightAngle[i]) + WidthDifferenceOut
     PUT _xEndOut, _yEndOut, 0, 0
     GOSUB "SlimBarrier"
     
     
     ! --- RIGHT SIDE BARRIER (Inner Path) ---
-    _rInner = CurveRight[i-1] + .05
+    InnerRadius = CurveRight[i-1] + .05
     
-    _yTransIn = 0
-    IF Width[i] < Width[i-1] THEN _yTransIn = Width[i-1] - Width[i]
+    WidthDifferenceIn = 0
+    IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
 
-    PUT cx - _rInner, -1, 0, 0
-    PUT cx - _rInner, 0, 0, 0
+    PUT CurveRadius - InnerRadius, -1, 0, 0
+    PUT CurveRadius - InnerRadius, 0, 0, 0
     
-    IF _yTransIn > ESP THEN PUT cx - _rInner, _yTransIn, 0, 0
+    IF WidthDifferenceIn > ESP THEN PUT CurveRadius - InnerRadius, WidthDifferenceIn, 0, 0
     
-    FOR n = 0 TO _segments
-        _a = (n / _segments) * RightAngle[i]
-        PUT cx - _rInner * COS(_a), _rInner * SIN(_a) + _yTransIn, 0, 0
+    FOR n = 0 TO Segments
+        AngleSegment = (n / Segments) * RightAngle[i]
+        PUT CurveRadius - InnerRadius * COS(AngleSegment), InnerRadius * SIN(AngleSegment) + WidthDifferenceIn, 0, 0
     NEXT n
     
-    _xEndIn = cx - _rInner * COS(RightAngle[i]) + SIN(RightAngle[i])
-    _yEndIn = _rInner * SIN(RightAngle[i]) + COS(RightAngle[i]) + _yTransIn
+    _xEndIn = CurveRadius - InnerRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
+    _yEndIn = InnerRadius * SIN(RightAngle[i]) + COS(RightAngle[i]) + WidthDifferenceIn
     PUT _xEndIn, _yEndIn, 0, 0
     GOSUB "Barrier"
     IF Reset THEN DEL 1
@@ -341,25 +341,25 @@ RETURN
 !-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveLeft":
     Angle = LeftAngle[i]
-    cx = -Width[i-1]/2 - CurveLeft[i-1]
+    CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
     rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
     IF ABS(RemovePart[i]) < Width[i]/2  THEN 
         IF Width[i] <= Width[i-1] THEN 
-            _yTrans = Width[i-1] - Width[i]
-            _rInner = CurveLeft[i-1]
-            _rOuter = CurveLeft[i-1] + Width[i-1]
+            WidthDifference = Width[i-1] - Width[i]
+            InnerRadius = CurveLeft[i-1]
+            OuterRadius = CurveLeft[i-1] + Width[i-1]
             EXTRUDE 8, 0, 0, TrackThickness, ExtrudeValues,
-                Width[i-1]/2,              0,                              1,   
-               -Width[i-1]/2,              0,                              1,   
-               -Width[i-1]/2,              _yTrans,                        1,   
-                cx,                        _yTrans,                        900, 
-                cx + _rInner * COS(Angle), _rInner * SIN(Angle) + _yTrans, 3001,
-                cx + _rOuter * COS(Angle), _rOuter * SIN(Angle),           1,   
-                cx,                        0,                              900, 
-                Width[i-1]/2,              0,                              3001 
+                Width[i-1]/2,              				0,                              			1,   
+               -Width[i-1]/2,              				0,                              			1,   
+               -Width[i-1]/2,              				WidthDifference,                       		1,   
+                CurveRadius,                        	WidthDifference,                       		900, 
+                CurveRadius + InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifference, 3001,
+                CurveRadius + OuterRadius * COS(Angle), OuterRadius * SIN(Angle),           		1,   
+                CurveRadius,                        	0,                             				900, 
+                Width[i-1]/2,              				0,                             				3001 
             
-            _yTransIn = Width[i-1] - Width[i]
-            _yTransOut = 0
+            WidthDifferenceIn = Width[i-1] - Width[i]
+            WidthDifferenceOut = 0
 			MATERIAL 19
             GOSUB "LeftLines"
 			LineMargin = LineMargin + LineWidth*4
@@ -370,15 +370,15 @@ RETURN
 
         ELSE
             EXTRUDE 7,0,0,TrackThickness,  ExtrudeValues,
-                Width[i-1]/2,                                       0,                      											1,
-               -Width[i-1]/2,                                       0,                      											1,
-                cx,                                                 0,                      											900,
-                cx + CurveLeft[i-1] * COS(Angle),                   CurveLeft[i-1] * SIN(Angle), 										3001,
-                cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),   (CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
-                cx,                                                 Width[i] - Width[i-1],  											900,
-                Width[i-1]/2,                                       Width[i] - Width[i-1],  											3001
-            _yTransIn = 0
-            _yTransOut = Width[i] - Width[i-1]
+                Width[i-1]/2,                                       		0,                      											1,
+               -Width[i-1]/2,                                       		0,                      											1,
+                CurveRadius,                                            	0,                      											900,
+                CurveRadius + CurveLeft[i-1] * COS(Angle),                  CurveLeft[i-1] * SIN(Angle), 										3001,
+                CurveRadius + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),   (CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
+                CurveRadius,                                                Width[i] - Width[i-1],  											900,
+                Width[i-1]/2,                                       		Width[i] - Width[i-1],  											3001
+            WidthDifferenceIn = 0
+            WidthDifferenceOut = Width[i] - Width[i-1]
 			MATERIAL 19
             GOSUB "LeftLines"
 			LineMargin = LineMargin + LineWidth*4
@@ -391,7 +391,7 @@ RETURN
         ENDIF
 		IF BarrierVisible GOSUB "LeftBarrier"
     ENDIF
-    ADDX cx + rCenter * COS(Angle)
+    ADDX CurveRadius + rCenter * COS(Angle)
     ADDY rCenter * SIN(Angle)
     ROTZ Angle
     Orietation = Orietation + Angle
@@ -402,89 +402,89 @@ RETURN
 RETURN
 
 "LeftLines":
-        ADDZ TrackThickness
-        _rInner = CurveLeft[i-1] + LineMargin - LineWidth
-        _rOuter = CurveLeft[i-1] + LineMargin + LineWidth
-        _xLineLeft  = cx + _rInner
-        _xLineRight = cx + _rOuter
-        EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
-            _xLineLeft,                0,                           		1,   
-            _xLineRight,               0,                           		1,   
-            _xLineRight,               _yTransIn,                   		1,   
-            cx,                        _yTransIn,                   		900, 
-            cx + _rOuter * COS(Angle), _rOuter * SIN(Angle) + _yTransIn, 	3001,
-            cx + _rInner * COS(Angle), _rInner * SIN(Angle) + _yTransIn, 	1,   
-            cx,                        _yTransIn,                   		900, 
-            _xLineLeft,                _yTransIn,                   		3001 
+	ADDZ TrackThickness
+	InnerRadius = CurveLeft[i-1] + LineMargin - LineWidth
+	OuterRadius = CurveLeft[i-1] + LineMargin + LineWidth
+	_xLineLeft  = CurveRadius + InnerRadius
+	_xLineRight = CurveRadius + OuterRadius
+	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+		_xLineLeft,               				0,                           			1,   
+		_xLineRight,              				0,                           			1,   
+		_xLineRight,              				WidthDifferenceIn,                   			1,   
+		CurveRadius,                        	WidthDifferenceIn,                   			900, 
+		CurveRadius + OuterRadius * COS(Angle), OuterRadius * SIN(Angle) + WidthDifferenceIn, 	3001,
+		CurveRadius + InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifferenceIn, 	1,   
+		CurveRadius,                        	WidthDifferenceIn,                   			900, 
+		_xLineLeft,                				WidthDifferenceIn,                   			3001 
 
-        _rOuterInner = CurveLeft[i-1] + Width[i-1] - LineMargin - LineWidth
-        _rOuterOuter = CurveLeft[i-1] + Width[i-1] - LineMargin + LineWidth
-        _xLineLeftOut  = cx + _rOuterInner
-        _xLineRightOut = cx + _rOuterOuter
-		
-        EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
-            _xLineLeftOut,                 0,                          				1,    
-            _xLineRightOut,                0,                          				1,    
-            _xLineRightOut,                _yTransOut,                 				1,    
-            cx,                            _yTransOut,                 				900,  
-            cx + _rOuterOuter * COS(Angle), _rOuterOuter * SIN(Angle) + _yTransOut, 3001, 
-            cx + _rOuterInner * COS(Angle), _rOuterInner * SIN(Angle) + _yTransOut, 1,    
-            cx,                            _yTransOut,                  			900,  
-            _xLineLeftOut,                 _yTransOut,                  			3001  
-        DEL 1
+	_rOuterInner = CurveLeft[i-1] + Width[i-1] - LineMargin - LineWidth
+	_rOuterOuter = CurveLeft[i-1] + Width[i-1] - LineMargin + LineWidth
+	_xLineLeftOut  = CurveRadius + _rOuterInner
+	_xLineRightOut = CurveRadius + _rOuterOuter
+	
+	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+		_xLineLeftOut,                 				0,                          			1,    
+		_xLineRightOut,                				0,                          			1,    
+		_xLineRightOut,                				WidthDifferenceOut,                 			1,    
+		CurveRadius,                            	WidthDifferenceOut,                 			900,  
+		CurveRadius + _rOuterOuter * COS(Angle), 	_rOuterOuter * SIN(Angle) + WidthDifferenceOut, 3001, 
+		CurveRadius + _rOuterInner * COS(Angle), 	_rOuterInner * SIN(Angle) + WidthDifferenceOut, 1,    
+		CurveRadius,                            	WidthDifferenceOut,                  			900,  
+		_xLineLeftOut,                 				WidthDifferenceOut,                  			3001  
+	DEL 1
 RETURN
 
 "LeftBarrier":
     ADDZ BarrierHeight
-    _segments = 15
+    Segments = 15
     Reset = 0
 
     ! --- RIGHT SIDE BARRIER (Outer Path) ---
-    _rOuter = CurveLeft[i-1] + Width[i-1] - .05
+    OuterRadius = CurveLeft[i-1] + Width[i-1] - .05
     
     ! Only shift outer side if the track WIDENS
-    _yTransOut = 0
+    WidthDifferenceOut = 0
     IF Width[i] > Width[i-1] THEN
-        _yTransOut = Width[i] - Width[i-1]
+        WidthDifferenceOut = Width[i] - Width[i-1]
         ADDY Width[i-1] - Width[i]
         Reset = 1
     ENDIF
 
-    PUT cx + _rOuter, -1, 0, 0
-    PUT cx + _rOuter, 0, 0, 0
+    PUT CurveRadius + OuterRadius, -1, 0, 0
+    PUT CurveRadius + OuterRadius, 0, 0, 0
     
-    IF _yTransOut > ESP THEN PUT cx + _rOuter, _yTransOut, 0, 0
+    IF WidthDifferenceOut > ESP THEN PUT CurveRadius + OuterRadius, WidthDifferenceOut, 0, 0
     
-    FOR n = 0 TO _segments
-        _a = (n / _segments) * LeftAngle[i]
-        PUT cx + _rOuter * COS(_a), _rOuter * SIN(_a) + _yTransOut, 0, 0
+    FOR n = 0 TO Segments
+        AngleSegment = (n / Segments) * LeftAngle[i]
+        PUT CurveRadius + OuterRadius * COS(AngleSegment), OuterRadius * SIN(AngleSegment) + WidthDifferenceOut, 0, 0
     NEXT n
     
-    _xEndOut = cx + _rOuter * COS(LeftAngle[i]) - SIN(LeftAngle[i])
-    _yEndOut = _rOuter * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + _yTransOut
+    _xEndOut = CurveRadius + OuterRadius * COS(LeftAngle[i]) - SIN(LeftAngle[i])
+    _yEndOut = OuterRadius * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + WidthDifferenceOut
     PUT _xEndOut, _yEndOut, 0, 0
     GOSUB "SlimBarrier"
     
     
     ! --- LEFT SIDE BARRIER (Inner Path) ---
-    _rInner = CurveLeft[i-1] + .05
+    InnerRadius = CurveLeft[i-1] + .05
     
     ! Only shift inner side if the track NARROWS
-    _yTransIn = 0
-    IF Width[i] < Width[i-1] THEN _yTransIn = Width[i-1] - Width[i]
+    WidthDifferenceIn = 0
+    IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
 
-    PUT cx + _rInner, -1, 0, 0
-    PUT cx + _rInner, 0, 0, 0
+    PUT CurveRadius + InnerRadius, -1, 0, 0
+    PUT CurveRadius + InnerRadius, 0, 0, 0
     
-    IF _yTransIn > ESP THEN PUT cx + _rInner, _yTransIn, 0, 0
+    IF WidthDifferenceIn > ESP THEN PUT CurveRadius + InnerRadius, WidthDifferenceIn, 0, 0
     
-    FOR n = 0 TO _segments
-        _a = (n / _segments) * LeftAngle[i]
-        PUT cx + _rInner * COS(_a), _rInner * SIN(_a) + _yTransIn, 0, 0
+    FOR n = 0 TO Segments
+        AngleSegment = (n / Segments) * LeftAngle[i]
+        PUT CurveRadius + InnerRadius * COS(AngleSegment), InnerRadius * SIN(AngleSegment) + WidthDifferenceIn, 0, 0
     NEXT n
     
-    _xEndIn = cx + _rInner * COS(LeftAngle[i]) - SIN(LeftAngle[i])
-    _yEndIn = _rInner * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + _yTransIn
+    _xEndIn = CurveRadius + InnerRadius * COS(LeftAngle[i]) - SIN(LeftAngle[i])
+    _yEndIn = InnerRadius * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + WidthDifferenceIn
     PUT _xEndIn, _yEndIn, 0, 0
     GOSUB "Barrier"
     
@@ -494,12 +494,16 @@ RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
 !---Hot Spots-------------------------------------------------------------------------------------------------------------------------------------
+"BegginingWidthHotSpot":
+	HOTSPOT  -Width[1]/2,	0,	0, unID, Width[1], 1 : unID = unID + 1
+	HOTSPOT   Width[1]/2,	0,	0, unID, Width[1], 2 : unID = unID + 1
+	HOTSPOT  -10,			0,	0, unID, Width[1], 3 : unID = unID + 1
+RETURN
+
 "RightHotSpot":
-	!IF CurveRight[i] < ESP THEN 
-		HOTSPOT Width[i]/2,  0,	0, unID, CurveRight[i], 1 : unID = unID + 1
-		HOTSPOT Width[i]/2,  0, 0, unID, CurveRight[i], 2 : unID = unID + 1
-		HOTSPOT Width[i]/2, -1,	0, unID, CurveRight[i], 3 : unID = unID + 1
-	!ENDIF
+	HOTSPOT Width[i]/2,  0,	0, unID, CurveRight[i], 1 : unID = unID + 1
+	HOTSPOT Width[i]/2,  0, 0, unID, CurveRight[i], 2 : unID = unID + 1
+	HOTSPOT Width[i]/2, -1,	0, unID, CurveRight[i], 3 : unID = unID + 1
 RETURN
 
 "RightAngleHotSpot":
@@ -524,11 +528,9 @@ RETURN
 RETURN
 
 "LeftHotSpot":
-	!IF CurveLeft[i] < ESP THEN 
-		HOTSPOT -Width[i]/2,  0, 0, unID, CurveLeft[i], 1 : unID = unID + 1
-		HOTSPOT -Width[i]/2,  0, 0, unID, CurveLeft[i], 2 : unID = unID + 1
-		HOTSPOT -Width[i]/2, -1, 0, unID, CurveLeft[i], 3 : unID = unID + 1
-	!ENDIF
+	HOTSPOT -Width[i]/2,  0, 0, unID, CurveLeft[i], 1 : unID = unID + 1
+	HOTSPOT -Width[i]/2,  0, 0, unID, CurveLeft[i], 2 : unID = unID + 1
+	HOTSPOT -Width[i]/2, -1, 0, unID, CurveLeft[i], 3 : unID = unID + 1
 RETURN
 
 "LeftAngleHotSpot":
@@ -565,19 +567,19 @@ RETURN
 RETURN
 
 "RemoveHotSpot":
-		HOTSPOT 0,  NextLength[i]-1,	0, unID, RemovePart[i], 1 : unID = unID + 1
-		HOTSPOT 0,  NextLength[i]-1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
-		HOTSPOT -1, NextLength[i]-1,	0, unID, RemovePart[i], 3 : unID = unID + 1
-		GOSUB "MoveSegmentHotSpot"
-		IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
+	HOTSPOT 0,  NextLength[i]-1,	0, unID, RemovePart[i], 1 : unID = unID + 1
+	HOTSPOT 0,  NextLength[i]-1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
+	HOTSPOT -1, NextLength[i]-1,	0, unID, RemovePart[i], 3 : unID = unID + 1
+	GOSUB "MoveSegmentHotSpot"
+	IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
 RETURN
 
 "RemoveCornerHotSpot":
-		HOTSPOT 0,  -1,		0, unID, RemovePart[i], 1 : unID = unID + 1
-		HOTSPOT 0,  -1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
-		HOTSPOT -1, -1,		0, unID, RemovePart[i], 3 : unID = unID + 1
-		GOSUB "MoveSegmentHotSpot"
-		IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
+	HOTSPOT 0,  -1,		0, unID, RemovePart[i], 1 : unID = unID + 1
+	HOTSPOT 0,  -1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
+	HOTSPOT -1, -1,		0, unID, RemovePart[i], 3 : unID = unID + 1
+	GOSUB "MoveSegmentHotSpot"
+	IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
 RETURN
 
 "MoveSegmentHotSpot":
@@ -765,53 +767,24 @@ RETURN
 
 <Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
-! 1. Define the paint settings
 SET FILL "Solid Fill"
 PEN 1
-DIM StraightLength[100]
-DIM CurvetWidth[100]
-Orietation = 0
-TempWidth = Width[1]
-DefaultPen = 1
-CircleSize = 0.11
-TrackColor = 22
-CircleColor = 11
-IF TempWidth = 0 THEN TempWidth = 7
 
-FOR i = 1 TO 100
-	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
-	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
-	!----------------------------------------------------------------------------------------------------------------------------------------
+!------Initial Variables And Limits----------------------------------------------------------------------------------------------------------------------------------
+GOSUB "InitialVariablesAndLimits"
+!----------------------------------------------------------------------------------------------------------------------------------------
 
-	!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
-    IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
-	!----------------------------------------------------------------------------------------------------------------------------------------
+!----Beggining Width------------------------------------------------------------------------------------------------------------------------------------
+GOSUB "BegginingWidthHotSpot"
 
-	!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------------------------------------------------
-	IF Width[i] > 0 AND Width[i] <> TempWidth THEN
-		TempWidth = Width[i]
-	ENDIF
-	Width[i] = TempWidth
-	!----------------------------------------------------------------------------------------------------------------------------------------
-
-	!-----Sets Limit On Angle-----------------------------------------------------------------------------------------------------------------------------------
-	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
-	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
-	!----------------------------------------------------------------------------------------------------------------------------------------
-NEXT i
-
-HOTSPOT2  -Width[1]/2,		0,	unID, Width[1], 1 : unID = unID + 1
-HOTSPOT2   Width[1]/2,		0,	unID, Width[1], 2 : unID = unID + 1
-HOTSPOT2  -1-Width[1]/2,	0,	unID, Width[1], 3 : unID = unID + 1
 IF ColorCircles THEN
 	POLY2_B 2, 1+2+4,
 		TrackColor, 0,
 		Width[1]/2,              0, 900,
 		CircleSize,            360, 4001
 ENDIF
+!----------------------------------------------------------------------------------------------------------------------------------------
 
-CurvetWidth[1] = Width[1]
 i = 1
 WHILE ObjectOrder[i] <> 0 DO
     IF ObjectOrder[i] = 1 THEN
@@ -863,6 +836,42 @@ ROT2 -Orietation
 TEXT2 0, -2, STR(TotalLength, 10, 3) + " m"
 
 END
+!------Initial Variables And Limits----------------------------------------------------------------------------------------------------------------------------------
+"InitialVariablesAndLimits":
+	Orietation = 0
+	TempWidth = Width[1]
+	DefaultPen = 1
+	CircleSize = 0.11
+	TrackColor = 22
+	CircleColor = 11
+	IF TempWidth = 0 THEN TempWidth = 7
+
+	FOR i = 1 TO 100
+		!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
+		IF RightAngle[i] = 0 THEN RightAngle[i] = 90
+		IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
+		!----------------------------------------------------------------------------------------------------------------------------------------
+
+		!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
+		IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
+		!----------------------------------------------------------------------------------------------------------------------------------------
+
+		!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------------------------------------------------
+		IF Width[i] > 0 AND Width[i] <> TempWidth THEN
+			TempWidth = Width[i]
+		ENDIF
+		Width[i] = TempWidth
+		!----------------------------------------------------------------------------------------------------------------------------------------
+
+		!-----Sets Limit On Angle-----------------------------------------------------------------------------------------------------------------------------------
+		RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
+		LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
+		!----------------------------------------------------------------------------------------------------------------------------------------
+	NEXT i
+RETURN
+!----------------------------------------------------------------------------------------------------------------------------------------
+
+
 "Straight1":
 	POLY2_B 5, 1+2+4,
 		TrackColor, 0,
@@ -883,13 +892,10 @@ RETURN
 			 Width[i]/2,    NextLength[i-1], 1,
 			-Width[i]/2,    NextLength[i-1], 1,
 			-Width[i]/2,    0,              -1  ! Closes the loop back to the first point
-		
 		LINE2 0, 0,		0, NextLength[i-1]
 	ENDIF
-
 	TotalLength = TotalLength + NextLength[i-1]
 	ADD2 0, NextLength[i-1]
-
 	ROT2 Orietation
 	ADD2 MoveX[i], MoveY[i]
 	ROT2 -Orietation
@@ -897,48 +903,48 @@ RETURN
 
 "CurveRight":
 	Angle = RightAngle[i]
-	cx = Width[i-1]/2 + CurveRight[i-1]
+	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	IF ABS(RemovePart[i]) < Width[i]/2 THEN
 		IF Width[i] <= Width[i-1] THEN
 		POLY2_B 9, 1+2+4,
 			 TrackColor, 0,
-			-Width[i-1]/2,                                     0,                                                   1,
-			 Width[i-1]/2,                                     0,                                                   1,
-			 Width[i-1]/2,                                     Width[i-1]-Width[i],                                 1,
-			 cx,                                               Width[i-1]-Width[i],                                 900,
-			 cx - CurveRight[i-1] * COS(Angle),                CurveRight[i-1] * SIN(Angle) + Width[i-1]-Width[i],  3001,
-			 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle), (CurveRight[i-1] + Width[i-1]) * SIN(Angle),         1,
-			 cx,                                               0,                                                   900,
-			-Width[i-1]/2,                                     0,                                                   3001,
-			-Width[i-1]/2,                                     0,                                                   -1
+			-Width[i-1]/2,                                     			0,                                                   1,
+			 Width[i-1]/2,                                     			0,                                                   1,
+			 Width[i-1]/2,                                     			Width[i-1]-Width[i],                                 1,
+			 CurveRadius,                                               Width[i-1]-Width[i],                                 900,
+			 CurveRadius - CurveRight[i-1] * COS(Angle),                CurveRight[i-1] * SIN(Angle) + Width[i-1]-Width[i],  3001,
+			 CurveRadius - (CurveRight[i-1] + Width[i-1]) * COS(Angle), (CurveRight[i-1] + Width[i-1]) * SIN(Angle),         1,
+			 CurveRadius,                                               0,                                                   900,
+			-Width[i-1]/2,                                     			0,                                                   3001,
+			-Width[i-1]/2,                                     			0,                                                   -1
 			LINE2 0, 0,	
 				  0, (Width[i-1]-Width[i])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
-			ARC2 cx, (Width[i-1]-Width[i])/2,
-				 cx, 180-Angle, 180
-			TotalLength = TotalLength + (Angle * PI * ABS(cx) / 180)
+			ARC2 CurveRadius, (Width[i-1]-Width[i])/2,
+				 CurveRadius, 180-Angle, 180
+			TotalLength = TotalLength + (Angle * PI * ABS(CurveRadius) / 180)
 		ELSE
 			POLY2_B 8, 1+2+4,
 			 	TrackColor, 0,
-				-Width[i-1]/2,										0,																	1,
-				 Width[i-1]/2,										0,																	1,
-				 cx,												0, 																	900,
-				 cx - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle), 										3001,
-				 cx - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],1,
-				 cx,												Width[i] - Width[i-1], 												900,
-				-Width[i-1]/2,										Width[i] - Width[i-1],												3001,
-				-Width[i-1]/2,										Width[i] - Width[i-1],												-1
+				-Width[i-1]/2,												0,																	1,
+				 Width[i-1]/2,												0,																	1,
+				 CurveRadius,												0, 																	900,
+				 CurveRadius - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle), 										3001,
+				 CurveRadius - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],1,
+				 CurveRadius,												Width[i] - Width[i-1], 												900,
+				-Width[i-1]/2,												Width[i] - Width[i-1],												3001,
+				-Width[i-1]/2,												Width[i] - Width[i-1],												-1
 			LINE2 0, 0,
 				  0, (Width[i] - Width[i-1])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
-			ARC2 cx, (Width[i] - Width[i-1])/2,
-				 cx, Angle, 180
-			TotalLength = TotalLength + (Angle * PI * ABS(cx) / 180)
+			ARC2 CurveRadius, (Width[i] - Width[i-1])/2,
+				 CurveRadius, Angle, 180
+			TotalLength = TotalLength + (Angle * PI * ABS(CurveRadius) / 180)
 			ADD2 0, Width[i] - Width[i-1]
 		ENDIF
 	ENDIF
-	ADD2 cx - rCenter * COS(Angle), rCenter * SIN(Angle)
+	ADD2 CurveRadius - rCenter * COS(Angle), rCenter * SIN(Angle)
 	ROT2 -Angle
 	Orietation = Orietation - Angle
 	ROT2 Orietation
@@ -948,50 +954,50 @@ RETURN
 
 "CurveLeft":
 	Angle = LeftAngle[i]
-	cx = -Width[i-1]/2 - CurveLeft[i-1]
+	CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	IF ABS(RemovePart[i]) < Width[i]/2 THEN
 		IF Width[i] <= Width[i-1] THEN
 			POLY2_B 9, 1+2+4,
 			 	TrackColor, 0,
-				 Width[i-1]/2,										0,													1,
-				-Width[i-1]/2,										0,													1,
-				-Width[i-1]/2,										Width[i-1]-Width[i],								1,
-				 cx,												Width[i-1]-Width[i], 								900,
-				 cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
-				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),			1,
-				 cx,												0, 													900,
-				 Width[i-1]/2,										0,													3001,
-				 Width[i-1]/2,										0,													-1
+				 Width[i-1]/2,												0,													1,
+				-Width[i-1]/2,												0,													1,
+				-Width[i-1]/2,												Width[i-1]-Width[i],								1,
+				 CurveRadius,												Width[i-1]-Width[i], 								900,
+				 CurveRadius + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
+				 CurveRadius + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),			1,
+				 CurveRadius,												0, 													900,
+				 Width[i-1]/2,												0,													3001,
+				 Width[i-1]/2,												0,													-1
 			LINE2 0, 0,
 				  0, (Width[i-1] - Width[i])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
-			ARC2 cx, (Width[i-1] - Width[i])/2,
-				 -cx, 0, Angle
-			TotalLength = TotalLength + (Angle * PI * ABS(cx) / 180)
+			ARC2 CurveRadius, (Width[i-1] - Width[i])/2,
+				 -CurveRadius, 0, Angle
+			TotalLength = TotalLength + (Angle * PI * ABS(CurveRadius) / 180)
 
 		ELSE
 			POLY2_B 8, 1+2+4,
 			 	 TrackColor, 0,
-				 Width[i-1]/2,										0,																	1,
-				-Width[i-1]/2,										0,																	1,
-				 cx,												0, 																	900,
-				 cx + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle), 										3001,
-				 cx + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
-				 cx,												Width[i] - Width[i-1], 												900,
-				 Width[i-1]/2,										Width[i] - Width[i-1],												3001,
-				 Width[i-1]/2,										Width[i] - Width[i-1],												-1
+				 Width[i-1]/2,												0,																	1,
+				-Width[i-1]/2,												0,																	1,
+				 CurveRadius,												0, 																	900,
+				 CurveRadius + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle), 										3001,
+				 CurveRadius + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
+				 CurveRadius,												Width[i] - Width[i-1], 												900,
+				 Width[i-1]/2,												Width[i] - Width[i-1],												3001,
+				 Width[i-1]/2,												Width[i] - Width[i-1],												-1
 			LINE2 0, 0,	
 				  0, (Width[i] - Width[i-1])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
-			ARC2 cx, (Width[i] - Width[i-1])/2,
-				 -cx, 0, Angle
-			TotalLength = TotalLength + (Angle * PI * ABS(cx) / 180)
+			ARC2 CurveRadius, (Width[i] - Width[i-1])/2,
+				 -CurveRadius, 0, Angle
+			TotalLength = TotalLength + (Angle * PI * ABS(CurveRadius) / 180)
 
 			ADD2 0, Width[i] - Width[i-1]
 		ENDIF
 	ENDIF
-	ADD2 cx + rCenter * COS(Angle), rCenter * SIN(Angle)
+	ADD2 CurveRadius + rCenter * COS(Angle), rCenter * SIN(Angle)
 	ROT2 Angle
 	Orietation = Orietation + Angle
 	ROT2 Orietation
@@ -999,18 +1005,22 @@ RETURN
 	ROT2 -Orietation
 RETURN
 
+"BegginingWidthHotSpot":
+	HOTSPOT2  -Width[1]/2,		0,	unID, Width[1], 1 : unID = unID + 1
+	HOTSPOT2   Width[1]/2,		0,	unID, Width[1], 2 : unID = unID + 1
+	HOTSPOT2  -1-Width[1]/2,	0,	unID, Width[1], 3 : unID = unID + 1
+RETURN
+
 "RightHotSpot":
-	!IF CurveRight[i] < ESP THEN
-		HOTSPOT2  Width[i]/2,  0,	unID, CurveRight[i], 1 : unID = unID + 1
-		HOTSPOT2  Width[i]/2,  0,	unID, CurveRight[i], 2 : unID = unID + 1
-		HOTSPOT2  Width[i]/2, -1,	unID, CurveRight[i], 3 : unID = unID + 1
-		IF ColorCircles THEN
-			POLY2_B 2, 1+2+4,
-				8, 0,
-				Width[i]/2,              0, 900,
-				CircleSize,            360, 4001
-		ENDIF
-	!ENDIF
+	HOTSPOT2  Width[i]/2,  0,	unID, CurveRight[i], 1 : unID = unID + 1
+	HOTSPOT2  Width[i]/2,  0,	unID, CurveRight[i], 2 : unID = unID + 1
+	HOTSPOT2  Width[i]/2, -1,	unID, CurveRight[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			8, 0,
+			Width[i]/2,              0, 900,
+			CircleSize,            360, 4001
+	ENDIF
 RETURN
 
 "RightAngleHotSpot":
@@ -1040,24 +1050,22 @@ RETURN
 		IF ColorCircles THEN
 			POLY2_B 2, 1+2+4,
 				3, 0,
-				-1-Width[i]/2,              0, 900,
-				CircleSize,            360, 4001
+				-1-Width[i]/2, 0, 900,
+				CircleSize,    360, 4001
 		ENDIF
 	ENDIF
 RETURN
 
 "LeftHotSpot":
-	!IF CurveLeft[i] < ESP THEN
-		HOTSPOT2 -Width[i]/2, 0,	unID, CurveLeft[i], 1 : unID = unID + 1
-		HOTSPOT2 -Width[i]/2, 0,	unID, CurveLeft[i], 2 : unID = unID + 1
-		HOTSPOT2 -Width[i]/2, -1,	unID, CurveLeft[i], 3 : unID = unID + 1
-		IF ColorCircles THEN
-			POLY2_B 2, 1+2+4,
-				5, 0,
-				-Width[i]/2,              0, 900,
-				CircleSize,            360, 4001
-		ENDIF
-	!ENDIF
+	HOTSPOT2 -Width[i]/2, 0,	unID, CurveLeft[i], 1 : unID = unID + 1
+	HOTSPOT2 -Width[i]/2, 0,	unID, CurveLeft[i], 2 : unID = unID + 1
+	HOTSPOT2 -Width[i]/2, -1,	unID, CurveLeft[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			5, 0,
+			-Width[i]/2,	0,   900,
+			CircleSize, 	360, 4001
+	ENDIF
 RETURN
 
 "LeftAngleHotSpot":
@@ -1073,8 +1081,8 @@ RETURN
 		IF ColorCircles THEN
 			POLY2_B 2, 1+2+4,
 				6, 0,
-				-1-Width[i]/2,              0, 900,
-				CircleSize,            360, 4001
+				-1-Width[i]/2, 0, 	900,
+				CircleSize,    360, 4001
 		ENDIF
 	ENDIF
 RETURN
@@ -1088,8 +1096,8 @@ RETURN
 		IF ColorCircles THEN
 			POLY2_B 2, 1+2+4,
 				3, 0,
-				1+Width[i]/2,              0, 900,
-				CircleSize,            360, 4001
+				1+Width[i]/2, 0, 	900,
+				CircleSize,   360, 4001
 		ENDIF
 	ENDIF
 RETURN
@@ -1119,7 +1127,7 @@ RETURN
 		POLY2_B 2, 1+2+4,
 				4, 0,
 				0,			BeginningDistance,	900,
-				CircleSize,	360, 			4001
+				CircleSize,	360, 				4001
 	ENDIF
 RETURN
 
