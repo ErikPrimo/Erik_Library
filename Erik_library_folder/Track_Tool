@@ -75,7 +75,7 @@ WHILE ObjectOrder[i] <> 0 DO
 
     IF ObjectOrder[i] = 2 THEN
         GOSUB "Straight"
-        GOSUB "RemoveHotSpot"
+        !GOSUB "RemoveHotSpot"
         GOSUB "RightHotSpot"
         GOSUB "LeftHotSpot"
         GOSUB "StraightHotSpot"
@@ -84,7 +84,7 @@ WHILE ObjectOrder[i] <> 0 DO
 
     IF ObjectOrder[i] = 3 THEN
         GOSUB "CurveLeft"
-        GOSUB "RemoveCornerHotSpot"
+        !GOSUB "RemoveCornerHotSpot"
         GOSUB "LeftAngleHotSpot"
         GOSUB "LeftWidthHotSpot"
         GOSUB "StraightHotSpot"
@@ -95,7 +95,7 @@ WHILE ObjectOrder[i] <> 0 DO
 
     IF ObjectOrder[i] = 4 THEN
         GOSUB "CurveRight"
-        GOSUB "RemoveCornerHotSpot"
+        !GOSUB "RemoveCornerHotSpot"
         GOSUB "RightAngleHotSpot"
         GOSUB "RightWidthHotSpot"
         GOSUB "StraightHotSpot"
@@ -103,8 +103,13 @@ WHILE ObjectOrder[i] <> 0 DO
         IF NextLength[i] <= 0 THEN NextLength[i] = ESP
         GOTO "NextIter"
     ENDIF
-
     "NextIter":
+	IF i = HomeStraight AND HomeStraightActive THEN
+		ADDY NextLength[i]/2
+		ADDZ TrackThickness
+		GOSUB "HomeBox"
+		DEL 2
+	ENDIF
     i = i + 1
 ENDWHILE
 
@@ -688,6 +693,59 @@ RETURN
 	DEL 1
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
+
+!----Home Straight Boxes------------------------------------------------------------------------------------------------------------------------------------
+"HomeBox":
+	MATERIAL 18
+	BoxWidth = 0.7
+	BoxHeight = 1
+	BoxMargin = 0.4
+	! NextLength[i]
+	! Width[i]
+	RowDelCounter = 0
+	DelCounter = 0
+	Rows = 0
+	Lines = 0
+
+	FOR j = 1 TO 10
+		IF Width[i] > (BoxWidth*2 + BoxMargin*2)*j THEN Rows = j
+	NEXT j
+
+	FOR j = 1 TO 6
+		IF NextLength[i] > (BoxHeight*2 + BoxMargin*2 + .2)*j THEN Lines = j
+	NEXT j
+
+	ADDY -((BoxHeight*2 + BoxMargin*2)*Lines)/2
+	DelCounter = DelCounter + 1
+
+	FOR h = 1 TO Lines
+		RowDelCounter = 0
+		ADDX (BoxWidth*2 + BoxMargin)/2
+		RowDelCounter = RowDelCounter + 1
+		ADDX -((BoxWidth*2 + BoxMargin)*Rows)/2
+		RowDelCounter = RowDelCounter + 1
+
+		FOR j = 1 TO Rows
+			EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+					-BoxWidth,				0,						1,
+					-BoxWidth,				BoxHeight,				1,
+					BoxWidth,				BoxHeight, 				1,
+					BoxWidth,				0,		 				1,
+					BoxWidth-LineWidth,	0,						1,
+					BoxWidth-LineWidth,	BoxHeight-LineWidth,	1,
+					-BoxWidth+LineWidth,	BoxHeight-LineWidth,	1,
+					-BoxWidth+LineWidth,	0,						1
+			ADDX (BoxWidth*2 + BoxMargin)
+			RowDelCounter = RowDelCounter + 1
+		NEXT j
+		DEL RowDelCounter
+		ADDY (BoxHeight*2 + BoxMargin*2)
+		DelCounter = DelCounter + 1
+	NEXT h
+	DEL DelCounter
+	MATERIAL 133
+RETURN
+!----------------------------------------------------------------------------------------------------------------------------------------
 ]]>
 </Script_3D>
 
@@ -704,7 +762,7 @@ DIM CurvetWidth[100]
 Orietation = 0
 TempWidth = Width[1]
 DefaultPen = 1
-CircleSize = 0.09
+CircleSize = 0.11
 TrackColor = 22
 CircleColor = 11
 IF TempWidth = 0 THEN TempWidth = 7
@@ -760,7 +818,7 @@ WHILE ObjectOrder[i] <> 0 DO
 
     IF ObjectOrder[i] = 2 THEN
         GOSUB "Straight"
-        GOSUB "RemoveHotSpot"
+        !GOSUB "RemoveHotSpot"
         GOSUB "RightHotSpot"
         GOSUB "LeftHotSpot"
         GOSUB "StraightHotSpot"
@@ -769,8 +827,7 @@ WHILE ObjectOrder[i] <> 0 DO
 
     IF ObjectOrder[i] = 3 THEN
         GOSUB "CurveLeft"
-        GOSUB "RemoveCornerHotSpot"
-
+        !GOSUB "RemoveCornerHotSpot"
         GOSUB "LeftAngleHotSpot"
         GOSUB "LeftWidthHotSpot"
         GOSUB "StraightHotSpot"
@@ -781,7 +838,7 @@ WHILE ObjectOrder[i] <> 0 DO
 
     IF ObjectOrder[i] = 4 THEN
         GOSUB "CurveRight"
-        GOSUB "RemoveCornerHotSpot"
+        !GOSUB "RemoveCornerHotSpot"
         GOSUB "RightAngleHotSpot"
         GOSUB "RightWidthHotSpot"
         GOSUB "StraightHotSpot"
@@ -797,7 +854,6 @@ ROT2 -Orietation
 TEXT2 0, -2, STR(TotalLength, 10, 3) + " m"
 
 END
-
 "Straight1":
 	POLY2_B 5, 1+2+4,
 		TrackColor, 0,
@@ -1131,13 +1187,28 @@ UI_INFIELD "BarrierVisible", 20, 60, 80, 18
 UI_OUTFIELD "Color Circles", 20, 80, 80, 15
 UI_INFIELD "ColorCircles", 20, 100, 80, 18
 
+
+UI_OUTFIELD "HomeStraight", 20, 140, 80, 15
+UI_INFIELD "HomeStraight", 20, 160, 80, 18
+UI_INFIELD "HomeStraightActive", 100, 140, 80, 18
+
 ]]>
 </Script_UI>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
 
 <Script_VL SectVersion="20" SectionFlags="0" SubIdent="0">
-<![CDATA[]]>
+<![CDATA[
+DIM vlist[]
+n = 1
+FOR i = 1 TO 100
+	IF NextLength[i] > ESP THEN 
+    	vlist[n] = i
+		n = n + 1
+	ENDIF
+NEXT i
+VALUES "HomeStraight" vlist
+]]>
 </Script_VL>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
@@ -2314,6 +2385,14 @@ UI_INFIELD "ColorCircles", 20, 100, 80, 18
 		<Boolean Name="ColorCircles">
 			<Description><![CDATA[""]]></Description>
 			<Value>1</Value>
+		</Boolean>
+		<Integer Name="HomeStraight">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Integer>
+		<Boolean Name="HomeStraightActive">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
 		</Boolean>
 	</Parameters>
 </ParamSection>
