@@ -13,6 +13,7 @@
 <Script_3D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
 MATERIAL 133
+RESOL 64
 LineWidth = 0.05
 LineThickness = 0.01
 LineMargin = 0.2
@@ -25,9 +26,7 @@ IF TempWidth = 0 THEN TempWidth = 7
 FOR i = 1 TO 100
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
 	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-	!IF RightAngle[i] < 18 THEN RightAngle[i] = RightAngle[i]*10
 	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
-	!IF LeftAngle[i] < 18 THEN LeftAngle[i] = LeftAngle[i]*10
 	!----------------------------------------------------------------------------------------------------------------------------------------
 
 	!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
@@ -127,6 +126,7 @@ RETURN
 
 !-----Makes The Straight-----------------------------------------------------------------------------------------------------------------------------------
 "Straight":
+	GOSUB "BarrierRemoveHotSpot"
 	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
 		EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
 				-Width[i]/2,	0,				 1,
@@ -162,17 +162,21 @@ RETURN
 		IF NextLength[i-1] > 0.0001 AND BarrierVisible THEN
 			ADDZ BarrierHeight
 			ADDX -Width[i]/2 + .05
-			PUT 0, -1, 					0, 0, 
-				0,  0, 					0, 0, 
-				0,  NextLength[i-1], 	0, 0, 
-				0,  NextLength[i-1]+1, 	0, 0 
-			GOSUB "SlimBarrier"
+			IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
+				PUT 0, -1, 					0, 0, 
+					0,  0, 					0, 0, 
+					0,  NextLength[i-1], 	0, 0, 
+					0,  NextLength[i-1]+1, 	0, 0 
+				GOSUB "SlimBarrier"
+			ENDIF
 			ADDX Width[i] - .05*2
-			PUT 0, -1, 					0, 0, 
-				0,  0, 					0, 0, 
-				0,  NextLength[i-1], 	0, 0, 
-				0,  NextLength[i-1]+1, 	0, 0 
-			GOSUB "SlimBarrier"
+			IF NOT(BarrierRemove[i] > Width[i]/2) THEN
+				PUT 0, -1, 					0, 0, 
+					0,  0, 					0, 0, 
+					0,  NextLength[i-1], 	0, 0, 
+					0,  NextLength[i-1]+1, 	0, 0 
+				GOSUB "SlimBarrier"
+			ENDIF
 			DEL 3
 		ENDIF
 	ENDIF
@@ -591,6 +595,14 @@ RETURN
 		DEL 3
 	ENDIF
 RETURN
+
+"BarrierRemoveHotSpot":
+	IF NextLength[i-1] > ESP THEN
+		HOTSPOT  0,  NextLength[i-1]/2,	0, unID, BarrierRemove[i], 1 : unID = unID + 1
+		HOTSPOT  0,  NextLength[i-1]/2,	0, unID, BarrierRemove[i], 2 : unID = unID + 1
+		HOTSPOT -1,  NextLength[i-1]/2,	0, unID, BarrierRemove[i], 3 : unID = unID + 1
+	ENDIF
+RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
 !-------Barrier Shape---------------------------------------------------------------------------------------------------------------------------------
@@ -731,8 +743,8 @@ RETURN
 					-BoxWidth,				BoxHeight,				1,
 					BoxWidth,				BoxHeight, 				1,
 					BoxWidth,				0,		 				1,
-					BoxWidth-LineWidth,	0,						1,
-					BoxWidth-LineWidth,	BoxHeight-LineWidth,	1,
+					BoxWidth-LineWidth,		0,						1,
+					BoxWidth-LineWidth,		BoxHeight-LineWidth,	1,
 					-BoxWidth+LineWidth,	BoxHeight-LineWidth,	1,
 					-BoxWidth+LineWidth,	0,						1
 			ADDX (BoxWidth*2 + BoxMargin)
@@ -754,9 +766,8 @@ RETURN
 <Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
 ! 1. Define the paint settings
-!SET FILL "Background"  
-SET FILL "Solid Fill"           ! Clear/Solid fill type
-PEN 1                             ! Border contour pen color
+SET FILL "Solid Fill"
+PEN 1
 DIM StraightLength[100]
 DIM CurvetWidth[100]
 Orietation = 0
@@ -770,9 +781,7 @@ IF TempWidth = 0 THEN TempWidth = 7
 FOR i = 1 TO 100
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
 	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-	!IF RightAngle[i] < 18 THEN RightAngle[i] = RightAngle[i]*10
 	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
-	!IF LeftAngle[i] < 18 THEN LeftAngle[i] = LeftAngle[i]*10
 	!----------------------------------------------------------------------------------------------------------------------------------------
 
 	!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
@@ -1156,10 +1165,10 @@ ESP = 0.000001
 ExtrudeValues = 0
 BeginningDistance = 0.2
 
-IF Simple THEN
-	ExtrudeValues =  1+2+4
-ELSE
+IF Sectors THEN
 	ExtrudeValues =  1+2+4+16+32
+ELSE
+	ExtrudeValues =  1+2+4
 ENDIF
 ]]>
 </Script_1D>
@@ -1178,8 +1187,8 @@ UI_DIALOG "Settings", 480, 300
 
 UI_PAGE 1
 
-UI_OUTFIELD "Simple", 20, 2, 80, 15
-UI_INFIELD "Simple", 20, 20, 80, 18
+UI_OUTFIELD "Sectors", 20, 2, 80, 15
+UI_INFIELD "Sectors", 20, 20, 80, 18
 
 UI_OUTFIELD "Barrier Visible", 20, 40, 80, 15
 UI_INFIELD "BarrierVisible", 20, 60, 80, 18
@@ -2370,7 +2379,7 @@ VALUES "HomeStraight" vlist
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
 		</Length>
-		<Boolean Name="Simple">
+		<Boolean Name="Sectors">
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
 		</Boolean>
@@ -2394,6 +2403,112 @@ VALUES "HomeStraight" vlist
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
 		</Boolean>
+		<Length Name="BarrierRemove">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="101" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+			</ArrayValues>
+		</Length>
 	</Parameters>
 </ParamSection>
 
