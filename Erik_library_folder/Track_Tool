@@ -22,6 +22,10 @@ GOSUB "InitialVariablesAndLimits"
 GOSUB "BegginingWidthHotSpot"
 !----------------------------------------------------------------------------------------------------------------------------------------
 
+!-------HotSpot Line Margin--------------------------------------------------------------------------------------------------------------------
+GOSUB "LineMarginHotSpot"
+!----------------------------------------------------------------------------------------------------------------------------------------
+
 !-------Main Loop Places All Objects--------------------------------------------------------------------------------------------------------------------
 i = 1
 WHILE ObjectOrder[i] <> 0 DO
@@ -81,7 +85,6 @@ END
 "InitialVariablesAndLimits":
 	LineWidth = 0.05
 	LineThickness = 0.01
-	LineMargin = 0.2
 	Orietation = 0
 	TrackThickness = 0.01
 	TempWidth = Width[1]
@@ -191,6 +194,7 @@ RETURN
 
 !-----Makes The Right Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveRight":
+	GOSUB "CurveBarrierRemoveHotSpot"
 	Angle = RightAngle[i]
 	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
@@ -296,21 +300,22 @@ RETURN
 		ADDY Width[i-1] - Width[i]
 		Reset = 1
 	ENDIF
-
-    PUT CurveRadius - OuterRadius, -1, 0, 0
-    PUT CurveRadius - OuterRadius, 0, 0, 0
-    
-    IF WidthDifferenceOut > ESP THEN PUT CurveRadius - OuterRadius, WidthDifferenceOut, 0, 0
-    
-    FOR n = 0 TO Segments
-        AngleSegment = (n / Segments) * RightAngle[i]
-        PUT CurveRadius - OuterRadius * COS(AngleSegment), OuterRadius * SIN(AngleSegment) + WidthDifferenceOut, 0, 0
-    NEXT n
-    
-    _xEndOut = CurveRadius - OuterRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
-    _yEndOut = OuterRadius * SIN(RightAngle[i]) + COS(RightAngle[i]) + WidthDifferenceOut
-    PUT _xEndOut, _yEndOut, 0, 0
-    GOSUB "SlimBarrier"
+	IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
+		PUT CurveRadius - OuterRadius, -1, 0, 0
+		PUT CurveRadius - OuterRadius, 0, 0, 0
+		
+		IF WidthDifferenceOut > ESP THEN PUT CurveRadius - OuterRadius, WidthDifferenceOut, 0, 0
+		
+		FOR n = 0 TO Segments
+			AngleSegment = (n / Segments) * RightAngle[i]
+			PUT CurveRadius - OuterRadius * COS(AngleSegment), OuterRadius * SIN(AngleSegment) + WidthDifferenceOut, 0, 0
+		NEXT n
+		
+		_xEndOut = CurveRadius - OuterRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
+		_yEndOut = OuterRadius * SIN(RightAngle[i]) + COS(RightAngle[i]) + WidthDifferenceOut
+		PUT _xEndOut, _yEndOut, 0, 0
+		GOSUB "SlimBarrier"
+	ENDIF
     
     
     ! --- RIGHT SIDE BARRIER (Inner Path) ---
@@ -318,21 +323,23 @@ RETURN
     
     WidthDifferenceIn = 0
     IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
+	IF NOT(BarrierRemove[i] > Width[i]/2) THEN 
 
-    PUT CurveRadius - InnerRadius, -1, 0, 0
-    PUT CurveRadius - InnerRadius, 0, 0, 0
-    
-    IF WidthDifferenceIn > ESP THEN PUT CurveRadius - InnerRadius, WidthDifferenceIn, 0, 0
-    
-    FOR n = 0 TO Segments
-        AngleSegment = (n / Segments) * RightAngle[i]
-        PUT CurveRadius - InnerRadius * COS(AngleSegment), InnerRadius * SIN(AngleSegment) + WidthDifferenceIn, 0, 0
-    NEXT n
-    
-    _xEndIn = CurveRadius - InnerRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
-    _yEndIn = InnerRadius * SIN(RightAngle[i]) + COS(RightAngle[i]) + WidthDifferenceIn
-    PUT _xEndIn, _yEndIn, 0, 0
-    GOSUB "Barrier"
+		PUT CurveRadius - InnerRadius, -1, 0, 0
+		PUT CurveRadius - InnerRadius, 0, 0, 0
+		
+		IF WidthDifferenceIn > ESP THEN PUT CurveRadius - InnerRadius, WidthDifferenceIn, 0, 0
+		
+		FOR n = 0 TO Segments
+			AngleSegment = (n / Segments) * RightAngle[i]
+			PUT CurveRadius - InnerRadius * COS(AngleSegment), InnerRadius * SIN(AngleSegment) + WidthDifferenceIn, 0, 0
+		NEXT n
+		
+		_xEndIn = CurveRadius - InnerRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
+		_yEndIn = InnerRadius * SIN(RightAngle[i]) + COS(RightAngle[i]) + WidthDifferenceIn
+		PUT _xEndIn, _yEndIn, 0, 0
+		GOSUB "Barrier"
+	ENDIF
     IF Reset THEN DEL 1
     DEL 1
 RETURN
@@ -340,6 +347,7 @@ RETURN
 
 !-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveLeft":
+	GOSUB "CurveBarrierRemoveHotSpot"
     Angle = LeftAngle[i]
     CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
     rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
@@ -387,7 +395,6 @@ RETURN
 			MATERIAL 133
 			LineMargin = ConstantLineMargin
             ADDY Width[i] - Width[i-1]
-
         ENDIF
 		IF BarrierVisible GOSUB "LeftBarrier"
     ENDIF
@@ -408,8 +415,8 @@ RETURN
 	_xLineLeft  = CurveRadius + InnerRadius
 	_xLineRight = CurveRadius + OuterRadius
 	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
-		_xLineLeft,               				0,                           			1,   
-		_xLineRight,              				0,                           			1,   
+		_xLineLeft,               				0,                           					1,   
+		_xLineRight,              				0,                           					1,   
 		_xLineRight,              				WidthDifferenceIn,                   			1,   
 		CurveRadius,                        	WidthDifferenceIn,                   			900, 
 		CurveRadius + OuterRadius * COS(Angle), OuterRadius * SIN(Angle) + WidthDifferenceIn, 	3001,
@@ -423,8 +430,8 @@ RETURN
 	_xLineRightOut = CurveRadius + _rOuterOuter
 	
 	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
-		_xLineLeftOut,                 				0,                          			1,    
-		_xLineRightOut,                				0,                          			1,    
+		_xLineLeftOut,                 				0,                          					1,    
+		_xLineRightOut,                				0,                          					1,    
 		_xLineRightOut,                				WidthDifferenceOut,                 			1,    
 		CurveRadius,                            	WidthDifferenceOut,                 			900,  
 		CurveRadius + _rOuterOuter * COS(Angle), 	_rOuterOuter * SIN(Angle) + WidthDifferenceOut, 3001, 
@@ -449,21 +456,19 @@ RETURN
         ADDY Width[i-1] - Width[i]
         Reset = 1
     ENDIF
-
-    PUT CurveRadius + OuterRadius, -1, 0, 0
-    PUT CurveRadius + OuterRadius, 0, 0, 0
-    
-    IF WidthDifferenceOut > ESP THEN PUT CurveRadius + OuterRadius, WidthDifferenceOut, 0, 0
-    
-    FOR n = 0 TO Segments
-        AngleSegment = (n / Segments) * LeftAngle[i]
-        PUT CurveRadius + OuterRadius * COS(AngleSegment), OuterRadius * SIN(AngleSegment) + WidthDifferenceOut, 0, 0
-    NEXT n
-    
-    _xEndOut = CurveRadius + OuterRadius * COS(LeftAngle[i]) - SIN(LeftAngle[i])
-    _yEndOut = OuterRadius * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + WidthDifferenceOut
-    PUT _xEndOut, _yEndOut, 0, 0
-    GOSUB "SlimBarrier"
+	IF NOT(BarrierRemove[i] > Width[i]/2) THEN 
+		PUT CurveRadius + OuterRadius, -1, 0, 0
+		PUT CurveRadius + OuterRadius, 0, 0, 0
+		IF WidthDifferenceOut > ESP THEN PUT CurveRadius + OuterRadius, WidthDifferenceOut, 0, 0
+		FOR n = 0 TO Segments
+			AngleSegment = (n / Segments) * LeftAngle[i]
+			PUT CurveRadius + OuterRadius * COS(AngleSegment), OuterRadius * SIN(AngleSegment) + WidthDifferenceOut, 0, 0
+		NEXT n
+		_xEndOut = CurveRadius + OuterRadius * COS(LeftAngle[i]) - SIN(LeftAngle[i])
+		_yEndOut = OuterRadius * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + WidthDifferenceOut
+		PUT _xEndOut, _yEndOut, 0, 0
+		GOSUB "SlimBarrier"
+	ENDIF
     
     
     ! --- LEFT SIDE BARRIER (Inner Path) ---
@@ -472,22 +477,20 @@ RETURN
     ! Only shift inner side if the track NARROWS
     WidthDifferenceIn = 0
     IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
-
-    PUT CurveRadius + InnerRadius, -1, 0, 0
-    PUT CurveRadius + InnerRadius, 0, 0, 0
-    
-    IF WidthDifferenceIn > ESP THEN PUT CurveRadius + InnerRadius, WidthDifferenceIn, 0, 0
-    
-    FOR n = 0 TO Segments
-        AngleSegment = (n / Segments) * LeftAngle[i]
-        PUT CurveRadius + InnerRadius * COS(AngleSegment), InnerRadius * SIN(AngleSegment) + WidthDifferenceIn, 0, 0
-    NEXT n
-    
-    _xEndIn = CurveRadius + InnerRadius * COS(LeftAngle[i]) - SIN(LeftAngle[i])
-    _yEndIn = InnerRadius * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + WidthDifferenceIn
-    PUT _xEndIn, _yEndIn, 0, 0
-    GOSUB "Barrier"
-    
+	IF NOT(BarrierRemove[i] < -Width[i]/2) THEN 
+		PUT CurveRadius + InnerRadius, -1, 0, 0
+		PUT CurveRadius + InnerRadius, 0, 0, 0
+		IF WidthDifferenceIn > ESP THEN PUT CurveRadius + InnerRadius, WidthDifferenceIn, 0, 0
+		FOR n = 0 TO Segments
+			AngleSegment = (n / Segments) * LeftAngle[i]
+			PUT CurveRadius + InnerRadius * COS(AngleSegment), InnerRadius * SIN(AngleSegment) + WidthDifferenceIn, 0, 0
+		NEXT n
+		
+		_xEndIn = CurveRadius + InnerRadius * COS(LeftAngle[i]) - SIN(LeftAngle[i])
+		_yEndIn = InnerRadius * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + WidthDifferenceIn
+		PUT _xEndIn, _yEndIn, 0, 0
+		GOSUB "Barrier"
+    ENDIF
     IF Reset THEN DEL 1
     DEL 1
 RETURN
@@ -498,6 +501,12 @@ RETURN
 	HOTSPOT  -Width[1]/2,	0,	0, unID, Width[1], 1 : unID = unID + 1
 	HOTSPOT   Width[1]/2,	0,	0, unID, Width[1], 2 : unID = unID + 1
 	HOTSPOT  -10,			0,	0, unID, Width[1], 3 : unID = unID + 1
+RETURN
+
+"LineMarginHotSpot":
+	HOTSPOT  Width[1]/2,            0,    0, unID, LineMargin, 1 : unID = unID + 1
+	HOTSPOT  Width[1]/2-LineMargin, 0,    0, unID, LineMargin, 2 : unID = unID + 1
+	HOTSPOT  Width[1]/2+10,         0,    0, unID, LineMargin, 3 : unID = unID + 1
 RETURN
 
 "RightHotSpot":
@@ -604,6 +613,12 @@ RETURN
 		HOTSPOT  0,  NextLength[i-1]/2,	0, unID, BarrierRemove[i], 2 : unID = unID + 1
 		HOTSPOT -1,  NextLength[i-1]/2,	0, unID, BarrierRemove[i], 3 : unID = unID + 1
 	ENDIF
+RETURN
+
+"CurveBarrierRemoveHotSpot":
+	HOTSPOT  0, 2, 0, unID, BarrierRemove[i], 1 : unID = unID + 1
+	HOTSPOT  0, 2, 0, unID, BarrierRemove[i], 2 : unID = unID + 1
+	HOTSPOT -1, 2, 0, unID, BarrierRemove[i], 3 : unID = unID + 1
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -714,8 +729,6 @@ RETURN
 	BoxWidth = 0.7
 	BoxHeight = 1
 	BoxMargin = 0.4
-	! NextLength[i]
-	! Width[i]
 	RowDelCounter = 0
 	DelCounter = 0
 	Rows = 0
@@ -731,7 +744,7 @@ RETURN
 
 	ADDY -((BoxHeight*2 + BoxMargin*2)*Lines)/2
 	DelCounter = DelCounter + 1
-
+	OddEvenSelector = 0
 	FOR h = 1 TO Lines
 		RowDelCounter = 0
 		ADDX (BoxWidth*2 + BoxMargin)/2
@@ -740,6 +753,7 @@ RETURN
 		RowDelCounter = RowDelCounter + 1
 
 		FOR j = 1 TO Rows
+			IF j MOD 2 = OddEvenSelector THEN
 			EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
 					-BoxWidth,				0,						1,
 					-BoxWidth,				BoxHeight,				1,
@@ -749,9 +763,15 @@ RETURN
 					BoxWidth-LineWidth,		BoxHeight-LineWidth,	1,
 					-BoxWidth+LineWidth,	BoxHeight-LineWidth,	1,
 					-BoxWidth+LineWidth,	0,						1
+			ENDIF
 			ADDX (BoxWidth*2 + BoxMargin)
 			RowDelCounter = RowDelCounter + 1
 		NEXT j
+		IF OddEvenSelector THEN
+			OddEvenSelector = 0
+		ELSE
+			OddEvenSelector = 1
+		ENDIF
 		DEL RowDelCounter
 		ADDY (BoxHeight*2 + BoxMargin*2)
 		DelCounter = DelCounter + 1
@@ -2397,7 +2417,7 @@ VALUES "HomeStraight" vlist
 		</Boolean>
 		<Length Name="LineMargin">
 			<Description><![CDATA[""]]></Description>
-			<Value>0.01</Value>
+			<Value>0.2</Value>
 		</Length>
 		<Boolean Name="ColorCircles">
 			<Description><![CDATA[""]]></Description>
