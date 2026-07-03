@@ -198,22 +198,12 @@ RETURN
 	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
+		InnerRadius = CurveRight[i-1]
+		OuterRadius = CurveRight[i-1] + Width[i-1]
 		IF Width[i] <= Width[i-1] THEN 
-			WidthDifference = Width[i-1] - Width[i]
-			InnerRadius = CurveRight[i-1]
-			OuterRadius = CurveRight[i-1] + Width[i-1]
-			EXTRUDE 8, 0, 0, TrackThickness, ExtrudeValues,
-				-Width[i-1]/2,              			 0,                          					1,    ! 1: Start Inner corner
-				 Width[i-1]/2,              			 0,                          					1,    ! 2: Start Outer corner
-				 Width[i-1]/2,              			 WidthDifference,                    			1,    ! 3: Shift to transition plane
-				 CurveRadius,                        	 WidthDifference,                    			900,  ! 4: Center point for inner arc
-				 CurveRadius - InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifference, 	3001, ! 5: Sweep inner radius
-				 CurveRadius - OuterRadius * COS(Angle), OuterRadius * SIN(Angle),       				1,    ! 6: Jump to outer radius end
-				 CurveRadius,                        	 0,                          					900,  ! 7: Center point for outer arc
-				-Width[i-1]/2,              			 0,                          					3001  ! 8: Sweep outer radius back to close
-			
 			WidthDifferenceIn = Width[i-1] - Width[i]
 			WidthDifferenceOut = 0
+			GOSUB "RightTrack"
 			MATERIAL 19
 			GOSUB "RightLines"
 			LineMargin = LineMargin + LineWidth*4
@@ -222,15 +212,9 @@ RETURN
 			MATERIAL 133
 			LineMargin = ConstantLineMargin
 		ELSE
-			EXTRUDE 7,0,0,TrackThickness, ExtrudeValues,
-				-Width[i-1]/2,												0,																		1,
-				Width[i-1]/2,												0,																		1,
-				CurveRadius,												0, 																		900,  
-				CurveRadius - CurveRight[i-1] * COS(Angle),					CurveRight[i-1] * SIN(Angle), 											3001,
-				CurveRadius - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
-				CurveRadius,												Width[i] - Width[i-1], 													900,
-				-Width[i-1]/2,												Width[i] - Width[i-1],													3001
-			WidthDifferenceIn = 0
+			WidthDifferenceIn =	0
+			WidthDifferenceOut = Width[i] - Width[i-1]
+			GOSUB "RightTrack"
 			WidthDifferenceOut = Width[i] - Width[i-1]
 			MATERIAL 19
 			GOSUB "RightLines"
@@ -252,7 +236,17 @@ RETURN
 	ADDY MoveY[i]
 	ROTZ -Orietation
 RETURN
-
+"RightTrack":
+	EXTRUDE 8, 0, 0, TrackThickness, ExtrudeValues,
+		-Width[i-1]/2,                          0,                                             1,  
+		Width[i-1]/2,                           0,                                             1,  
+		Width[i-1]/2,                           WidthDifferenceIn,                             1,  
+		CurveRadius,                            WidthDifferenceIn,                             900,
+		CurveRadius - InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifferenceIn,  3001,
+		CurveRadius - OuterRadius * COS(Angle), OuterRadius * SIN(Angle) + WidthDifferenceOut, 1,  
+		CurveRadius,                            WidthDifferenceOut,                            900,
+		-Width[i-1]/2,                          WidthDifferenceOut,                            3001 
+RETURN
 "RightLines":
 	ADDZ TrackThickness
 	InnerRadius = CurveRight[i-1] + LineMargin - LineWidth
@@ -344,22 +338,12 @@ RETURN
     CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
     rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
     IF ABS(RemovePart[i]) < Width[i]/2  THEN 
-        IF Width[i] <= Width[i-1] THEN 
-            WidthDifference = Width[i-1] - Width[i]
-            InnerRadius = CurveLeft[i-1]
-            OuterRadius = CurveLeft[i-1] + Width[i-1]
-            EXTRUDE 8, 0, 0, TrackThickness, ExtrudeValues,
-                Width[i-1]/2,              				0,                              			1,   
-               -Width[i-1]/2,              				0,                              			1,   
-               -Width[i-1]/2,              				WidthDifference,                       		1,   
-                CurveRadius,                        	WidthDifference,                       		900, 
-                CurveRadius + InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifference, 3001,
-                CurveRadius + OuterRadius * COS(Angle), OuterRadius * SIN(Angle),           		1,   
-                CurveRadius,                        	0,                             				900, 
-                Width[i-1]/2,              				0,                             				3001 
-            
+		InnerRadius = CurveLeft[i-1]
+		OuterRadius = CurveLeft[i-1] + Width[i-1]
+        IF Width[i] <= Width[i-1] THEN
             WidthDifferenceIn = Width[i-1] - Width[i]
             WidthDifferenceOut = 0
+			GOSUB "LeftTrack"
 			MATERIAL 19
             GOSUB "LeftLines"
 			LineMargin = LineMargin + LineWidth*4
@@ -369,16 +353,9 @@ RETURN
 			LineMargin = ConstantLineMargin
 
         ELSE
-            EXTRUDE 7,0,0,TrackThickness,  ExtrudeValues,
-                Width[i-1]/2,                                       		0,                      											1,
-               -Width[i-1]/2,                                       		0,                      											1,
-                CurveRadius,                                            	0,                      											900,
-                CurveRadius + CurveLeft[i-1] * COS(Angle),                  CurveLeft[i-1] * SIN(Angle), 										3001,
-                CurveRadius + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),   (CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
-                CurveRadius,                                                Width[i] - Width[i-1],  											900,
-                Width[i-1]/2,                                       		Width[i] - Width[i-1],  											3001
             WidthDifferenceIn = 0
             WidthDifferenceOut = Width[i] - Width[i-1]
+			GOSUB "LeftTrack"
 			MATERIAL 19
             GOSUB "LeftLines"
 			LineMargin = LineMargin + LineWidth*4
@@ -398,6 +375,18 @@ RETURN
     ADDX MoveX[i]
     ADDY MoveY[i]
     ROTZ -Orietation
+RETURN
+
+"LeftTrack":
+	EXTRUDE 8, 0, 0, TrackThickness, ExtrudeValues,
+		Width[i-1]/2,              				0,                              				1,   
+		-Width[i-1]/2,              			0,                              				1,   
+		-Width[i-1]/2,              			WidthDifferenceIn,                       		1,   
+		CurveRadius,                        	WidthDifferenceIn,                       		900, 
+		CurveRadius + InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifferenceIn, 	3001,
+		CurveRadius + OuterRadius * COS(Angle), OuterRadius * SIN(Angle) + WidthDifferenceOut,  1,   
+		CurveRadius,                        	WidthDifferenceOut,                             900, 
+		Width[i-1]/2,              				WidthDifferenceOut,                             3001
 RETURN
 
 "LeftLines":
@@ -854,7 +843,10 @@ END
 	DefaultPen = 1
 	CircleSize = 0.11
 	TrackColor = 22
+	TrackMarginColor = 102
 	CircleColor = 11
+	TrackMargin = 0.45
+	TrackMarginLine = 0.25
 	IF TempWidth = 0 THEN TempWidth = 7
 
 	FOR i = 1 TO 100
@@ -904,6 +896,23 @@ RETURN
 			-Width[i]/2,    NextLength[i-1], 1,
 			-Width[i]/2,    0,              -1
 		LINE2 0, 0,		0, NextLength[i-1]
+		ADD2 Width[i]/2, 0
+		FOR j = 1 TO 2
+			POLY2_B 5, 1+2+4,
+				TrackMarginColor, 0,
+				0,    			0,               1,
+				TrackMargin,    0,               1,
+				TrackMargin,    NextLength[i-1], 1,
+				0,    			NextLength[i-1], 1,
+				0,    			0,              -1
+			IF j = 1 THEN LINE2 TrackMarginLine,				0,	TrackMarginLine,				NextLength[i-1]
+			IF j = 2 THEN LINE2 TrackMargin - TrackMarginLine,	0,	TrackMargin - TrackMarginLine,	NextLength[i-1]
+			ADD2 -Width[i]-TrackMargin, 0
+		NEXT j
+		DEL 3
+
+		LINE2 0, 0,			0, NextLength[i-1]
+
 	ENDIF
 	TotalLength = TotalLength + NextLength[i-1]
 	ADD2 0, NextLength[i-1]
@@ -918,17 +927,10 @@ RETURN
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	IF ABS(RemovePart[i]) < Width[i]/2 THEN
 		IF Width[i] <= Width[i-1] THEN
-		POLY2_B 9, 1+2+4,
-			 TrackColor, 0,
-			-Width[i-1]/2,                                     			0,                                                   1,
-			 Width[i-1]/2,                                     			0,                                                   1,
-			 Width[i-1]/2,                                     			Width[i-1]-Width[i],                                 1,
-			 CurveRadius,                                               Width[i-1]-Width[i],                                 900,
-			 CurveRadius - CurveRight[i-1] * COS(Angle),                CurveRight[i-1] * SIN(Angle) + Width[i-1]-Width[i],  3001,
-			 CurveRadius - (CurveRight[i-1] + Width[i-1]) * COS(Angle), (CurveRight[i-1] + Width[i-1]) * SIN(Angle),         1,
-			 CurveRadius,                                               0,                                                   900,
-			-Width[i-1]/2,                                     			0,                                                   3001,
-			-Width[i-1]/2,                                     			0,                                                   -1
+			InnerMargin = Width[i-1]-Width[i]
+			OuterMargin = 0
+			GOSUB "RightTrack"
+			GOSUB "RightTrackMargin"
 			LINE2 0, 0,	
 				  0, (Width[i-1]-Width[i])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
@@ -936,16 +938,10 @@ RETURN
 				 CurveRadius, 180-Angle, 180
 			TotalLength = TotalLength + (Angle * PI * ABS(CurveRadius) / 180)
 		ELSE
-			POLY2_B 8, 1+2+4,
-			 	TrackColor, 0,
-				-Width[i-1]/2,												0,																	1,
-				 Width[i-1]/2,												0,																	1,
-				 CurveRadius,												0, 																	900,
-				 CurveRadius - CurveRight[i-1] * COS(Angle), 				CurveRight[i-1] * SIN(Angle), 										3001,
-				 CurveRadius - (CurveRight[i-1] + Width[i-1]) * COS(Angle),	(CurveRight[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],1,
-				 CurveRadius,												Width[i] - Width[i-1], 												900,
-				-Width[i-1]/2,												Width[i] - Width[i-1],												3001,
-				-Width[i-1]/2,												Width[i] - Width[i-1],												-1
+			InnerMargin = 0
+			OuterMargin = Width[i]-Width[i-1]
+			GOSUB "RightTrack"
+			GOSUB "RightTrackMargin"
 			LINE2 0, 0,
 				  0, (Width[i] - Width[i-1])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
@@ -962,6 +958,53 @@ RETURN
 	ADD2 MoveX[i], MoveY[i]
 	ROT2 -Orietation
 RETURN
+"RightTrack":
+	POLY2_B 9, 1+2+4,
+		TrackColor, 0,
+		-Width[i-1]/2,                                     			0,                                                   		1,
+		Width[i-1]/2,                                     			0,                                                   		1,
+		Width[i-1]/2,                                     			InnerMargin,                                 				1,
+		CurveRadius,                                               	InnerMargin,                                 				900,
+		CurveRadius - CurveRight[i-1] * COS(Angle),                 CurveRight[i-1] * SIN(Angle) + InnerMargin,  				3001,
+		CurveRadius - (CurveRight[i-1] + Width[i-1]) * COS(Angle),  (CurveRight[i-1] + Width[i-1]) * SIN(Angle) + OuterMargin,  1,
+		CurveRadius,                                               	OuterMargin,                                                900,
+		-Width[i-1]/2,                                     			OuterMargin,                                                3001,
+		-Width[i-1]/2,                                     			OuterMargin,                                                -1
+RETURN
+"RightTrackMargin":
+	POLY2_B 7, 1+2+4,
+		TrackMarginColor, 0,
+		Width[i-1]/2,                                              	0,                                							1,
+		Width[i-1]/2 + TrackMargin,                                	0,                                							1,
+		Width[i-1]/2 + TrackMargin,                                	InnerMargin,                                				1,
+		CurveRadius,                                               	InnerMargin,                                				900,
+		CurveRadius - (CurveRight[i-1] - TrackMargin) * COS(Angle), (CurveRight[i-1] - TrackMargin) * SIN(Angle) + InnerMargin, 3001,
+		CurveRadius - CurveRight[i-1] * COS(Angle),                	CurveRight[i-1] * SIN(Angle) + InnerMargin, 				1,
+		Width[i-1]/2,                                              	InnerMargin,                                				3001
+
+	POLY2_B 8, 1+2+4,
+        TrackMarginColor, 0,
+        -Width[i-1]/2,                                                             0,                                                                                  1,
+        -Width[i-1]/2 - TrackMargin,                                               0,                                                                                  1,
+        -Width[i-1]/2 - TrackMargin,                                               OuterMargin,                                                                        1,
+        CurveRadius,                                                               OuterMargin,                                                                        900,
+        CurveRadius - (CurveRight[i-1] + Width[i-1] + TrackMargin) * COS(Angle),   (CurveRight[i-1] + Width[i-1] + TrackMargin) * SIN(Angle) + OuterMargin,            3001,
+        CurveRadius - (CurveRight[i-1] + Width[i-1]) * COS(Angle),                 (CurveRight[i-1] + Width[i-1]) * SIN(Angle) + OuterMargin,                          1,
+        CurveRadius,                                                               OuterMargin,                                                                        900,
+        -Width[i-1]/2,                                                             OuterMargin,                                                                        3001
+
+LINE2 Width[i-1]/2 + TrackMarginLine, 0,    
+              Width[i-1]/2 + TrackMarginLine, InnerMargin  
+
+        ARC2 CurveRadius, InnerMargin,
+             CurveRight[i-1] - TrackMarginLine, 180 - Angle, 180
+
+        LINE2 -Width[i-1]/2 - TrackMarginLine, 0,   
+              -Width[i-1]/2 - TrackMarginLine, OuterMargin   
+
+        ARC2 CurveRadius, OuterMargin,
+             CurveRight[i-1] + Width[i-1] + TrackMarginLine, 180 - Angle, 180
+RETURN
 
 "CurveLeft":
 	Angle = LeftAngle[i]
@@ -969,17 +1012,10 @@ RETURN
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	IF ABS(RemovePart[i]) < Width[i]/2 THEN
 		IF Width[i] <= Width[i-1] THEN
-			POLY2_B 9, 1+2+4,
-			 	TrackColor, 0,
-				 Width[i-1]/2,												0,													1,
-				-Width[i-1]/2,												0,													1,
-				-Width[i-1]/2,												Width[i-1]-Width[i],								1,
-				 CurveRadius,												Width[i-1]-Width[i], 								900,
-				 CurveRadius + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle) + Width[i-1]-Width[i],	3001,
-				 CurveRadius + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle),			1,
-				 CurveRadius,												0, 													900,
-				 Width[i-1]/2,												0,													3001,
-				 Width[i-1]/2,												0,													-1
+			InnerMargin = Width[i-1]-Width[i]
+			OuterMargin = 0
+			GOSUB "LeftTrack"
+			GOSUB "LeftTrackMargin"
 			LINE2 0, 0,
 				  0, (Width[i-1] - Width[i])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
@@ -988,16 +1024,10 @@ RETURN
 			TotalLength = TotalLength + (Angle * PI * ABS(CurveRadius) / 180)
 
 		ELSE
-			POLY2_B 8, 1+2+4,
-			 	 TrackColor, 0,
-				 Width[i-1]/2,												0,																	1,
-				-Width[i-1]/2,												0,																	1,
-				 CurveRadius,												0, 																	900,
-				 CurveRadius + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle), 										3001,
-				 CurveRadius + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + Width[i] - Width[i-1],	1,
-				 CurveRadius,												Width[i] - Width[i-1], 												900,
-				 Width[i-1]/2,												Width[i] - Width[i-1],												3001,
-				 Width[i-1]/2,												Width[i] - Width[i-1],												-1
+			InnerMargin = 0
+			OuterMargin = Width[i]-Width[i-1]
+			GOSUB "LeftTrack"
+			GOSUB "LeftTrackMargin"
 			LINE2 0, 0,	
 				  0, (Width[i] - Width[i-1])/2
 			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
@@ -1014,6 +1044,56 @@ RETURN
 	ROT2 Orietation
 	ADD2 MoveX[i], MoveY[i]
 	ROT2 -Orietation
+RETURN
+
+"LeftTrack":
+	POLY2_B 9, 1+2+4,
+		TrackColor, 0,
+			Width[i-1]/2,												0,															1,
+		-Width[i-1]/2,												0,																1,
+		-Width[i-1]/2,												InnerMargin,													1,
+			CurveRadius,												InnerMargin, 												900,
+			CurveRadius + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle) + InnerMargin,						3001,
+			CurveRadius + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + OuterMargin,	1,
+			CurveRadius,												OuterMargin, 												900,
+			Width[i-1]/2,												OuterMargin,												3001,
+			Width[i-1]/2,												OuterMargin,												-1
+RETURN
+
+"LeftTrackMargin":
+	POLY2_B 7, 1+2+4,
+		TrackMarginColor, 0,
+		-Width[i-1]/2,                                              0,                                								1,
+		-Width[i-1]/2 - TrackMargin,                                0,                                								1,
+		-Width[i-1]/2 - TrackMargin,                                InnerMargin,                                					1,
+		CurveRadius,                                               	InnerMargin,                                					900,
+		CurveRadius + (CurveLeft[i-1] - TrackMargin) * COS(Angle), 	(CurveLeft[i-1] - TrackMargin) * SIN(Angle) + InnerMargin, 		3001,
+		CurveRadius + CurveLeft[i-1] * COS(Angle),                	CurveLeft[i-1] * SIN(Angle) + InnerMargin, 						1,
+		-Width[i-1]/2,                                              InnerMargin,                                					3001
+
+POLY2_B 8, 1+2+4,
+        TrackMarginColor, 0,
+        Width[i-1]/2,                                                              0,                                                                     	1,
+        Width[i-1]/2 + TrackMargin,                                                0,                                                                     	1,
+        Width[i-1]/2 + TrackMargin,                                                OuterMargin,                                                           	1,
+        CurveRadius,                                                               OuterMargin,                                                           	900,
+        CurveRadius + (CurveLeft[i-1] + Width[i-1] + TrackMargin) * COS(Angle),    (CurveLeft[i-1] + Width[i-1] + TrackMargin) * SIN(Angle) + OuterMargin,	3001,
+        CurveRadius + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),                  (CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + OuterMargin,              	1,
+        CurveRadius,                                                               OuterMargin,                                                           	900,
+        Width[i-1]/2,                                                              OuterMargin,                                                           	3001
+
+
+		LINE2 -Width[i-1]/2 - TrackMarginLine, 0,	
+			  -Width[i-1]/2 - TrackMarginLine, InnerMargin	
+
+		ARC2 CurveRadius, InnerMargin,
+			 CurveLeft[i-1] - TrackMarginLine, 0, Angle
+
+		LINE2 Width[i-1]/2 + TrackMarginLine, 0,	
+			  Width[i-1]/2 + TrackMarginLine, OuterMargin	
+
+		ARC2 CurveRadius, OuterMargin,
+			 CurveLeft[i-1] + Width[i-1] + TrackMarginLine, 0, Angle
 RETURN
 
 "BegginingWidthHotSpot":
