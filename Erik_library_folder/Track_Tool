@@ -27,7 +27,6 @@ GOSUB "LineMarginHotSpot"
 !----------------------------------------------------------------------------------------------------------------------------------------
 
 !-------Main Loop Places All Objects--------------------------------------------------------------------------------------------------------------------
-
 i = 1
 GOSUB "StraightHotSpot"
 IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
@@ -480,9 +479,11 @@ RETURN
             WidthDifferenceOut = 0
             GOSUB "RightTrack"
             MATERIAL 19
+			ChicaneBool = 0
             GOSUB "RightLines"
             LineMargin = LineMargin + LineWidth*4
             MATERIAL 18
+			ChicaneBool = 1
             GOSUB "RightLines"
             MATERIAL 133
             LineMargin = ConstantLineMargin
@@ -492,9 +493,11 @@ RETURN
             GOSUB "RightTrack"
             WidthDifferenceOut = Width[i] - Width[i-1]
             MATERIAL 19
+			ChicaneBool = 0
             GOSUB "RightLines"
             LineMargin = LineMargin + LineWidth*4
             MATERIAL 18
+			ChicaneBool = 1
             GOSUB "RightLines"
             MATERIAL 133
             LineMargin = ConstantLineMargin
@@ -530,6 +533,7 @@ RETURN
 	OuterRadius = CurveRight[i-1] + LineMargin + LineWidth
 	_xLineLeft  = CurveRadius - OuterRadius
 	_xLineRight = CurveRadius - InnerRadius
+	IF ChicaneBool AND Angle = 90 THEN Chicane = InnerRadius/8 ELSE Chicane = 0
 	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
 		_xLineLeft,               				0,                 								1,   
 		_xLineRight,              				0,                 								1,   
@@ -537,7 +541,7 @@ RETURN
 		CurveRadius,                        	WidthDifferenceIn,           					900, 
 		CurveRadius - InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifferenceIn, 	3001,
 		CurveRadius - OuterRadius * COS(Angle), OuterRadius * SIN(Angle) + WidthDifferenceIn, 	1,   
-		CurveRadius,                       		WidthDifferenceIn,            					900, 
+		CurveRadius - Chicane,        			WidthDifferenceIn + Chicane,     				900, 
 		_xLineLeft,               				WidthDifferenceIn,            					3001 
 
 	_rOuterInner = CurveRight[i-1] + Width[i-1] - LineMargin - LineWidth
@@ -622,9 +626,11 @@ RETURN
             WidthDifferenceOut = 0
 			GOSUB "LeftTrack"
 			MATERIAL 19
+			ChicaneBool = 0
             GOSUB "LeftLines"
 			LineMargin = LineMargin + LineWidth*4
 			MATERIAL 18
+			ChicaneBool = 1
 			GOSUB "LeftLines"
 			MATERIAL 133
 			LineMargin = ConstantLineMargin
@@ -633,9 +639,11 @@ RETURN
             WidthDifferenceOut = Width[i] - Width[i-1]
 			GOSUB "LeftTrack"
 			MATERIAL 19
+			ChicaneBool = 0
             GOSUB "LeftLines"
 			LineMargin = LineMargin + LineWidth*4
 			MATERIAL 18
+			ChicaneBool = 1
 			GOSUB "LeftLines"
 			MATERIAL 133
 			LineMargin = ConstantLineMargin
@@ -671,14 +679,15 @@ RETURN
 	OuterRadius = CurveLeft[i-1] + LineMargin + LineWidth
 	_xLineLeft  = CurveRadius + InnerRadius
 	_xLineRight = CurveRadius + OuterRadius
+	IF ChicaneBool AND Angle = 90 THEN Chicane = InnerRadius/8 ELSE Chicane = 0
 	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
 		_xLineLeft,               				0,                           					1,   
 		_xLineRight,              				0,                           					1,   
 		_xLineRight,              				WidthDifferenceIn,                   			1,   
-		CurveRadius,                        	WidthDifferenceIn,                   			900, 
+		CurveRadius + Chicane,                        	WidthDifferenceIn + Chicane,                   			900, 
 		CurveRadius + OuterRadius * COS(Angle), OuterRadius * SIN(Angle) + WidthDifferenceIn, 	3001,
 		CurveRadius + InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifferenceIn, 	1,   
-		CurveRadius,                        	WidthDifferenceIn,                   			900, 
+		CurveRadius,                  WidthDifferenceIn,                    900, 
 		_xLineLeft,                				WidthDifferenceIn,                   			3001 
 
 	_rOuterInner = CurveLeft[i-1] + Width[i-1] - LineMargin - LineWidth
