@@ -14,9 +14,6 @@
 <![CDATA[
 MATERIAL 133
 RESOL 64
-!------Initial Variables And Limits----------------------------------------------------------------------------------------------------------------------------------
-GOSUB "InitialVariablesAndLimits"
-!----------------------------------------------------------------------------------------------------------------------------------------
 
 !----Beggining Width------------------------------------------------------------------------------------------------------------------------------------
 GOSUB "BegginingWidthHotSpot"
@@ -74,8 +71,8 @@ WHILE ObjectOrder[i] <> 0 DO
 		GOSUB "RightNarrowing"
 		GOSUB "LeftNarrowing"
 		GOSUB "StraightHotSpot"
-		! ObjectOrder[i+1] = 2 
-		! IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		ObjectOrder[i+1] = 2 
+		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
 		GOTO "NextIter"
 	ENDIF
 
@@ -90,41 +87,6 @@ WHILE ObjectOrder[i] <> 0 DO
 ENDWHILE
 
 END
-!------Initial Variables And Limits----------------------------------------------------------------------------------------------------------------------------------
-"InitialVariablesAndLimits":
-	LineWidth = 0.05
-	LineThickness = 0.01
-	Orietation = 0
-	TrackThickness = 0.01
-	TempWidth = Width[1]
-	BarrierHeight = .24
-	ConstantLineMargin = LineMargin
-	IF TempWidth = 0 THEN TempWidth = 7
-
-	FOR i = 1 TO 100
-		!----Sets Every Angle To Default 90 Degrees------------------------------------------------------------------------------------------------------------------------------------
-		IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-		IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
-		!----------------------------------------------------------------------------------------------------------------------------------------
-
-		!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
-		IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
-		!----------------------------------------------------------------------------------------------------------------------------------------
-
-		!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------------------------------------------------
-		IF Width[i] > 0 AND Width[i] <> TempWidth THEN
-			TempWidth = Width[i]
-		ENDIF
-		Width[i] = TempWidth
-		!----------------------------------------------------------------------------------------------------------------------------------------
-
-		!-----Sets Limit On Angle-----------------------------------------------------------------------------------------------------------------------------------
-		RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
-		LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
-		!----------------------------------------------------------------------------------------------------------------------------------------
-	NEXT i
-RETURN
-!------------------------------------------------------------------------------------------------------------------------------------------
 
 !----Makes The Frist Staright------------------------------------------------------------------------------------------------------------------------------------
 "Straight1":
@@ -894,15 +856,15 @@ RETURN
 RETURN
 
 "RightNarrowing":
-	HOTSPOT  Width[i]/2, 		0, StraightResizing[i],	unID, RightNarrowing[i], 1 : unID = unID + 1
-	HOTSPOT  Width[i]/2, 		0, StraightResizing[i],	unID, RightNarrowing[i], 2 : unID = unID + 1
-	HOTSPOT  Width[i]/2 - 1, 	0, StraightResizing[i],	unID, RightNarrowing[i], 3 : unID = unID + 1
+	HOTSPOT  Width[i]/2, 		-StraightResizing[i-1]/4, 0,	unID, RightNarrowing[i], 1 : unID = unID + 1
+	HOTSPOT  Width[i]/2, 		-StraightResizing[i-1]/4, 0,	unID, RightNarrowing[i], 2 : unID = unID + 1
+	HOTSPOT  Width[i]/2 - 1, 	-StraightResizing[i-1]/4, 0,	unID, RightNarrowing[i], 3 : unID = unID + 1
 RETURN
 
 "LeftNarrowing":
-	HOTSPOT  -Width[i]/2, 		0, StraightResizing[i],	unID, LeftNarrowing[i], 1 : unID = unID + 1
-	HOTSPOT  -Width[i]/2, 		0, StraightResizing[i],	unID, LeftNarrowing[i], 2 : unID = unID + 1
-	HOTSPOT  -Width[i]/2 + 1, 	0, StraightResizing[i],	unID, LeftNarrowing[i], 3 : unID = unID + 1
+	HOTSPOT  -Width[i]/2, 		-StraightResizing[i-1]/4, 0,	unID, LeftNarrowing[i], 1 : unID = unID + 1
+	HOTSPOT  -Width[i]/2, 		-StraightResizing[i-1]/4, 0,	unID, LeftNarrowing[i], 2 : unID = unID + 1
+	HOTSPOT  -Width[i]/2 + 1, 	-StraightResizing[i-1]/4, 0,	unID, LeftNarrowing[i], 3 : unID = unID + 1
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1067,17 +1029,13 @@ RETURN
 SET FILL "Solid Fill"
 PEN 1
 
-!------Initial Variables And Limits----------------------------------------------------------------------------------------------------------------------------------
-GOSUB "InitialVariablesAndLimits"
-!----------------------------------------------------------------------------------------------------------------------------------------
-
 !----Beggining Width------------------------------------------------------------------------------------------------------------------------------------
 GOSUB "BegginingWidthHotSpot"
 
 IF ColorCircles THEN
 	POLY2_B 2, 1+2+4,
 		TrackColor, 0,
-		Width[1]/2,              0, 900,
+		Width[1]/2,            0,   900,
 		CircleSize,            360, 4001
 ENDIF
 !----------------------------------------------------------------------------------------------------------------------------------------
@@ -1090,10 +1048,10 @@ IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
 	GOSUB "LeftHotSpot"
 ENDIF
 WHILE ObjectOrder[i] <> 0 DO
-	IF NextLength[i] > ESP 			THEN ObjectOrder[i+1] = 2
-	IF CurveLeft[i]  > ESP 			THEN ObjectOrder[i+1] = 3
-	IF CurveRight[i] > ESP 			THEN ObjectOrder[i+1] = 4
-	IF StraightResizing[i] > ESP THEN ObjectOrder[i+1] = 5
+	IF NextLength[i] > ESP			THEN ObjectOrder[i+1] = 2
+	IF CurveLeft[i]  > ESP			THEN ObjectOrder[i+1] = 3
+	IF CurveRight[i] > ESP			THEN ObjectOrder[i+1] = 4
+	IF StraightResizing[i] > ESP	THEN ObjectOrder[i+1] = 5
 
 	IF ObjectOrder[i] = 2 THEN
 		GOSUB "Straight"
@@ -1129,8 +1087,8 @@ WHILE ObjectOrder[i] <> 0 DO
 		GOSUB "RightNarrowing"
 		GOSUB "LeftNarrowing"
 		GOSUB "StraightHotSpot"
-		! ObjectOrder[i+1] = 2 
-		! IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		ObjectOrder[i+1] = 2 
+		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
 		GOTO "NextIter"
 	ENDIF
 
@@ -1141,51 +1099,13 @@ ROT2 -Orietation
 TEXT2 0, -2, STR(TotalLength, 10, 3) + " m"
 
 END
-!------Initial Variables And Limits----------------------------------------------------------------------------------------------------------------------------------
-"InitialVariablesAndLimits":
-	Orietation = 0
-	TempWidth = Width[1]
-	DefaultPen = 1
-	CircleSize = 0.11
-	TrackColor = 22
-	TrackMarginColor = 102
-	CircleColor = 11
-	TrackMargin = 0.45
-	TrackMarginLine = 0.25
-	IF TempWidth = 0 THEN TempWidth = 7
-
-	FOR i = 1 TO 100
-		!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
-		IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-		IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
-		!----------------------------------------------------------------------------------------------------------------------------------------
-
-		!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
-		IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
-		!----------------------------------------------------------------------------------------------------------------------------------------
-
-		!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------------------------------------------------
-		IF Width[i] > 0 AND Width[i] <> TempWidth THEN
-			TempWidth = Width[i]
-		ENDIF
-		Width[i] = TempWidth
-		!----------------------------------------------------------------------------------------------------------------------------------------
-
-		!-----Sets Limit On Angle-----------------------------------------------------------------------------------------------------------------------------------
-		RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
-		LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
-		!----------------------------------------------------------------------------------------------------------------------------------------
-	NEXT i
-RETURN
-!----------------------------------------------------------------------------------------------------------------------------------------
-
 
 "Straight1":
 	POLY2_B 5, 1+2+4,
 		TrackColor, 0,
 		-Width[i]/2,    0,                  1,
-		Width[i]/2,    0,                  1,
-		Width[i]/2,    BeginningDistance,  1,
+		Width[i]/2,     0,                  1,
+		Width[i]/2,     BeginningDistance,  1,
 		-Width[i]/2,    BeginningDistance,  1,
 		-Width[i]/2,    0,                 -1
 	ADD2 0, BeginningDistance
@@ -1196,8 +1116,8 @@ RETURN
 		POLY2_B 5, 1+2+4, 
 			TrackColor, 0,
 			-Width[i]/2,    0,               1,
-			Width[i]/2,    0,               1,
-			Width[i]/2,    NextLength[i-1], 1,
+			Width[i]/2,     0,               1,
+			Width[i]/2,     NextLength[i-1], 1,
 			-Width[i]/2,    NextLength[i-1], 1,
 			-Width[i]/2,    0,              -1
 		LINE2 0, 0,		0, NextLength[i-1]
@@ -1835,25 +1755,25 @@ RETURN
 RETURN
 
 "RightNarrowing":
-	HOTSPOT2  Width[i]/2, 		StraightResizing[i],	unID, RightNarrowing[i], 1 : unID = unID + 1
-	HOTSPOT2  Width[i]/2, 		StraightResizing[i],	unID, RightNarrowing[i], 2 : unID = unID + 1
-	HOTSPOT2  Width[i]/2 - 1, 	StraightResizing[i],	unID, RightNarrowing[i], 3 : unID = unID + 1
+	HOTSPOT2  Width[i]/2, 		-StraightResizing[i-1]/4,	unID, RightNarrowing[i], 1 : unID = unID + 1
+	HOTSPOT2  Width[i]/2, 		-StraightResizing[i-1]/4,	unID, RightNarrowing[i], 2 : unID = unID + 1
+	HOTSPOT2  Width[i]/2 - 1, 	-StraightResizing[i-1]/4,	unID, RightNarrowing[i], 3 : unID = unID + 1
 	IF ColorCircles THEN
 		POLY2_B 2, 1+2+4,
 			75, 0,
-			Width[i]/2,              0, 900,
-			CircleSize,            360, 4001
+			Width[i]/2,            -StraightResizing[i-1]/4, 900,
+			CircleSize,            360, 					4001
 	ENDIF
 RETURN
 "LeftNarrowing":
-	HOTSPOT2  -Width[i]/2, 		StraightResizing[i],	unID, LeftNarrowing[i], 1 : unID = unID + 1
-	HOTSPOT2  -Width[i]/2, 		StraightResizing[i],	unID, LeftNarrowing[i], 2 : unID = unID + 1
-	HOTSPOT2  -Width[i]/2 + 1, 	StraightResizing[i],	unID, LeftNarrowing[i], 3 : unID = unID + 1
+	HOTSPOT2  -Width[i]/2, 		-StraightResizing[i-1]/4,	unID, LeftNarrowing[i], 1 : unID = unID + 1
+	HOTSPOT2  -Width[i]/2, 		-StraightResizing[i-1]/4,	unID, LeftNarrowing[i], 2 : unID = unID + 1
+	HOTSPOT2  -Width[i]/2 + 1, 	-StraightResizing[i-1]/4,	unID, LeftNarrowing[i], 3 : unID = unID + 1
 	IF ColorCircles THEN
 		POLY2_B 2, 1+2+4,
 			77, 0,
-			-Width[i]/2,              0, 900,
-			CircleSize,            360, 4001
+			-Width[i]/2,           -StraightResizing[i-1]/4, 900,
+			CircleSize,            360, 					4001
 	ENDIF
 RETURN
 ]]>
@@ -1868,11 +1788,50 @@ ESP = 0.000001
 ExtrudeValues = 0
 BeginningDistance = 0.2
 
+LineWidth = 0.05
+LineThickness = 0.01
+TrackThickness = 0.01
+BarrierHeight = .24
+ConstantLineMargin = LineMargin
+
+Orietation = 0
+DefaultPen = 1
+CircleSize = 0.11
+TrackColor = 22
+TrackMarginColor = 102
+CircleColor = 11
+TrackMargin = 0.45
+TrackMarginLine = 0.25
+IF TempWidth = 0 THEN TempWidth = 7
+
 IF Sectors THEN
 	ExtrudeValues =  1+2+4+16+32
 ELSE
 	ExtrudeValues =  1+2+4
 ENDIF
+
+FOR i = 1 TO 100
+	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
+	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
+	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
+	!----------------------------------------------------------------------------------------------------------------------------------------
+
+	!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
+	IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
+	!----------------------------------------------------------------------------------------------------------------------------------------
+
+	!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------------------------------------------------
+	IF Width[i] > 0 AND Width[i] <> TempWidth THEN
+		TempWidth = Width[i]
+	ENDIF
+	Width[i] = TempWidth
+	!----------------------------------------------------------------------------------------------------------------------------------------
+
+	!-----Sets Limit On Angle-----------------------------------------------------------------------------------------------------------------------------------
+	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
+	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
+	!----------------------------------------------------------------------------------------------------------------------------------------
+NEXT i
 ]]>
 </Script_1D>
 
