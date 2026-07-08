@@ -78,22 +78,21 @@ WHILE ObjectOrder[i] <> 0 DO
 
 	"NextIter":
 	IF i = HomeStraight AND HomeStraightActive THEN
-    ADDY NextLength[i]/2
-    ADDZ TrackThickness
-    GOSUB "HomeBox"
-    DEL 2
-    ENDIF
+		ADDY NextLength[i]/2
+		ADDZ TrackThickness
+		GOSUB "HomeBox"
+		DEL 2
+	ENDIF
 	i = i + 1
 ENDWHILE
 
 END
-
 !----Makes The Frist Staright------------------------------------------------------------------------------------------------------------------------------------
 "Straight1":
 	EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
 			-Width[i]/2,	0,	1,
-			 Width[i]/2,	0,	1,
-			 Width[i]/2,	BeginningDistance, 	1,
+			Width[i]/2,	0,	1,
+			Width[i]/2,	BeginningDistance, 	1,
 			-Width[i]/2,	BeginningDistance,	1
 	ADDY BeginningDistance
 RETURN
@@ -105,8 +104,8 @@ RETURN
 	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
 		EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
 				-Width[i]/2,	0,				 1,
-				 Width[i]/2,	0,				 1,
-				 Width[i]/2,	NextLength[i-1], 1,
+				Width[i]/2,	0,				 1,
+				Width[i]/2,	NextLength[i-1], 1,
 				-Width[i]/2,	NextLength[i-1], 1
 		!-----Lines-----------------------------------------------------------------------------------------------------------------------------------		
 		FOR h = 1 TO 2
@@ -164,317 +163,313 @@ RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
 "StraightResizing":
-    !GOSUB "BarrierRemoveHotSpot"
-    RightNarrowing[i] = RightNarrowing[i] + ESP
-    LeftNarrowing[i]  = LeftNarrowing[i] + ESP
-    StraightTotalLength = StraightResizing[i-1]
-    CurveHeight = StraightTotalLength * 0.60
+	GOSUB "StraightResizingBarrierRemoveHotSpot"
+	!GOSUB "BarrierRemoveHotSpot"
+	RightNarrowing[i] = RightNarrowing[i] + ESP
+	LeftNarrowing[i]  = LeftNarrowing[i] + ESP
+	StraightTotalLength = StraightResizing[i-1]
+	CurveHeight = StraightTotalLength * 0.60
 
-    MiddleLength = StraightTotalLength / 2
-    CurveStart   = MiddleLength - (CurveHeight / 2)
-    CurveEnd     = MiddleLength + (CurveHeight / 2)
-    HalfVerticalHeight = CurveHeight / 2
+	MiddleLength = StraightTotalLength / 2
+	CurveStart   = MiddleLength - (CurveHeight / 2)
+	CurveEnd     = MiddleLength + (CurveHeight / 2)
+	HalfVerticalHeight = CurveHeight / 2
 
-    MaxAllowedNarrowing = StraightTotalLength * 0.30
+	MaxAllowedNarrowing = StraightTotalLength * 0.30
 
-    IF RightNarrowing[i] > MaxAllowedNarrowing  THEN RightNarrowing[i] = MaxAllowedNarrowing
-    IF RightNarrowing[i] < -MaxAllowedNarrowing THEN RightNarrowing[i] = -MaxAllowedNarrowing
-    IF LeftNarrowing[i] > MaxAllowedNarrowing  THEN LeftNarrowing[i] = MaxAllowedNarrowing
-    IF LeftNarrowing[i] < -MaxAllowedNarrowing THEN LeftNarrowing[i] = -MaxAllowedNarrowing
+	IF RightNarrowing[i] > MaxAllowedNarrowing  THEN RightNarrowing[i] = MaxAllowedNarrowing
+	IF RightNarrowing[i] < -MaxAllowedNarrowing THEN RightNarrowing[i] = -MaxAllowedNarrowing
+	IF LeftNarrowing[i] > MaxAllowedNarrowing  THEN LeftNarrowing[i] = MaxAllowedNarrowing
+	IF LeftNarrowing[i] < -MaxAllowedNarrowing THEN LeftNarrowing[i] = -MaxAllowedNarrowing
 
-    HalfHorizontalShiftRight = RightNarrowing[i] / 2
-    CalculatedRadiusRight    = (HalfHorizontalShiftRight*HalfHorizontalShiftRight + HalfVerticalHeight*HalfVerticalHeight) / (2 * HalfHorizontalShiftRight)
-    HalfHorizontalShiftLeft  = LeftNarrowing[i] / 2
-    CalculatedRadiusLeft     = (HalfHorizontalShiftLeft*HalfHorizontalShiftLeft + HalfVerticalHeight*HalfVerticalHeight) / (2 * HalfHorizontalShiftLeft)
-    SegmentsResolution = 16
-    ! =========================================================================
-    ! MAIN TRACK EXTRUDE (Blended S-Curve Path)
-    ! =========================================================================
-    PUT  Width[i]/2, 0, 1
-    PUT  Width[i]/2, CurveStart, 1
-    ! Right Edge Curve
-    FOR stepIndex = 1 TO SegmentsResolution - 1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio 
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
-        currentX = Width[i]/2 + RightNarrowing[i] * blendedWeight
-        PUT currentX, currentY, 1
-    NEXT stepIndex
-    PUT  Width[i]/2 + RightNarrowing[i], CurveEnd,    1
-    PUT  Width[i]/2 + RightNarrowing[i], StraightTotalLength, 1
-    PUT -Width[i]/2 - LeftNarrowing[i],  StraightTotalLength, 1
-    PUT -Width[i]/2 - LeftNarrowing[i],  CurveEnd,    1
-    ! Left Edge Curve (Descending)
-    FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
-        currentX = -Width[i]/2 - LeftNarrowing[i] * blendedWeight
-        PUT currentX, currentY, 1
-    NEXT stepIndex
-    PUT -Width[i]/2, CurveStart, 1
-    PUT -Width[i]/2, 0,          1
-    PUT  Width[i]/2, 0,          1
-    EXTRUDE NSP / 3, 0, 0, TrackThickness, ExtrudeValues, GET(NSP)
-    ! =========================================================================
-    ! MARKING LINES (Perpendicularly Compensated for Constant Line Width)
-    ! =========================================================================
-    ADDZ TrackThickness
-    FOR layerIndex = 1 TO 2
-        IF layerIndex = 1 THEN MATERIAL 19
-        RightLineOuterMargin = LineMargin - LineWidth
-        RightLineInnerMargin = LineMargin + LineWidth
-        
-        ! --- RIGHT MARKING LINE PROFILE ---
-        PUT Width[i]/2 - RightLineInnerMargin, 0, 1
-        PUT Width[i]/2 - RightLineOuterMargin, 0, 1
-        PUT Width[i]/2 - RightLineOuterMargin, CurveStart, 1
-        
-        ! Right Line: Outer Edge (Offset Perpendicularly)
-        FOR stepIndex = 1 TO SegmentsResolution - 1
-            progressRatio = stepIndex / SegmentsResolution
-            currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-            
-            baseWeight = (1 - COS(progressRatio * 180)) / 2
-            sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-            blendedWeight = (baseWeight + sharpWeight) * 0.5
-            
-            ! Slope derivative math for normal heading angle
-            baseDerivative = (PI / 2) * SIN(progressRatio * 180)
-            sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight * baseWeight) * (-2 * baseDerivative)
-            blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
-            deltaX = RightNarrowing[i] * blendedDerivative
-            deltaY = CurveEnd - CurveStart
-            
-            headingAngle = ATN(deltaX / deltaY)
-            currentX = (Width[i]/2 + RightNarrowing[i] * blendedWeight) - RightLineOuterMargin * COS(headingAngle)
-            perpendicularY = currentY + RightLineOuterMargin * SIN(headingAngle)
-            PUT currentX, perpendicularY, 1
-        NEXT stepIndex
-        
-        PUT Width[i]/2 - RightLineOuterMargin + RightNarrowing[i], CurveEnd, 1
-        PUT Width[i]/2 - RightLineOuterMargin + RightNarrowing[i], StraightTotalLength, 1
-        PUT Width[i]/2 - RightLineInnerMargin + RightNarrowing[i], StraightTotalLength, 1
-        PUT Width[i]/2 - RightLineInnerMargin + RightNarrowing[i], CurveEnd, 1
-        
-        ! Right Line: Inner Edge (Offset Perpendicularly)
-        FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
-            progressRatio = stepIndex / SegmentsResolution
-            currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-            
-            baseWeight = (1 - COS(progressRatio * 180)) / 2
-            sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-            blendedWeight = (baseWeight + sharpWeight) * 0.5
-            
-            baseDerivative = (PI / 2) * SIN(progressRatio * 180)
-            sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight * baseWeight) * (-2 * baseDerivative)
-            blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
-            deltaX = RightNarrowing[i] * blendedDerivative
-            deltaY = CurveEnd - CurveStart
-            
-            headingAngle = ATN(deltaX / deltaY)
-            currentX = (Width[i]/2 + RightNarrowing[i] * blendedWeight) - RightLineInnerMargin * COS(headingAngle)
-            perpendicularY = currentY + RightLineInnerMargin * SIN(headingAngle)
-            PUT currentX, perpendicularY, 1
-        NEXT stepIndex
-        
-        PUT Width[i]/2 - RightLineInnerMargin, CurveStart, 1
-        PUT Width[i]/2 - RightLineInnerMargin, 0, 1
-        
-        EXTRUDE NSP / 3, 0, 0, LineThickness, ExtrudeValues, GET(NSP)
+	HalfHorizontalShiftRight = RightNarrowing[i] / 2
+	CalculatedRadiusRight    = (HalfHorizontalShiftRight^2 + HalfVerticalHeight^2) / (2 * HalfHorizontalShiftRight)
+	HalfHorizontalShiftLeft  = LeftNarrowing[i] / 2
+	CalculatedRadiusLeft     = (HalfHorizontalShiftLeft^2 + HalfVerticalHeight^2) / (2 * HalfHorizontalShiftLeft)
+	SegmentsResolution = 16
+	! =========================================================================
+	! MAIN TRACK EXTRUDE (Blended S-Curve Path)
+	! =========================================================================
+	PUT  Width[i]/2, 0, 1
+	PUT  Width[i]/2, CurveStart, 1
+	! Right Edge Curve
+	FOR stepIndex = 1 TO SegmentsResolution - 1
+		progressRatio = stepIndex / SegmentsResolution
+		currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio 
+		baseWeight = (1 - COS(progressRatio * 180)) / 2
+		sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+		blendedWeight = (baseWeight + sharpWeight) * 0.5
+		currentX = Width[i]/2 + RightNarrowing[i] * blendedWeight
+		PUT currentX, currentY, 1
+	NEXT stepIndex
+	PUT  Width[i]/2 + RightNarrowing[i], CurveEnd,    1
+	PUT  Width[i]/2 + RightNarrowing[i], StraightTotalLength, 1
+	PUT -Width[i]/2 - LeftNarrowing[i],  StraightTotalLength, 1
+	PUT -Width[i]/2 - LeftNarrowing[i],  CurveEnd,    1
+	! Left Edge Curve (Descending)
+	FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
+		progressRatio = stepIndex / SegmentsResolution
+		currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+		baseWeight = (1 - COS(progressRatio * 180)) / 2
+		sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+		blendedWeight = (baseWeight + sharpWeight) * 0.5
+		currentX = -Width[i]/2 - LeftNarrowing[i] * blendedWeight
+		PUT currentX, currentY, 1
+	NEXT stepIndex
+	PUT -Width[i]/2, CurveStart, 1
+	PUT -Width[i]/2, 0,          1
+	PUT  Width[i]/2, 0,          1
+	EXTRUDE NSP / 3, 0, 0, TrackThickness, ExtrudeValues, GET(NSP)
+	! =========================================================================
+	! MARKING LINES (Perpendicularly Compensated for Constant Line Width)
+	! =========================================================================
+	ADDZ TrackThickness
+	FOR layerIndex = 1 TO 2
+		IF layerIndex = 1 THEN MATERIAL 19
+		RightLineOuterMargin = LineMargin - LineWidth
+		RightLineInnerMargin = LineMargin + LineWidth
+		
+		! --- RIGHT MARKING LINE PROFILE ---
+		PUT Width[i]/2 - RightLineInnerMargin, 0, 1
+		PUT Width[i]/2 - RightLineOuterMargin, 0, 1
+		PUT Width[i]/2 - RightLineOuterMargin, CurveStart, 1
+		
+		! Right Line: Outer Edge (Offset Perpendicularly)
+		FOR stepIndex = 1 TO SegmentsResolution - 1
+			progressRatio = stepIndex / SegmentsResolution
+			currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+			
+			baseWeight = (1 - COS(progressRatio * 180)) / 2
+			sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+			blendedWeight = (baseWeight + sharpWeight) * 0.5
+			
+			! Slope derivative math for normal heading angle
+			baseDerivative = (PI / 2) * SIN(progressRatio * 180)
+			sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight^2) * (-2 * baseDerivative)
+			blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
+			deltaX = RightNarrowing[i] * blendedDerivative
+			deltaY = CurveEnd - CurveStart
+			
+			headingAngle = ATN(deltaX / deltaY)
+			currentX = (Width[i]/2 + RightNarrowing[i] * blendedWeight) - RightLineOuterMargin * COS(headingAngle)
+			perpendicularY = currentY + RightLineOuterMargin * SIN(headingAngle)
+			PUT currentX, perpendicularY, 1
+		NEXT stepIndex
+		
+		PUT Width[i]/2 - RightLineOuterMargin + RightNarrowing[i], CurveEnd, 1
+		PUT Width[i]/2 - RightLineOuterMargin + RightNarrowing[i], StraightTotalLength, 1
+		PUT Width[i]/2 - RightLineInnerMargin + RightNarrowing[i], StraightTotalLength, 1
+		PUT Width[i]/2 - RightLineInnerMargin + RightNarrowing[i], CurveEnd, 1
+		
+		! Right Line: Inner Edge (Offset Perpendicularly)
+		FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
+			progressRatio = stepIndex / SegmentsResolution
+			currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+			
+			baseWeight = (1 - COS(progressRatio * 180)) / 2
+			sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+			blendedWeight = (baseWeight + sharpWeight) * 0.5
+			
+			baseDerivative = (PI / 2) * SIN(progressRatio * 180)
+			sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight^2) * (-2 * baseDerivative)
+			blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
+			deltaX = RightNarrowing[i] * blendedDerivative
+			deltaY = CurveEnd - CurveStart
+			
+			headingAngle = ATN(deltaX / deltaY)
+			currentX = (Width[i]/2 + RightNarrowing[i] * blendedWeight) - RightLineInnerMargin * COS(headingAngle)
+			perpendicularY = currentY + RightLineInnerMargin * SIN(headingAngle)
+			PUT currentX, perpendicularY, 1
+		NEXT stepIndex
+		
+		PUT Width[i]/2 - RightLineInnerMargin, CurveStart, 1
+		PUT Width[i]/2 - RightLineInnerMargin, 0, 1
+		
+		EXTRUDE NSP / 3, 0, 0, LineThickness, ExtrudeValues, GET(NSP)
 
-        ! --- LEFT MARKING LINE PROFILE ---
-        LeftLineOuterMargin = LineMargin - LineWidth
-        LeftLineInnerMargin = LineMargin + LineWidth
-        
-        PUT -Width[i]/2 + LeftLineInnerMargin, 0, 1
-        PUT -Width[i]/2 + LeftLineOuterMargin, 0, 1
-        PUT -Width[i]/2 + LeftLineOuterMargin, CurveStart, 1
-        
-        ! Left Line: Outer Edge (Offset Perpendicularly)
-        FOR stepIndex = 1 TO SegmentsResolution - 1
-            progressRatio = stepIndex / SegmentsResolution
-            currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-            
-            baseWeight = (1 - COS(progressRatio * 180)) / 2
-            sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-            blendedWeight = (baseWeight + sharpWeight) * 0.5
-            
-            baseDerivative = (PI / 2) * SIN(progressRatio * 180)
-            sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight * baseWeight) * (-2 * baseDerivative)
-            blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
-            deltaX = -LeftNarrowing[i] * blendedDerivative
-            deltaY = CurveEnd - CurveStart
-            
-            headingAngle = ATN(deltaX / deltaY)
-            currentX = (-Width[i]/2 - LeftNarrowing[i] * blendedWeight) + LeftLineOuterMargin * COS(headingAngle)
-            perpendicularY = currentY - LeftLineOuterMargin * SIN(headingAngle)
-            PUT currentX, perpendicularY, 1
-        NEXT stepIndex
-        
-        PUT -Width[i]/2 + LeftLineOuterMargin - LeftNarrowing[i], CurveEnd, 1
-        PUT -Width[i]/2 + LeftLineOuterMargin - LeftNarrowing[i], StraightTotalLength, 1
-        PUT -Width[i]/2 + LeftLineInnerMargin - LeftNarrowing[i], StraightTotalLength, 1
-        PUT -Width[i]/2 + LeftLineInnerMargin - LeftNarrowing[i], CurveEnd, 1
-        
-        ! Left Line: Inner Edge (Offset Perpendicularly)
-        FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
-            progressRatio = stepIndex / SegmentsResolution
-            currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-            
-            baseWeight = (1 - COS(progressRatio * 180)) / 2
-            sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-            blendedWeight = (baseWeight + sharpWeight) * 0.5
-            
-            baseDerivative = (PI / 2) * SIN(progressRatio * 180)
-            sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight * baseWeight) * (-2 * baseDerivative)
-            blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
-            deltaX = -LeftNarrowing[i] * blendedDerivative
-            deltaY = CurveEnd - CurveStart
-            
-            headingAngle = ATN(deltaX / deltaY)
-            currentX = (-Width[i]/2 - LeftNarrowing[i] * blendedWeight) + LeftLineInnerMargin * COS(headingAngle)
-            perpendicularY = currentY - LeftLineInnerMargin * SIN(headingAngle)
-            PUT currentX, perpendicularY, 1
-        NEXT stepIndex
-        
-        PUT -Width[i]/2 + LeftLineInnerMargin, CurveStart, 1
-        PUT -Width[i]/2 + LeftLineInnerMargin, 0, 1
-        
-        EXTRUDE NSP / 3, 0, 0, LineThickness, ExtrudeValues, GET(NSP)
+		! --- LEFT MARKING LINE PROFILE ---
+		LeftLineOuterMargin = LineMargin - LineWidth
+		LeftLineInnerMargin = LineMargin + LineWidth
+		
+		PUT -Width[i]/2 + LeftLineInnerMargin, 0, 1
+		PUT -Width[i]/2 + LeftLineOuterMargin, 0, 1
+		PUT -Width[i]/2 + LeftLineOuterMargin, CurveStart, 1
+		
+		! Left Line: Outer Edge (Offset Perpendicularly)
+		FOR stepIndex = 1 TO SegmentsResolution - 1
+			progressRatio = stepIndex / SegmentsResolution
+			currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+			
+			baseWeight = (1 - COS(progressRatio * 180)) / 2
+			sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+			blendedWeight = (baseWeight + sharpWeight) * 0.5
+			
+			baseDerivative = (PI / 2) * SIN(progressRatio * 180)
+			sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight^2) * (-2 * baseDerivative)
+			blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
+			deltaX = -LeftNarrowing[i] * blendedDerivative
+			deltaY = CurveEnd - CurveStart
+			
+			headingAngle = ATN(deltaX / deltaY)
+			currentX = (-Width[i]/2 - LeftNarrowing[i] * blendedWeight) + LeftLineOuterMargin * COS(headingAngle)
+			perpendicularY = currentY - LeftLineOuterMargin * SIN(headingAngle)
+			PUT currentX, perpendicularY, 1
+		NEXT stepIndex
+		
+		PUT -Width[i]/2 + LeftLineOuterMargin - LeftNarrowing[i], CurveEnd, 1
+		PUT -Width[i]/2 + LeftLineOuterMargin - LeftNarrowing[i], StraightTotalLength, 1
+		PUT -Width[i]/2 + LeftLineInnerMargin - LeftNarrowing[i], StraightTotalLength, 1
+		PUT -Width[i]/2 + LeftLineInnerMargin - LeftNarrowing[i], CurveEnd, 1
+		
+		! Left Line: Inner Edge (Offset Perpendicularly)
+		FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
+			progressRatio = stepIndex / SegmentsResolution
+			currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+			
+			baseWeight = (1 - COS(progressRatio * 180)) / 2
+			sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+			blendedWeight = (baseWeight + sharpWeight) * 0.5
+			
+			baseDerivative = (PI / 2) * SIN(progressRatio * 180)
+			sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight^2) * (-2 * baseDerivative)
+			blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
+			deltaX = -LeftNarrowing[i] * blendedDerivative
+			deltaY = CurveEnd - CurveStart
+			
+			headingAngle = ATN(deltaX / deltaY)
+			currentX = (-Width[i]/2 - LeftNarrowing[i] * blendedWeight) + LeftLineInnerMargin * COS(headingAngle)
+			perpendicularY = currentY - LeftLineInnerMargin * SIN(headingAngle)
+			PUT currentX, perpendicularY, 1
+		NEXT stepIndex
+		
+		PUT -Width[i]/2 + LeftLineInnerMargin, CurveStart, 1
+		PUT -Width[i]/2 + LeftLineInnerMargin, 0, 1
+		
+		EXTRUDE NSP / 3, 0, 0, LineThickness, ExtrudeValues, GET(NSP)
 
-        LineMargin = LineMargin + LineWidth * 4
-        MATERIAL 18
-    NEXT layerIndex
-    DEL 1 ! Remove ADDZ TrackThickness
-    
-    LineMargin = ConstantLineMargin
-    MATERIAL 133
+		LineMargin = LineMargin + LineWidth * 4
+		MATERIAL 18
+	NEXT layerIndex
+	DEL 1
+	
+	LineMargin = ConstantLineMargin
+	MATERIAL 133
 
+	! =========================================================================
+	! BARRIERS (Unified Blended S-Curve Logic)
+	! =========================================================================
+	ADDZ BarrierHeight
+	IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
+		LeftBarrierStartX = -Width[i]/2 + 0.05
+		LeftBarrierEndX   = -Width[i]/2 - LeftNarrowing[i] + 0.05
+		
+		PUT LeftBarrierStartX, -1, 0, 0
+		PUT LeftBarrierStartX,  0, 0, 0
+		PUT LeftBarrierStartX,  CurveStart, 0, 0
+		FOR stepIndex = 1 TO SegmentsResolution - 1
+			progressRatio = stepIndex / SegmentsResolution
+			currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+			
+			baseWeight = (1 - COS(progressRatio * 180)) / 2
+			sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+			blendedWeight = (baseWeight + sharpWeight) * 0.5
+			currentX = LeftBarrierStartX + (LeftBarrierEndX - LeftBarrierStartX) * blendedWeight
+			PUT currentX, currentY, 0, 0
+		NEXT stepIndex
+		PUT LeftBarrierEndX, CurveEnd, 0, 0
+		PUT LeftBarrierEndX, StraightTotalLength, 0, 0
+		PUT LeftBarrierEndX, StraightTotalLength + 1, 0, 0
+		GOSUB "SlimBarrier"
+	ENDIF
+	IF NOT(BarrierRemove[i] > Width[i]/2) THEN
+		RightBarrierStartX = Width[i]/2 - 0.05
+		RightBarrierEndX   = Width[i]/2 + RightNarrowing[i] - 0.05
+		PUT RightBarrierStartX, -1, 0, 0
+		PUT RightBarrierStartX,  0, 0, 0
+		PUT RightBarrierStartX,  CurveStart, 0, 0
 
-    ! =========================================================================
-    ! BARRIERS (Unified Blended S-Curve Logic)
-    ! =========================================================================
-    ADDZ BarrierHeight
-    LeftBarrierStartX = -Width[i]/2 + 0.05
-    LeftBarrierEndX   = -Width[i]/2 - LeftNarrowing[i] + 0.05
-    
-    PUT LeftBarrierStartX, -1, 0, 0
-    PUT LeftBarrierStartX,  0, 0, 0
-    PUT LeftBarrierStartX,  CurveStart, 0, 0
-    FOR stepIndex = 1 TO SegmentsResolution - 1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
-        currentX = LeftBarrierStartX + (LeftBarrierEndX - LeftBarrierStartX) * blendedWeight
-        PUT currentX, currentY, 0, 0
-    NEXT stepIndex
-    PUT LeftBarrierEndX, CurveEnd, 0, 0
-    PUT LeftBarrierEndX, StraightTotalLength, 0, 0
-    PUT LeftBarrierEndX, StraightTotalLength + 1, 0, 0
-
-    GOSUB "SlimBarrier"
-    
-    RightBarrierStartX = Width[i]/2 - 0.05
-    RightBarrierEndX   = Width[i]/2 + RightNarrowing[i] - 0.05
-    PUT RightBarrierStartX, -1, 0, 0
-    PUT RightBarrierStartX,  0, 0, 0
-    PUT RightBarrierStartX,  CurveStart, 0, 0
-
-    FOR stepIndex = 1 TO SegmentsResolution - 1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
-        currentX = RightBarrierStartX + (RightBarrierEndX - RightBarrierStartX) * blendedWeight
-        PUT currentX, currentY, 0, 0
-    NEXT stepIndex
-
-    PUT RightBarrierEndX, CurveEnd, 0, 0
-    PUT RightBarrierEndX, StraightTotalLength, 0, 0
-    PUT RightBarrierEndX, StraightTotalLength + 1, 0, 0
-
-    GOSUB "SlimBarrier"
-    
-    DEL 1
-    
-    ! =========================================================================
-    ! TRANSITIONS & WRAP-UP
-    ! =========================================================================
-    ChangedWidth = Width[i+1] + RightNarrowing[i] + LeftNarrowing[i]
-    OldWidth = Width[i]
-    FOR j = i TO 100
-        IF Width[j] = OldWidth THEN
-            Width[j] = ChangedWidth
-        ENDIF
-    NEXT j
-    NextLength[i-1] = StraightResizing[i-1]
-    ADDY NextLength[i-1]
-    ADDX RightNarrowing[i]/2 - LeftNarrowing[i]/2
-    ROTZ Orietation
-    ADDX MoveX[i]
-    ADDY MoveY[i]
-    ROTZ -Orietation
+		FOR stepIndex = 1 TO SegmentsResolution - 1
+			progressRatio = stepIndex / SegmentsResolution
+			currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+			
+			baseWeight = (1 - COS(progressRatio * 180)) / 2
+			sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+			blendedWeight = (baseWeight + sharpWeight) * 0.5
+			currentX = RightBarrierStartX + (RightBarrierEndX - RightBarrierStartX) * blendedWeight
+			PUT currentX, currentY, 0, 0
+		NEXT stepIndex
+		PUT RightBarrierEndX, CurveEnd, 0, 0
+		PUT RightBarrierEndX, StraightTotalLength, 0, 0
+		PUT RightBarrierEndX, StraightTotalLength + 1, 0, 0
+		GOSUB "SlimBarrier"
+	ENDIF
+	DEL 1
+	! =========================================================================
+	! TRANSITIONS & WRAP-UP
+	! =========================================================================
+	ChangedWidth = Width[i+1] + RightNarrowing[i] + LeftNarrowing[i]
+	OldWidth = Width[i]
+	FOR j = i TO 100
+		IF Width[j] = OldWidth THEN
+			Width[j] = ChangedWidth
+		ENDIF
+	NEXT j
+	NextLength[i-1] = StraightResizing[i-1]
+	ADDY NextLength[i-1]
+	ADDX RightNarrowing[i]/2 - LeftNarrowing[i]/2
+	ROTZ Orietation
+	ADDX MoveX[i]
+	ADDY MoveY[i]
+	ROTZ -Orietation
 RETURN
-
-
 !-----Makes The Right Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveRight":
-    GOSUB "CurveBarrierRemoveHotSpot"
-    Angle = RightAngle[i]
-    CurveRadius = Width[i-1]/2 + CurveRight[i-1]
-    rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
-    IF ABS(RemovePart[i]) < Width[i]/2  THEN 
-        InnerRadius = CurveRight[i-1]
-        OuterRadius = CurveRight[i-1] + Width[i-1]
-        IF Width[i] <= Width[i-1] THEN 
-            WidthDifferenceIn = Width[i-1] - Width[i]
-            WidthDifferenceOut = 0
-            GOSUB "RightTrack"
-            MATERIAL 19
+	GOSUB "CurveBarrierRemoveHotSpot"
+	Angle = RightAngle[i]
+	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
+	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
+	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
+		InnerRadius = CurveRight[i-1]
+		OuterRadius = CurveRight[i-1] + Width[i-1]
+		IF Width[i] <= Width[i-1] THEN 
+			WidthDifferenceIn = Width[i-1] - Width[i]
+			WidthDifferenceOut = 0
+			GOSUB "RightTrack"
+			MATERIAL 19
 			ChicaneBool = 0
-            GOSUB "RightLines"
-            LineMargin = LineMargin + LineWidth*4
-            MATERIAL 18
+			GOSUB "RightLines"
+			LineMargin = LineMargin + LineWidth*4
+			MATERIAL 18
 			ChicaneBool = 1
-            GOSUB "RightLines"
-            MATERIAL 133
-            LineMargin = ConstantLineMargin
-        ELSE
-            WidthDifferenceIn = 0
-            WidthDifferenceOut = Width[i] - Width[i-1]
-            GOSUB "RightTrack"
-            WidthDifferenceOut = Width[i] - Width[i-1]
-            MATERIAL 19
+			GOSUB "RightLines"
+			MATERIAL 133
+			LineMargin = ConstantLineMargin
+		ELSE
+			WidthDifferenceIn = 0
+			WidthDifferenceOut = Width[i] - Width[i-1]
+			GOSUB "RightTrack"
+			WidthDifferenceOut = Width[i] - Width[i-1]
+			MATERIAL 19
 			ChicaneBool = 0
-            GOSUB "RightLines"
-            LineMargin = LineMargin + LineWidth*4
-            MATERIAL 18
+			GOSUB "RightLines"
+			LineMargin = LineMargin + LineWidth*4
+			MATERIAL 18
 			ChicaneBool = 1
-            GOSUB "RightLines"
-            MATERIAL 133
-            LineMargin = ConstantLineMargin
-            ADDY Width[i] - Width[i-1]
-        ENDIF
-        IF BarrierVisible GOSUB "RightBarrier"
-    ENDIF
-    ADDX CurveRadius - rCenter * COS(Angle)
-    ADDY rCenter * SIN(Angle)
-    ROTZ -Angle
-    Orietation = Orietation - Angle
-    ROTZ Orietation
-    ADDX MoveX[i]
-    ADDY MoveY[i]
-    ROTZ -Orietation
+			GOSUB "RightLines"
+			MATERIAL 133
+			LineMargin = ConstantLineMargin
+			ADDY Width[i] - Width[i-1]
+		ENDIF
+		IF BarrierVisible GOSUB "RightBarrier"
+	ENDIF
+	ADDX CurveRadius - rCenter * COS(Angle)
+	ADDY rCenter * SIN(Angle)
+	ROTZ -Angle
+	Orietation = Orietation - Angle
+	ROTZ Orietation
+	ADDX MoveX[i]
+	ADDY MoveY[i]
+	ROTZ -Orietation
 RETURN
 
 "RightTrack":
@@ -523,16 +518,16 @@ RETURN
 RETURN
 
 "RightBarrier":
-    ADDZ BarrierHeight
-    Segments = 12
+	ADDZ BarrierHeight
+	Segments = 12
 	Reset = 0
-    ! --- LEFT SIDE BARRIER (Outer Path) ---
-    OuterRadius = CurveRight[i-1] + Width[i-1] - .05
-    
-    ! Only shift outer side if the track WIDENS
-    WidthDifferenceOut = 0
-    IF Width[i] > Width[i-1] THEN
-		 WidthDifferenceOut = Width[i] - Width[i-1]
+	! --- LEFT SIDE BARRIER (Outer Path) ---
+	OuterRadius = CurveRight[i-1] + Width[i-1] - .05
+	
+	! Only shift outer side if the track WIDENS
+	WidthDifferenceOut = 0
+	IF Width[i] > Width[i-1] THEN
+		WidthDifferenceOut = Width[i] - Width[i-1]
 		ADDY Width[i-1] - Width[i]
 		Reset = 1
 	ENDIF
@@ -549,13 +544,10 @@ RETURN
 		PUT _xEndOut, _yEndOut, 0, 0
 		GOSUB "SlimBarrier"
 	ENDIF
-    
-    
-    ! --- RIGHT SIDE BARRIER (Inner Path) ---
-    InnerRadius = CurveRight[i-1] + .05
-    
-    WidthDifferenceIn = 0
-    IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
+		! --- RIGHT SIDE BARRIER (Inner Path) ---
+	InnerRadius = CurveRight[i-1] + .05
+		WidthDifferenceIn = 0
+	IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
 	IF NOT(BarrierRemove[i] > Width[i]/2) THEN
 		PUT CurveRadius - InnerRadius, -1, 0, 0
 		PUT CurveRadius - InnerRadius, 0, 0, 0
@@ -569,58 +561,58 @@ RETURN
 		PUT _xEndIn, _yEndIn, 0, 0
 		GOSUB "Barrier"
 	ENDIF
-    IF Reset THEN DEL 1
-    DEL 1
+	IF Reset THEN DEL 1
+	DEL 1
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
 !-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveLeft":
 	GOSUB "CurveBarrierRemoveHotSpot"
-    Angle = LeftAngle[i]
-    CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
-    rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
-    IF ABS(RemovePart[i]) < Width[i]/2  THEN 
+	Angle = LeftAngle[i]
+	CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
+	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
+	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
 		InnerRadius = CurveLeft[i-1]
 		OuterRadius = CurveLeft[i-1] + Width[i-1]
-        IF Width[i] <= Width[i-1] THEN
-            WidthDifferenceIn = Width[i-1] - Width[i]
-            WidthDifferenceOut = 0
+		IF Width[i] <= Width[i-1] THEN
+			WidthDifferenceIn = Width[i-1] - Width[i]
+			WidthDifferenceOut = 0
 			GOSUB "LeftTrack"
 			MATERIAL 19
 			ChicaneBool = 0
-            GOSUB "LeftLines"
+			GOSUB "LeftLines"
 			LineMargin = LineMargin + LineWidth*4
 			MATERIAL 18
 			ChicaneBool = 1
 			GOSUB "LeftLines"
 			MATERIAL 133
 			LineMargin = ConstantLineMargin
-        ELSE
-            WidthDifferenceIn = 0
-            WidthDifferenceOut = Width[i] - Width[i-1]
+		ELSE
+			WidthDifferenceIn = 0
+			WidthDifferenceOut = Width[i] - Width[i-1]
 			GOSUB "LeftTrack"
 			MATERIAL 19
 			ChicaneBool = 0
-            GOSUB "LeftLines"
+			GOSUB "LeftLines"
 			LineMargin = LineMargin + LineWidth*4
 			MATERIAL 18
 			ChicaneBool = 1
 			GOSUB "LeftLines"
 			MATERIAL 133
 			LineMargin = ConstantLineMargin
-            ADDY Width[i] - Width[i-1]
-        ENDIF
+			ADDY Width[i] - Width[i-1]
+		ENDIF
 		IF BarrierVisible GOSUB "LeftBarrier"
-    ENDIF
-    ADDX CurveRadius + rCenter * COS(Angle)
-    ADDY rCenter * SIN(Angle)
-    ROTZ Angle
-    Orietation = Orietation + Angle
-    ROTZ Orietation
-    ADDX MoveX[i]
-    ADDY MoveY[i]
-    ROTZ -Orietation
+	ENDIF
+	ADDX CurveRadius + rCenter * COS(Angle)
+	ADDY rCenter * SIN(Angle)
+	ROTZ Angle
+	Orietation = Orietation + Angle
+	ROTZ Orietation
+	ADDX MoveX[i]
+	ADDY MoveY[i]
+	ROTZ -Orietation
 RETURN
 
 "LeftTrack":
@@ -670,18 +662,18 @@ RETURN
 RETURN
 
 "LeftBarrier":
-    ADDZ BarrierHeight
-    Segments = 15
-    Reset = 0
-    ! --- RIGHT SIDE BARRIER (Outer Path) ---
-    OuterRadius = CurveLeft[i-1] + Width[i-1] - .05
-    ! Only shift outer side if the track WIDENS
-    WidthDifferenceOut = 0
-    IF Width[i] > Width[i-1] THEN
-        WidthDifferenceOut = Width[i] - Width[i-1]
-        ADDY Width[i-1] - Width[i]
-        Reset = 1
-    ENDIF
+	ADDZ BarrierHeight
+	Segments = 15
+	Reset = 0
+	! --- RIGHT SIDE BARRIER (Outer Path) ---
+	OuterRadius = CurveLeft[i-1] + Width[i-1] - .05
+	! Only shift outer side if the track WIDENS
+	WidthDifferenceOut = 0
+	IF Width[i] > Width[i-1] THEN
+		WidthDifferenceOut = Width[i] - Width[i-1]
+		ADDY Width[i-1] - Width[i]
+		Reset = 1
+	ENDIF
 	IF NOT(BarrierRemove[i] > Width[i]/2) THEN 
 		PUT CurveRadius + OuterRadius, -1, 0, 0
 		PUT CurveRadius + OuterRadius, 0, 0, 0
@@ -695,11 +687,11 @@ RETURN
 		PUT _xEndOut, _yEndOut, 0, 0
 		GOSUB "SlimBarrier"
 	ENDIF
-    ! --- LEFT SIDE BARRIER (Inner Path) ---
-    InnerRadius = CurveLeft[i-1] + .05
-    ! Only shift inner side if the track NARROWS
-    WidthDifferenceIn = 0
-    IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
+	! --- LEFT SIDE BARRIER (Inner Path) ---
+	InnerRadius = CurveLeft[i-1] + .05
+	! Only shift inner side if the track NARROWS
+	WidthDifferenceIn = 0
+	IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
 	IF NOT(BarrierRemove[i] < -Width[i]/2) THEN 
 		PUT CurveRadius + InnerRadius, -1, 0, 0
 		PUT CurveRadius + InnerRadius, 0, 0, 0
@@ -712,9 +704,9 @@ RETURN
 		_yEndIn = InnerRadius * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + WidthDifferenceIn
 		PUT _xEndIn, _yEndIn, 0, 0
 		GOSUB "Barrier"
-    ENDIF
-    IF Reset THEN DEL 1
-    DEL 1
+	ENDIF
+	IF Reset THEN DEL 1
+	DEL 1
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -855,6 +847,12 @@ RETURN
 	ENDIF
 RETURN
 
+"StraightResizingBarrierRemoveHotSpot":
+	HOTSPOT  0, StraightResizing[i-1]/2,	0, unID, BarrierRemove[i], 1 : unID = unID + 1
+	HOTSPOT  0, StraightResizing[i-1]/2,	0, unID, BarrierRemove[i], 2 : unID = unID + 1
+	HOTSPOT -1, StraightResizing[i-1]/2,	0, unID, BarrierRemove[i], 3 : unID = unID + 1
+RETURN
+
 "RightNarrowing":
 	HOTSPOT  Width[i]/2, 		-StraightResizing[i-1]/4, 0,	unID, RightNarrowing[i], 1 : unID = unID + 1
 	HOTSPOT  Width[i]/2, 		-StraightResizing[i-1]/4, 0,	unID, RightNarrowing[i], 2 : unID = unID + 1
@@ -872,99 +870,99 @@ RETURN
 "Barrier":
 	MATERIAL 19
 	TUBE 45, NSP/4, ExtrudeValues,
-				-0.053495266155, -0.225064470749, 1,
-				 0.043073357115, -0.225064470749, 1,
-				 0.054260952005, -0.213876875865, 1,
-				 0.041004712105, -0.207642665918, 1,
-				 0.041089046155, -0.121696229470, 1,
-				 0.027835579645, -0.115919834922, 1,
-				 0.027819192115, -0.083403233477, 1,
-				 0.041089046155, -0.077928642056, 1,
-				 0.041089046155, -0.027518753572, 1,
-				 0.027788233515, -0.021974329834, 1,
-				 0.027817971335,  0.010794791911, 1,
-				 0.041089046155,  0.016269886976, 1,
-				 0.041089046155,  0.076556294730, 1,
-				 0.053789045485,  0.086556686173, 1,
-				 0.048358769035,  0.161849843719, 1,
-				 0.043826236975,  0.178704416145, 1,
-				 0.037383697335,  0.193379883373, 1,
-				 0.028340436525,  0.206924853139, 1,
-				 0.018379954525,  0.217110685738, 1,
-				 0.013265917695,  0.220459881199, 1,
-				 0.007692225885,  0.222744214605, 1,
-				 0.004343201095,  0.223720282956, 1,
-				 0.000312219395,  0.224676013693, 1,
-				-0.006303474015,  0.225064470749, 1,
-				-0.012885941385,  0.224297238358, 1,
-				-0.018735729355,  0.222749284515, 1,
-				-0.025224097625,  0.219599897150, 1,
-				-0.030475232625,  0.215513175833, 1,
-				-0.042214634965,  0.202090541516, 1,
-				-0.050581204645,  0.187900666846, 1,
-				-0.056304275365,  0.172195061098, 1,
-				-0.059341670575,  0.156397945006, 1,
-				-0.064209954515,  0.086903924945, 1,
-				-0.051425621145,  0.076489887365, 1,
-				-0.051425621145,  0.016235094245, 1,
-				-0.038221997015,  0.010787826537, 1,
-				-0.038257400585, -0.021841676342, 1,
-				-0.051425621145, -0.027285187497, 1,
-				-0.051425621145, -0.077963434787, 1,
-				-0.038223217245, -0.083410199075, 1,
-				-0.038255531905, -0.115793540182, 1,
-				-0.051425621145, -0.121333775987, 1,
-				-0.051425621145, -0.207642665918, 1,
-				-0.064728946065, -0.213488568944, 1,
-				-0.053495266155, -0.225064470749, 1,
-				GET(NSP)
+		-0.053495266155, -0.225064470749, 1,
+		 0.043073357115, -0.225064470749, 1,
+		 0.054260952005, -0.213876875865, 1,
+		 0.041004712105, -0.207642665918, 1,
+		 0.041089046155, -0.121696229470, 1,
+		 0.027835579645, -0.115919834922, 1,
+		 0.027819192115, -0.083403233477, 1,
+		 0.041089046155, -0.077928642056, 1,
+		 0.041089046155, -0.027518753572, 1,
+		 0.027788233515, -0.021974329834, 1,
+		 0.027817971335,  0.010794791911, 1,
+		 0.041089046155,  0.016269886976, 1,
+		 0.041089046155,  0.076556294730, 1,
+		 0.053789045485,  0.086556686173, 1,
+		 0.048358769035,  0.161849843719, 1,
+		 0.043826236975,  0.178704416145, 1,
+		 0.037383697335,  0.193379883373, 1,
+		 0.028340436525,  0.206924853139, 1,
+		 0.018379954525,  0.217110685738, 1,
+		 0.013265917695,  0.220459881199, 1,
+		 0.007692225885,  0.222744214605, 1,
+		 0.004343201095,  0.223720282956, 1,
+		 0.000312219395,  0.224676013693, 1,
+		-0.006303474015,  0.225064470749, 1,
+		-0.012885941385,  0.224297238358, 1,
+		-0.018735729355,  0.222749284515, 1,
+		-0.025224097625,  0.219599897150, 1,
+		-0.030475232625,  0.215513175833, 1,
+		-0.042214634965,  0.202090541516, 1,
+		-0.050581204645,  0.187900666846, 1,
+		-0.056304275365,  0.172195061098, 1,
+		-0.059341670575,  0.156397945006, 1,
+		-0.064209954515,  0.086903924945, 1,
+		-0.051425621145,  0.076489887365, 1,
+		-0.051425621145,  0.016235094245, 1,
+		-0.038221997015,  0.010787826537, 1,
+		-0.038257400585, -0.021841676342, 1,
+		-0.051425621145, -0.027285187497, 1,
+		-0.051425621145, -0.077963434787, 1,
+		-0.038223217245, -0.083410199075, 1,
+		-0.038255531905, -0.115793540182, 1,
+		-0.051425621145, -0.121333775987, 1,
+		-0.051425621145, -0.207642665918, 1,
+		-0.064728946065, -0.213488568944, 1,
+		-0.053495266155, -0.225064470749, 1,
+		GET(NSP)
 	MATERIAL 133
 RETURN
 
 "SlimBarrier":
 	ADDZ -.12
 	TUBE 40, NSP/4, ExtrudeValues,
-			 0.06693162618, -0.06718562778032, 1,
-			 0.05140745026, -0.08881748932139, 1,
-			 0.02523758065, -0.10433030821310, 1,
-			 0.00806929492, -0.10646130838345, 1,
-			-0.00909899081, -0.10859230855380, 1,
-			-0.04377055183, -0.09615174289987, 1,
-			-0.05560055101, -0.08164352181237, 1,
-			-0.06743056558, -0.06713530072487, 1,
-			-0.07239220925, -0.03136993248768, 1,
-			-0.06241300009,  0.01117932022509, 1,
-			-0.02747786358,  0.08950573001541, 1,
-			-0.02057891363,  0.12012142551530, 1,
-			-0.02562697438,  0.14849151670430, 1,
-			-0.03381391324,  0.16572174722135, 1,
-			-0.04200085210,  0.18295197773840, 1,
-			-0.05740520529,  0.21713343329830, 1,
-			-0.06849688869,  0.25509599802970, 1,
-			-0.06955783749,  0.29237322927010, 1,
-			-0.06228036509,  0.31874170812320, 1,
-			-0.04191505769,  0.33694100905500, 1,
-			-0.01427192552,  0.34758149467780, 1,
-			-0.00707593694,  0.34835334812580, 1,
-			 0.00012005163,  0.34912520157380, 1,
-			 0.02731134151,  0.34409521695440, 1,
-			 0.04144833390,  0.33521130221420, 1,
-			 0.05558532631,  0.32632738747400, 1,
-			 0.07149664392,  0.29599850171430, 1,
-			 0.07132486601,  0.25907547065790, 1,
-			 0.06573435579,  0.24090543777750, 1,
-			 0.06014390549,  0.22273540489710, 1,
-			 0.04118990894,  0.18023953876170, 1,
-			 0.027242,       0.14896984022120, 1,
-			 0.021487,       0.12630637693340, 1,
-			 0.02544299754,  0.09674477541033, 1,
-			 0.03879386222,  0.06467300016915, 1,
-			 0.04448582786,  0.05191131116562, 1,
-			 0.05017779349,  0.03914962216209, 1,
-			 0.06395860984,  0.00825230056142, 1,
-			 0.07139877356, -0.02020399926915, 1,
-			 0.07239220925, -0.04883341388832, 1,
-			GET(NSP)
+		 0.06693162618, -0.06718562778032, 1,
+		 0.05140745026, -0.08881748932139, 1,
+		 0.02523758065, -0.10433030821310, 1,
+		 0.00806929492, -0.10646130838345, 1,
+		-0.00909899081, -0.10859230855380, 1,
+		-0.04377055183, -0.09615174289987, 1,
+		-0.05560055101, -0.08164352181237, 1,
+		-0.06743056558, -0.06713530072487, 1,
+		-0.07239220925, -0.03136993248768, 1,
+		-0.06241300009,  0.01117932022509, 1,
+		-0.02747786358,  0.08950573001541, 1,
+		-0.02057891363,  0.12012142551530, 1,
+		-0.02562697438,  0.14849151670430, 1,
+		-0.03381391324,  0.16572174722135, 1,
+		-0.04200085210,  0.18295197773840, 1,
+		-0.05740520529,  0.21713343329830, 1,
+		-0.06849688869,  0.25509599802970, 1,
+		-0.06955783749,  0.29237322927010, 1,
+		-0.06228036509,  0.31874170812320, 1,
+		-0.04191505769,  0.33694100905500, 1,
+		-0.01427192552,  0.34758149467780, 1,
+		-0.00707593694,  0.34835334812580, 1,
+		 0.00012005163,  0.34912520157380, 1,
+		 0.02731134151,  0.34409521695440, 1,
+		 0.04144833390,  0.33521130221420, 1,
+		 0.05558532631,  0.32632738747400, 1,
+		 0.07149664392,  0.29599850171430, 1,
+		 0.07132486601,  0.25907547065790, 1,
+		 0.06573435579,  0.24090543777750, 1,
+		 0.06014390549,  0.22273540489710, 1,
+		 0.04118990894,  0.18023953876170, 1,
+		 0.027242,       0.14896984022120, 1,
+		 0.021487,       0.12630637693340, 1,
+		 0.02544299754,  0.09674477541033, 1,
+		 0.03879386222,  0.06467300016915, 1,
+		 0.04448582786,  0.05191131116562, 1,
+		 0.05017779349,  0.03914962216209, 1,
+		 0.06395860984,  0.00825230056142, 1,
+		 0.07139877356, -0.02020399926915, 1,
+		 0.07239220925, -0.04883341388832, 1,
+		GET(NSP)
 	DEL 1
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
@@ -1145,263 +1143,253 @@ RETURN
 RETURN
 
 "StraightResizing":
-    RightNarrowing[i] = RightNarrowing[i] + ESP
-    LeftNarrowing[i]  = LeftNarrowing[i] + ESP
+	RightNarrowing[i] = RightNarrowing[i] + ESP
+	LeftNarrowing[i]  = LeftNarrowing[i] + ESP
 
-    StraightTotalLength = StraightResizing[i-1]
-    CurveHeight = StraightTotalLength * 0.60
+	StraightTotalLength = StraightResizing[i-1]
+	CurveHeight = StraightTotalLength * 0.60
 
-    MiddleLength = StraightTotalLength / 2
-    CurveStart   = MiddleLength - (CurveHeight / 2)
-    CurveEnd     = MiddleLength + (CurveHeight / 2)
-    HalfVerticalHeight = CurveHeight / 2
-    
-    ! --- DYNAMIC +/- 30% CONSTRAINT ---
-    MaxAllowedNarrowing = StraightTotalLength * 0.30
+	MiddleLength = StraightTotalLength / 2
+	CurveStart   = MiddleLength - (CurveHeight / 2)
+	CurveEnd     = MiddleLength + (CurveHeight / 2)
+	HalfVerticalHeight = CurveHeight / 2
+	
+	! --- DYNAMIC +/- 30% CONSTRAINT ---
+	MaxAllowedNarrowing = StraightTotalLength * 0.30
 
-    IF RightNarrowing[i] > MaxAllowedNarrowing  THEN RightNarrowing[i] = MaxAllowedNarrowing
-    IF RightNarrowing[i] < -MaxAllowedNarrowing THEN RightNarrowing[i] = -MaxAllowedNarrowing
-    IF LeftNarrowing[i] > MaxAllowedNarrowing  THEN LeftNarrowing[i] = MaxAllowedNarrowing
-    IF LeftNarrowing[i] < -MaxAllowedNarrowing THEN LeftNarrowing[i] = -MaxAllowedNarrowing
-    
-    SegmentsResolution = 16
+	IF RightNarrowing[i] > MaxAllowedNarrowing  THEN RightNarrowing[i] = MaxAllowedNarrowing
+	IF RightNarrowing[i] < -MaxAllowedNarrowing THEN RightNarrowing[i] = -MaxAllowedNarrowing
+	IF LeftNarrowing[i] > MaxAllowedNarrowing  THEN LeftNarrowing[i] = MaxAllowedNarrowing
+	IF LeftNarrowing[i] < -MaxAllowedNarrowing THEN LeftNarrowing[i] = -MaxAllowedNarrowing
+	
+	SegmentsResolution = 16
 
-    PUT  Width[i]/2, 0, 1
-    PUT  Width[i]/2, CurveStart, 1
+	PUT  Width[i]/2, 0, 1
+	PUT  Width[i]/2, CurveStart, 1
 
-    ! Right Edge Blended S-Curve Loop
-    FOR stepIndex = 1 TO SegmentsResolution - 1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
+	! Right Edge Blended S-Curve Loop
+	FOR stepIndex = 1 TO SegmentsResolution - 1
+		progressRatio = stepIndex / SegmentsResolution
+		currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+		baseWeight = (1 - COS(progressRatio * 180)) / 2
+		sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+		blendedWeight = (baseWeight + sharpWeight) * 0.5
 
-        currentX = Width[i]/2 + RightNarrowing[i] * blendedWeight
-        PUT currentX, currentY, 1
-    NEXT stepIndex
+		currentX = Width[i]/2 + RightNarrowing[i] * blendedWeight
+		PUT currentX, currentY, 1
+	NEXT stepIndex
 
-    PUT  Width[i]/2 + RightNarrowing[i], CurveEnd,    1
-    PUT  Width[i]/2 + RightNarrowing[i], StraightTotalLength, 1
-    PUT -Width[i]/2 - LeftNarrowing[i],  StraightTotalLength, 1
-    PUT -Width[i]/2 - LeftNarrowing[i],  CurveEnd,    1
+	PUT  Width[i]/2 + RightNarrowing[i], CurveEnd,    1
+	PUT  Width[i]/2 + RightNarrowing[i], StraightTotalLength, 1
+	PUT -Width[i]/2 - LeftNarrowing[i],  StraightTotalLength, 1
+	PUT -Width[i]/2 - LeftNarrowing[i],  CurveEnd,    1
 
-    ! Left Edge Blended S-Curve Loop (Descending)
-    FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
+	! Left Edge Blended S-Curve Loop (Descending)
+	FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
+		progressRatio = stepIndex / SegmentsResolution
+		currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+		baseWeight = (1 - COS(progressRatio * 180)) / 2
+		sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+		blendedWeight = (baseWeight + sharpWeight) * 0.5
 
-        currentX = -Width[i]/2 - LeftNarrowing[i] * blendedWeight
-        PUT currentX, currentY, 1
-    NEXT stepIndex
+		currentX = -Width[i]/2 - LeftNarrowing[i] * blendedWeight
+		PUT currentX, currentY, 1
+	NEXT stepIndex
 
-    PUT -Width[i]/2, CurveStart, 1
-    PUT -Width[i]/2, 0,          1
+	PUT -Width[i]/2, CurveStart, 1
+	PUT -Width[i]/2, 0,          1
 
-    _track2DPoints = NSP / 3
-    POLY2_B _track2DPoints, 1+2+4, TrackColor, 0, GET(NSP)
+	_track2DPoints = NSP / 3
+	POLY2_B _track2DPoints, 1+2+4, TrackColor, 0, GET(NSP)
 
-    LINE2 0, 0, RightNarrowing[i]/2 - LeftNarrowing[i]/2, StraightResizing[i-1]
+	LINE2 0, 0, RightNarrowing[i]/2 - LeftNarrowing[i]/2, StraightResizing[i-1]
 
-    ChangedWidth = Width[i+1] + RightNarrowing[i] + LeftNarrowing[i]
-    OldWidth = Width[i]
-    FOR j = i TO 100
-        IF Width[j] = OldWidth THEN
-            Width[j] = ChangedWidth
-        ENDIF
-    NEXT j
+	ChangedWidth = Width[i+1] + RightNarrowing[i] + LeftNarrowing[i]
+	OldWidth = Width[i]
+	FOR j = i TO 100
+		IF Width[j] = OldWidth THEN
+			Width[j] = ChangedWidth
+		ENDIF
+	NEXT j
+	! --- RESTORED MOVEMENT CORRECTIONS ---
+	ADD2 RightNarrowing[i]/2, 0
+	ADD2 -LeftNarrowing[i]/2, 0
+	! =========================================================================
+	! RIGHT TRACK MARGIN
+	! =========================================================================
+	ADD2 -RightNarrowing[i], 0
+	PUT Width[i]/2, 0, 1
+	PUT Width[i]/2 + TrackMargin, 0, 1
+	PUT Width[i]/2 + TrackMargin, CurveStart, 1
+	! Outer Margin Curve (With Perpendicular math calculation)
+	FOR stepIndex = 1 TO SegmentsResolution - 1
+		progressRatio = stepIndex / SegmentsResolution
+		currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+		baseWeight = (1 - COS(progressRatio * 180)) / 2
+		sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+		blendedWeight = (baseWeight + sharpWeight) * 0.5
 
-    
-    ! --- RESTORED MOVEMENT CORRECTIONS ---
-    ADD2 RightNarrowing[i]/2, 0
-    ADD2 -LeftNarrowing[i]/2, 0
+		baseDerivative = (PI / 2) * SIN(progressRatio * 180)
+		sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight^2) * (-2 * baseDerivative)
+		blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
+		deltaX = RightNarrowing[i] * blendedDerivative
+		deltaY = CurveEnd - CurveStart
 
+		headingAngle = ATN(deltaX / deltaY)
+		currentX = (Width[i]/2 + RightNarrowing[i] * blendedWeight) + TrackMargin * COS(headingAngle)
+		perpendicularY = currentY - TrackMargin * SIN(headingAngle)
+		PUT currentX, perpendicularY, 1
+	NEXT stepIndex
 
-    ! =========================================================================
-    ! RIGHT TRACK MARGIN
-    ! =========================================================================
-    ADD2 -RightNarrowing[i], 0
-    
-    PUT Width[i]/2, 0, 1
-    PUT Width[i]/2 + TrackMargin, 0, 1
-    PUT Width[i]/2 + TrackMargin, CurveStart, 1
+	PUT Width[i]/2 + TrackMargin + RightNarrowing[i], CurveEnd,    1
+	PUT Width[i]/2 + TrackMargin + RightNarrowing[i], StraightTotalLength, 1
+	PUT Width[i]/2 + RightNarrowing[i],               StraightTotalLength, 1
+	PUT Width[i]/2 + RightNarrowing[i],               CurveEnd,    1
 
-    ! Outer Margin Curve (With Perpendicular math calculation)
-    FOR stepIndex = 1 TO SegmentsResolution - 1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
+	! Inner Edge (Matches Track Edge Loop Perfectly)
+	FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
+		progressRatio = stepIndex / SegmentsResolution
+		currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+		baseWeight = (1 - COS(progressRatio * 180)) / 2
+		sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+		blendedWeight = (baseWeight + sharpWeight) * 0.5
 
-        baseDerivative = (PI / 2) * SIN(progressRatio * 180)
-        sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight * baseWeight) * (-2 * baseDerivative)
-        blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
-        deltaX = RightNarrowing[i] * blendedDerivative
-        deltaY = CurveEnd - CurveStart
+		currentX = Width[i]/2 + RightNarrowing[i] * blendedWeight
+		PUT currentX, currentY, 1
+	NEXT stepIndex
 
-        headingAngle = ATN(deltaX / deltaY)
-        currentX = (Width[i]/2 + RightNarrowing[i] * blendedWeight) + TrackMargin * COS(headingAngle)
-        perpendicularY = currentY - TrackMargin * SIN(headingAngle)
-        PUT currentX, perpendicularY, 1
-    NEXT stepIndex
+	PUT Width[i]/2, CurveStart, 1
+	PUT Width[i]/2, 0,          1
+	POLY2_B NSP / 3, 1+2+4, TrackMarginColor, 0, GET(NSP)
+	DEL 1
+	! =========================================================================
+	! LEFT TRACK MARGIN
+	! =========================================================================
+	ADD2 LeftNarrowing[i], 0
+	
+	PUT -Width[i]/2, 0, 1
+	PUT -Width[i]/2 - TrackMargin, 0, 1
+	PUT -Width[i]/2 - TrackMargin, CurveStart, 1
 
-    PUT Width[i]/2 + TrackMargin + RightNarrowing[i], CurveEnd,    1
-    PUT Width[i]/2 + TrackMargin + RightNarrowing[i], StraightTotalLength, 1
-    PUT Width[i]/2 + RightNarrowing[i],               StraightTotalLength, 1
-    PUT Width[i]/2 + RightNarrowing[i],               CurveEnd,    1
+	! Outer Margin Curve (With Perpendicular math calculation)
+	FOR stepIndex = 1 TO SegmentsResolution - 1
+		progressRatio = stepIndex / SegmentsResolution
+		currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+		baseWeight = (1 - COS(progressRatio * 180)) / 2
+		sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+		blendedWeight = (baseWeight + sharpWeight) * 0.5
 
-    ! Inner Edge (Matches Track Edge Loop Perfectly)
-    FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
+		baseDerivative = (PI / 2) * SIN(progressRatio * 180)
+		sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight^2) * (-2 * baseDerivative)
+		blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
+		deltaX = -LeftNarrowing[i] * blendedDerivative
+		deltaY = CurveEnd - CurveStart
 
-        currentX = Width[i]/2 + RightNarrowing[i] * blendedWeight
-        PUT currentX, currentY, 1
-    NEXT stepIndex
+		headingAngle = ATN(deltaX / deltaY)
+		currentX = (-Width[i]/2 - LeftNarrowing[i] * blendedWeight) - TrackMargin * COS(headingAngle)
+		perpendicularY = currentY + TrackMargin * SIN(headingAngle)
+		PUT currentX, perpendicularY, 1
+	NEXT stepIndex
 
-    PUT Width[i]/2, CurveStart, 1
-    PUT Width[i]/2, 0,          1
+	PUT -Width[i]/2 - TrackMargin - LeftNarrowing[i], CurveEnd,    1
+	PUT -Width[i]/2 - TrackMargin - LeftNarrowing[i], StraightTotalLength, 1
+	PUT -Width[i]/2 - LeftNarrowing[i],               StraightTotalLength, 1
+	PUT -Width[i]/2 - LeftNarrowing[i],               CurveEnd,    1
 
-    _rmPoints = NSP / 3
-    POLY2_B _rmPoints, 1+2+4, TrackMarginColor, 0, GET(NSP)
-    DEL 1
+	! Inner Edge (Matches Track Edge Loop Perfectly)
+	FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
+		progressRatio = stepIndex / SegmentsResolution
+		currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+		baseWeight = (1 - COS(progressRatio * 180)) / 2
+		sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+		blendedWeight = (baseWeight + sharpWeight) * 0.5
 
+		currentX = -Width[i]/2 - LeftNarrowing[i] * blendedWeight
+		PUT currentX, currentY, 1
+	NEXT stepIndex
 
-    ! =========================================================================
-    ! LEFT TRACK MARGIN
-    ! =========================================================================
-    ADD2 LeftNarrowing[i], 0
-    
-    PUT -Width[i]/2, 0, 1
-    PUT -Width[i]/2 - TrackMargin, 0, 1
-    PUT -Width[i]/2 - TrackMargin, CurveStart, 1
+	PUT -Width[i]/2, CurveStart, 1
+	PUT -Width[i]/2, 0,          1
 
-    ! Outer Margin Curve (With Perpendicular math calculation)
-    FOR stepIndex = 1 TO SegmentsResolution - 1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
-
-        baseDerivative = (PI / 2) * SIN(progressRatio * 180)
-        sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight * baseWeight) * (-2 * baseDerivative)
-        blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
-        deltaX = -LeftNarrowing[i] * blendedDerivative
-        deltaY = CurveEnd - CurveStart
-
-        headingAngle = ATN(deltaX / deltaY)
-        currentX = (-Width[i]/2 - LeftNarrowing[i] * blendedWeight) - TrackMargin * COS(headingAngle)
-        perpendicularY = currentY + TrackMargin * SIN(headingAngle)
-        PUT currentX, perpendicularY, 1
-    NEXT stepIndex
-
-    PUT -Width[i]/2 - TrackMargin - LeftNarrowing[i], CurveEnd,    1
-    PUT -Width[i]/2 - TrackMargin - LeftNarrowing[i], StraightTotalLength, 1
-    PUT -Width[i]/2 - LeftNarrowing[i],               StraightTotalLength, 1
-    PUT -Width[i]/2 - LeftNarrowing[i],               CurveEnd,    1
-
-    ! Inner Edge (Matches Track Edge Loop Perfectly)
-    FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
-
-        currentX = -Width[i]/2 - LeftNarrowing[i] * blendedWeight
-        PUT currentX, currentY, 1
-    NEXT stepIndex
-
-    PUT -Width[i]/2, CurveStart, 1
-    PUT -Width[i]/2, 0,          1
-
-    _lmPoints = NSP / 3
-    POLY2_B _lmPoints, 1+2+4, TrackMarginColor, 0, GET(NSP)
-    DEL 1
+	_lmPoints = NSP / 3
+	POLY2_B _lmPoints, 1+2+4, TrackMarginColor, 0, GET(NSP)
+	DEL 1
 
 
-    ! =========================================================================
-    ! RIGHT MARGIN LINE
-    ! =========================================================================
-    ADD2 -RightNarrowing[i], 0
-    
-    PUT Width[i]/2 + TrackMarginLine, 0, 1
-    PUT Width[i]/2 + TrackMarginLine, CurveStart, 1
-    
-    FOR stepIndex = 1 TO SegmentsResolution - 1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
+	! =========================================================================
+	! RIGHT MARGIN LINE
+	! =========================================================================
+	ADD2 -RightNarrowing[i], 0
+	
+	PUT Width[i]/2 + TrackMarginLine, 0, 1
+	PUT Width[i]/2 + TrackMarginLine, CurveStart, 1
+	
+	FOR stepIndex = 1 TO SegmentsResolution - 1
+		progressRatio = stepIndex / SegmentsResolution
+		currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+		baseWeight = (1 - COS(progressRatio * 180)) / 2
+		sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+		blendedWeight = (baseWeight + sharpWeight) * 0.5
 
-        baseDerivative = (PI / 2) * SIN(progressRatio * 180)
-        sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight * baseWeight) * (-2 * baseDerivative)
-        blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
-        deltaX = RightNarrowing[i] * blendedDerivative
-        deltaY = CurveEnd - CurveStart
+		baseDerivative = (PI / 2) * SIN(progressRatio * 180)
+		sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight^2) * (-2 * baseDerivative)
+		blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
+		deltaX = RightNarrowing[i] * blendedDerivative
+		deltaY = CurveEnd - CurveStart
 
-        headingAngle = ATN(deltaX / deltaY)
-        currentX = (Width[i]/2 + RightNarrowing[i] * blendedWeight) + TrackMarginLine * COS(headingAngle)
-        perpendicularY = currentY - TrackMarginLine * SIN(headingAngle)
-        PUT currentX, perpendicularY, 1
-    NEXT stepIndex
-    
-    PUT Width[i]/2 + RightNarrowing[i] + TrackMarginLine, CurveEnd,    1
-    PUT Width[i]/2 + RightNarrowing[i] + TrackMarginLine, StraightTotalLength, 1
-    
-    _rmLinePoints = NSP / 3
-    POLY2_B _rmLinePoints, 1, TrackMarginColor, 0, GET(NSP)
-    DEL 1
+		headingAngle = ATN(deltaX / deltaY)
+		currentX = (Width[i]/2 + RightNarrowing[i] * blendedWeight) + TrackMarginLine * COS(headingAngle)
+		perpendicularY = currentY - TrackMarginLine * SIN(headingAngle)
+		PUT currentX, perpendicularY, 1
+	NEXT stepIndex
+	
+	PUT Width[i]/2 + RightNarrowing[i] + TrackMarginLine, CurveEnd,    1
+	PUT Width[i]/2 + RightNarrowing[i] + TrackMarginLine, StraightTotalLength, 1
+	
+	_rmLinePoints = NSP / 3
+	POLY2_B _rmLinePoints, 1, TrackMarginColor, 0, GET(NSP)
+	DEL 1
 
 
-    ! =========================================================================
-    ! LEFT MARGIN LINE
-    ! =========================================================================
-    ADD2 LeftNarrowing[i], 0
-    
-    PUT -Width[i]/2 - TrackMarginLine, 0, 1
-    PUT -Width[i]/2 - TrackMarginLine, CurveStart, 1
-    
-    FOR stepIndex = 1 TO SegmentsResolution - 1
-        progressRatio = stepIndex / SegmentsResolution
-        currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-        baseWeight = (1 - COS(progressRatio * 180)) / 2
-        sharpWeight = baseWeight * baseWeight * (3 - 2 * baseWeight)
-        blendedWeight = (baseWeight + sharpWeight) * 0.5
+	! =========================================================================
+	! LEFT MARGIN LINE
+	! =========================================================================
+	ADD2 LeftNarrowing[i], 0
+	
+	PUT -Width[i]/2 - TrackMarginLine, 0, 1
+	PUT -Width[i]/2 - TrackMarginLine, CurveStart, 1
+	
+	FOR stepIndex = 1 TO SegmentsResolution - 1
+		progressRatio = stepIndex / SegmentsResolution
+		currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+		baseWeight = (1 - COS(progressRatio * 180)) / 2
+		sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+		blendedWeight = (baseWeight + sharpWeight) * 0.5
 
-        baseDerivative = (PI / 2) * SIN(progressRatio * 180)
-        sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight * baseWeight) * (-2 * baseDerivative)
-        blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
-        deltaX = -LeftNarrowing[i] * blendedDerivative
-        deltaY = CurveEnd - CurveStart
+		baseDerivative = (PI / 2) * SIN(progressRatio * 180)
+		sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight^2) * (-2 * baseDerivative)
+		blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
+		deltaX = -LeftNarrowing[i] * blendedDerivative
+		deltaY = CurveEnd - CurveStart
 
-        headingAngle = ATN(deltaX / deltaY)
-        currentX = (-Width[i]/2 - LeftNarrowing[i] * blendedWeight) - TrackMarginLine * COS(headingAngle)
-        perpendicularY = currentY + TrackMarginLine * SIN(headingAngle)
-        PUT currentX, perpendicularY, 1
-    NEXT stepIndex
-    
-    PUT -Width[i]/2 - LeftNarrowing[i] - TrackMarginLine, CurveEnd,    1
-    PUT -Width[i]/2 - LeftNarrowing[i] - TrackMarginLine, StraightTotalLength, 1
-    
-    _lmLinePoints = NSP / 3
-    POLY2_B _lmLinePoints, 1, TrackMarginColor, 0, GET(NSP)
-    DEL 1
+		headingAngle = ATN(deltaX / deltaY)
+		currentX = (-Width[i]/2 - LeftNarrowing[i] * blendedWeight) - TrackMarginLine * COS(headingAngle)
+		perpendicularY = currentY + TrackMarginLine * SIN(headingAngle)
+		PUT currentX, perpendicularY, 1
+	NEXT stepIndex
+	
+	PUT -Width[i]/2 - LeftNarrowing[i] - TrackMarginLine, CurveEnd,    1
+	PUT -Width[i]/2 - LeftNarrowing[i] - TrackMarginLine, StraightTotalLength, 1
+	
+	_lmLinePoints = NSP / 3
+	POLY2_B _lmLinePoints, 1, TrackMarginColor, 0, GET(NSP)
+	DEL 1
 
-    TotalLength = TotalLength + StraightTotalLength
-    ADD2 0, StraightTotalLength
-    ROT2 Orietation
-    ADD2 MoveX[i], MoveY[i]
-    ROT2 -Orietation
+	TotalLength = TotalLength + StraightTotalLength
+	ADD2 0, StraightTotalLength
+	ROT2 Orietation
+	ADD2 MoveX[i], MoveY[i]
+	ROT2 -Orietation
 RETURN
 
 "CurveRight":
@@ -1533,10 +1521,10 @@ RETURN
 	POLY2_B 9, 1+2+4,
 		TrackColor, 0,
 			Width[i-1]/2,												0,															1,
-		-Width[i-1]/2,												0,																1,
-		-Width[i-1]/2,												InnerMargin,													1,
+		-Width[i-1]/2,													0,															1,
+		-Width[i-1]/2,													InnerMargin,												1,
 			CurveRadius,												InnerMargin, 												900,
-			CurveRadius + CurveLeft[i-1] * COS(Angle), 				CurveLeft[i-1] * SIN(Angle) + InnerMargin,						3001,
+			CurveRadius + CurveLeft[i-1] * COS(Angle), 					CurveLeft[i-1] * SIN(Angle) + InnerMargin,					3001,
 			CurveRadius + (CurveLeft[i-1] + Width[i-1]) * COS(Angle),	(CurveLeft[i-1] + Width[i-1]) * SIN(Angle) + OuterMargin,	1,
 			CurveRadius,												OuterMargin, 												900,
 			Width[i-1]/2,												OuterMargin,												3001,
@@ -1612,7 +1600,7 @@ RETURN
 		IF ColorCircles THEN
 			POLY2_B 2, 1+2+4,
 				6, 0,
-				1+Width[i]/2,              0, 900,
+				1+Width[i]/2,            0, 900,
 				CircleSize,            360, 4001
 		ENDIF
 	ENDIF
@@ -1670,7 +1658,6 @@ RETURN
 		HOTSPOT2  1+Width[i]/2,   0,	unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT2  1+Width[i]/2,   0,	unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT2  1+Width[i]/2+1, 0,	unID, Width[i], 3 : unID = unID + 1
-
 		IF ColorCircles THEN
 			POLY2_B 2, 1+2+4,
 				3, 0,
@@ -1762,7 +1749,7 @@ RETURN
 		POLY2_B 2, 1+2+4,
 			75, 0,
 			Width[i]/2,            -StraightResizing[i-1]/4, 900,
-			CircleSize,            360, 					4001
+			CircleSize,            360, 					 4001
 	ENDIF
 RETURN
 "LeftNarrowing":
@@ -1773,7 +1760,7 @@ RETURN
 		POLY2_B 2, 1+2+4,
 			77, 0,
 			-Width[i]/2,           -StraightResizing[i-1]/4, 900,
-			CircleSize,            360, 					4001
+			CircleSize,            360, 					 4001
 	ENDIF
 RETURN
 ]]>
@@ -1811,26 +1798,26 @@ ELSE
 ENDIF
 
 FOR i = 1 TO 100
-	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle------------------------------------------------------------------------------------------------------------------------------------
+	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
 	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
 	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
-	!----------------------------------------------------------------------------------------------------------------------------------------
+	!-------------------------------------------------------------------------------------------------------------------------------------
 
-	!-----Makes Limits On The Width-----------------------------------------------------------------------------------------------------------------------------------
+	!-----Makes Limits On The Width-------------------------------------------------------------------------------------------------------
 	IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
-	!----------------------------------------------------------------------------------------------------------------------------------------
+	!-------------------------------------------------------------------------------------------------------------------------------------
 
-	!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------------------------------------------------
+	!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------
 	IF Width[i] > 0 AND Width[i] <> TempWidth THEN
 		TempWidth = Width[i]
 	ENDIF
 	Width[i] = TempWidth
-	!----------------------------------------------------------------------------------------------------------------------------------------
-
-	!-----Sets Limit On Angle-----------------------------------------------------------------------------------------------------------------------------------
+	!-------------------------------------------------------------------------------------------------------------------------------------
+	IF NextLength[i] < ESP THEN NextLength[i] = 0
+	!-----Sets Limit On Angle-------------------------------------------------------------------------------------------------------------
 	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
 	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
-	!----------------------------------------------------------------------------------------------------------------------------------------
+	!-------------------------------------------------------------------------------------------------------------------------------------
 NEXT i
 ]]>
 </Script_1D>
