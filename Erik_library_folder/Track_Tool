@@ -90,9 +90,9 @@ END
 !----Makes The Frist Staright------------------------------------------------------------------------------------------------------------------------------------
 "Straight1":
 	EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
-			-Width[i]/2,	0,	1,
-			Width[i]/2,	0,	1,
-			Width[i]/2,	BeginningDistance, 	1,
+			-Width[i]/2,	0,					1,
+			Width[i]/2,		0,					1,
+			Width[i]/2,		BeginningDistance, 	1,
 			-Width[i]/2,	BeginningDistance,	1
 	ADDY BeginningDistance
 RETURN
@@ -104,8 +104,8 @@ RETURN
 	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
 		EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
 				-Width[i]/2,	0,				 1,
-				Width[i]/2,	0,				 1,
-				Width[i]/2,	NextLength[i-1], 1,
+				Width[i]/2,		0,				 1,
+				Width[i]/2,		NextLength[i-1], 1,
 				-Width[i]/2,	NextLength[i-1], 1
 		!-----Lines-----------------------------------------------------------------------------------------------------------------------------------		
 		FOR h = 1 TO 2
@@ -635,14 +635,14 @@ RETURN
 	_xLineRight = CurveRadius + OuterRadius
 	IF ChicaneBool AND Angle = 90 THEN Chicane = InnerRadius/8 ELSE Chicane = 0
 	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
-		_xLineLeft,               				0,                           					1,   
-		_xLineRight,              				0,                           					1,   
-		_xLineRight,              				WidthDifferenceIn,                   			1,   
-		CurveRadius + Chicane,                        	WidthDifferenceIn + Chicane,                   			900, 
+		_xLineLeft,               				0,                          					1,   
+		_xLineRight,              				0,                          					1,   
+		_xLineRight,              				WidthDifferenceIn,          					1,   
+		CurveRadius + Chicane,                  WidthDifferenceIn + Chicane,					900, 
 		CurveRadius + OuterRadius * COS(Angle), OuterRadius * SIN(Angle) + WidthDifferenceIn, 	3001,
 		CurveRadius + InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifferenceIn, 	1,   
-		CurveRadius,                  WidthDifferenceIn,                    900, 
-		_xLineLeft,                				WidthDifferenceIn,                   			3001 
+		CurveRadius,							WidthDifferenceIn,								900, 
+		_xLineLeft,								WidthDifferenceIn,								3001 
 
 	_rOuterInner = CurveLeft[i-1] + Width[i-1] - LineMargin - LineWidth
 	_rOuterOuter = CurveLeft[i-1] + Width[i-1] - LineMargin + LineWidth
