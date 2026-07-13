@@ -12,12 +12,60 @@
 
 <Script_3D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
-BLOCK 0.03, 0.065, 1.009-0.03/2
-ADDZ 1.009-0.03/2
-ADDX 0.03/2
-ADDY 0.065
-ROTX -90
-CYLIND 0.065, 0.03/2
+PoleWidth = 0.03
+PoleDepth = 0.065
+PoleHeigth = 1.009
+PolePlateWidth = 0.09
+PolePlateDepth = 0.12
+PolePlateHeigth = 0.004
+
+! --- Main Pole ---
+BLOCK PoleWidth, PoleDepth, PoleHeigth - PoleWidth/2
+
+! --- Curved Top ---
+ADDZ PoleHeigth - PoleWidth/2
+ADDX PoleWidth/2
+ADDY PoleDepth
+ROTX 90
+CYLIND PoleDepth, PoleWidth/2
+DEL 4
+
+! --- Base Plate ---
+ADDX -PolePlateWidth/3
+ADDY -PolePlateDepth/4
+BLOCK PolePlateWidth, PolePlateDepth, PolePlateHeigth
+DEL 2
+! --- POSITION AND ROTATE THE LIGHT ---
+ADDZ PoleHeigth - PoleWidth/2   ! Move light up to the top of the pole
+ADDX PoleWidth/2          ! Position adjusted per your code
+ADDY PoleDepth / 2              ! Center it along the depth
+
+! --- ROTATE THE COORDINATE SYSTEM ---
+ADDZ 0.02
+ADDY 0.01
+ROTZ -90
+ROTY 45                         ! Rotates +X straight DOWN to the -Z axis
+! --- DEBUGBING LINE (Shows the Light Direction) ---                        ! Changes color to Red in 3D
+line_type 2 
+
+ADDX 0.04
+ROTY 90                       ! Rotates +X straight DOWN to the -Z axis
+CYLIND PoleDepth+0.01, PoleWidth/2 + 0.01      ! Draws a 2-meter line along the +X axis (the light path)
+DEL 1
+! --- The Light Source ---
+LIGHT   1.0, 1.0, 0,            ! RGB (Yellow light)
+        1,                      ! Shadow on
+        0.1,                    ! Radius / Source size
+        60.0, 75.0,             ! Cone angles (alpha, beta)
+        0.3,                    ! Angle falloff
+        0.1, 50.0,              ! Distance 1 & 2
+        0.0,                    ! Constant intensity (no falloff over distance)
+        
+        ! --- ADD THIS TO OVERDRIVE BRIGHTNESS ---
+        ADDITIONAL_DATA c4d_gen_Intensity = 1.5,     ! 500% power multiplier (Increase this to 10.0 or 20.0 if you want a blinding spotlight)
+                        c4d_gen_Type = "Spot"       ! Directs the physics engine to treat it as a true spotlight
+
+DEL 4
 ]]>
 </Script_3D>
 
