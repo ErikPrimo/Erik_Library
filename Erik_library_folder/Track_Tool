@@ -26,12 +26,7 @@ GOSUB "BegginingWidthHotSpot"
 !-------HotSpot Line Margin--------------------------------------------------------------------------------------------------------------------
 GOSUB "LineMarginHotSpot"
 !----------------------------------------------------------------------------------------------------------------------------------------
-RightLightDistance = 0
-LeftLightDistance = 0
-LightMargin = 0.2
-LightDistance = 1.5/2
-RightLightBool = 1
-LeftLightBool = 0
+
 !-------Main Loop Places All Objects--------------------------------------------------------------------------------------------------------------------
 i = 1
 GOSUB "StraightHotSpot"
@@ -235,7 +230,6 @@ RETURN
 	CalculatedRadiusRight    = (HalfHorizontalShiftRight^2 + HalfVerticalHeight^2) / (2 * HalfHorizontalShiftRight)
 	HalfHorizontalShiftLeft  = LeftNarrowing[i] / 2
 	CalculatedRadiusLeft     = (HalfHorizontalShiftLeft^2 + HalfVerticalHeight^2) / (2 * HalfHorizontalShiftLeft)
-	SegmentsResolution = 16
 	! =========================================================================
 	! MAIN TRACK EXTRUDE (Blended S-Curve Path)
 	! =========================================================================
@@ -700,7 +694,7 @@ RETURN
     IF Width[i] > Width[i-1] THEN WideningLength = Width[i] - Width[i-1]
     IF Width[i] <= Width[i-1] THEN NarrowingLength = Width[i-1] - Width[i]
 
-    ! FIX: Symmetrically align radii definitions for a Right Curve
+    ! Symmetrically align radii definitions for a Right Curve
     OuterLightRadius = OuterRadius + LightMargin  ! Left Edge (Large Radius)
     InnerLightRadius = InnerRadius - LightMargin  ! Right Edge (Small Radius)
 
@@ -715,7 +709,6 @@ RETURN
 
     ! SECTION A: Widening Straight
     IF WideningLength > 0.0001 THEN
-        ! FIX: Outer Left edge uses LeftLightDistance
         FOR j = 0 TO (LeftLightDistance + WideningLength) / LightDistance
             CurrentPosLeft = LeftLightDistance + (LightDistance * j)
             IF CurrentPosLeft <= WideningLength THEN
@@ -741,10 +734,13 @@ RETURN
         LeftoverDistanceForCurveOut = LightDistance - DistanceToJointOut
         OuterStartAngleOffset = (LeftoverDistanceForCurveOut / OuterLightRadius) * (180 / PI)
     ELSE
-        ! FIX: Use LeftLightDistance for the Outer Left math fallback
-        TotalRemainingLinearOut = LeftLightDistance + WideningLength
-        LeftoverDistanceForCurveOut = LightDistance - (TotalRemainingLinearOut MOD LightDistance)
-        IF LeftoverDistanceForCurveOut >= LightDistance THEN LeftoverDistanceForCurveOut = 0
+        ! --- FIXED TRACK LOGIC ---
+        IF LeftLightDistance >= WideningLength THEN
+            LeftoverDistanceForCurveOut = LeftLightDistance - WideningLength
+        ELSE
+            LeftoverDistanceForCurveOut = LightDistance - ((WideningLength - LeftLightDistance) MOD LightDistance)
+            IF LeftoverDistanceForCurveOut >= LightDistance THEN LeftoverDistanceForCurveOut = 0
+        ENDIF
         OuterStartAngleOffset = (LeftoverDistanceForCurveOut / OuterLightRadius) * (180 / PI)
     ENDIF
     
@@ -795,7 +791,6 @@ RETURN
 
     ! SECTION A: Narrowing Straight
     IF NarrowingLength > 0.0001 THEN
-        ! FIX: Inner Right edge uses RightLightDistance
         FOR k = 0 TO (RightLightDistance + NarrowingLength) / LightDistance
             CurrentPosRight = RightLightDistance + (LightDistance * k)
             IF CurrentPosRight <= NarrowingLength THEN
@@ -822,7 +817,6 @@ RETURN
         LeftoverDistanceForCurveIn = LightDistance - DistanceToJointIn
         InnerStartAngleOffset = (LeftoverDistanceForCurveIn / InnerLightRadius) * (180 / PI)
     ELSE
-        ! FIX: Use RightLightDistance for Inner Right math configurations
         IF RightLightDistance >= NarrowingLength THEN
             LeftoverDistanceForCurveIn = RightLightDistance - NarrowingLength
         ELSE
@@ -842,6 +836,7 @@ RETURN
                 ROTZ -CurrentAngle
                 ADDX -InnerLightRadius
                 ROTZ -90
+				IF NOT(RightLightBool) AND CurveRight[i-1] < 4 AND LightVisible THEN CALL "GF_Light"
                 IF RightLightBool AND LightVisible THEN CALL "GF_Light"
                 RightLightBool = NOT(RightLightBool)
                 DEL 3
@@ -877,21 +872,33 @@ RETURN
 RETURN
 
 "RightLines":
-	ADDZ TrackThickness
-	InnerRadius = CurveRight[i-1] + LineMargin - LineWidth
-	OuterRadius = CurveRight[i-1] + LineMargin + LineWidth
-	_xLineLeft  = CurveRadius - OuterRadius
-	_xLineRight = CurveRadius - InnerRadius
-	IF ChicaneBool AND Angle = 90 THEN Chicane = InnerRadius/8 ELSE Chicane = 0
-	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
-		_xLineLeft,               				0,                 								1,   
-		_xLineRight,              				0,                 								1,   
-		_xLineRight,              				WidthDifferenceIn,           					1,   
-		CurveRadius,                        	WidthDifferenceIn,           					900, 
-		CurveRadius - InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifferenceIn, 	3001,
-		CurveRadius - OuterRadius * COS(Angle), OuterRadius * SIN(Angle) + WidthDifferenceIn, 	1,   
-		CurveRadius - Chicane,        			WidthDifferenceIn + Chicane,     				900, 
-		_xLineLeft,               				WidthDifferenceIn,            					3001 
+ADDZ trackThickness
+    prevCurveRight = CurveRight[i-1]
+    innerTrackRad  = prevCurveRight + lineMargin - lineWidth
+    outerTrackRad  = prevCurveRight + lineMargin + lineWidth
+    xStartLeft     = curveRadius - outerTrackRad
+    xStartRight    = curveRadius - innerTrackRad
+    IF chicaneBool THEN
+        chicaneOffset = prevCurveRight / 8
+    ELSE
+        chicaneOffset = 0
+    ENDIF
+    halfAngle = angle / 2
+    outerMid_X = curveRadius - (outerTrackRad - chicaneOffset) * COS(halfAngle)
+    outerMid_Y = WidthDifferenceIn + (outerTrackRad - chicaneOffset) * SIN(halfAngle)
+    chicaneCenter_X = curveRadius - chicaneOffset * COS(halfAngle)
+    chicaneCenter_Y = WidthDifferenceIn + chicaneOffset * SIN(halfAngle)
+    EXTRUDE 10, 0, 0, lineThickness, extrudeValues,
+        xStartLeft,                               0,                                                  1,
+        xStartRight,                              0,                                                  1,
+        xStartRight,                              WidthDifferenceIn,                                  1,
+        curveRadius,                              WidthDifferenceIn,                                  900,
+        curveRadius - innerTrackRad * COS(angle), innerTrackRad * SIN(angle) + WidthDifferenceIn,       3001,
+        curveRadius - outerTrackRad * COS(angle), outerTrackRad * SIN(angle) + WidthDifferenceIn,       1,
+        chicaneCenter_X,                          chicaneCenter_Y,                                    900,
+        outerMid_X,                               outerMid_Y,                                         3001,
+        chicaneCenter_X,                          chicaneCenter_Y,                                    900,
+        xStartLeft,                               WidthDifferenceIn,                                  3001
 
 	_rOuterInner = CurveRight[i-1] + Width[i-1] - LineMargin - LineWidth
 	_rOuterOuter = CurveRight[i-1] + Width[i-1] - LineMargin + LineWidth
@@ -911,7 +918,6 @@ RETURN
 
 "RightBarrier":
 	ADDZ BarrierHeight
-	Segments = 12
 	Reset = 0
 	! --- LEFT SIDE BARRIER (Outer Path) ---
 	OuterRadius = CurveRight[i-1] + Width[i-1] - .05
@@ -927,8 +933,8 @@ RETURN
 		PUT CurveRadius - OuterRadius, -1, 0, 0
 		PUT CurveRadius - OuterRadius, 0, 0, 0
 		IF WidthDifferenceOut > ESP THEN PUT CurveRadius - OuterRadius, WidthDifferenceOut, 0, 0
-		FOR n = 0 TO Segments
-			AngleSegment = (n / Segments) * RightAngle[i]
+		FOR n = 0 TO SegmentsResolution
+			AngleSegment = (n / SegmentsResolution) * RightAngle[i]
 			PUT CurveRadius - OuterRadius * COS(AngleSegment), OuterRadius * SIN(AngleSegment) + WidthDifferenceOut, 0, 0
 		NEXT n
 		_xEndOut = CurveRadius - OuterRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
@@ -944,8 +950,8 @@ RETURN
 		PUT CurveRadius - InnerRadius, -1, 0, 0
 		PUT CurveRadius - InnerRadius, 0, 0, 0
 		IF WidthDifferenceIn > ESP THEN PUT CurveRadius - InnerRadius, WidthDifferenceIn, 0, 0
-		FOR n = 0 TO Segments
-			AngleSegment = (n / Segments) * RightAngle[i]
+		FOR n = 0 TO SegmentsResolution
+			AngleSegment = (n / SegmentsResolution) * RightAngle[i]
 			PUT CurveRadius - InnerRadius * COS(AngleSegment), InnerRadius * SIN(AngleSegment) + WidthDifferenceIn, 0, 0
 		NEXT n
 		_xEndIn = CurveRadius - InnerRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
@@ -1016,15 +1022,14 @@ RETURN
     IF Width[i] > Width[i-1] THEN WideningLength = Width[i] - Width[i-1]
     IF Width[i] <= Width[i-1] THEN NarrowingLength = Width[i-1] - Width[i]
 
-    ! FIX: Mirroring radius definitions correctly for a Left Curve
-    ! OuterRadius is the Outer Left profile; InnerRadius is the Inner Right profile
-    OuterLightRadius = OuterRadius + LightMargin   ! Left side (large radius path)
-    InnerLightRadius = InnerRadius - LightMargin   ! Right side (small radius path)
+    ! --- THE FIX: Left is Inner (Small Radius), Right is Outer (Large Radius) ---
+    OuterLightRadius = OuterRadius + LightMargin   ! Right side (Large radius path)
+    InnerLightRadius = InnerRadius - LightMargin   ! Left side (Small radius path)
 
     ! ====================================================================================================
-    ! --- LINE 1: OUTER (LEFT) EDGE LIGHT LINES (Handles Widening Transition + Outer Arc) ----------------
+    ! --- LINE 1: OUTER (RIGHT) EDGE LIGHT LINES (Handles Widening Transition + Outer Arc) ---------------
     ! ====================================================================================================
-    ADDX CurveRadius   ! Move left to the circle center
+    ADDX CurveRadius   ! Move to the circle center pivot
     ADDY -WideningLength
 
     LastLightPosOut = 0
@@ -1032,17 +1037,17 @@ RETURN
 
     ! SECTION A: Widening Straight
     IF WideningLength > 0.0001 THEN
-        ! Outer Left edge uses LeftLightDistance
-        FOR j = 0 TO (LeftLightDistance + WideningLength) / LightDistance
-            CurrentPosLeft = LeftLightDistance + (LightDistance * j)
-            IF CurrentPosLeft <= WideningLength THEN
-                ADDY CurrentPosLeft
-                ADDX OuterLightRadius   ! Lock directly to the outer left straight line boundary
-                ROTZ -90                ! Points straight OUT (Left)
-                IF LeftLightBool AND LightVisible THEN CALL "GF_Light"
-                LeftLightBool = NOT(LeftLightBool)
+        ! Outer Right edge uses RightLightDistance
+        FOR j = 0 TO (RightLightDistance + WideningLength) / LightDistance
+            CurrentPosRight = RightLightDistance + (LightDistance * j)
+            IF CurrentPosRight <= WideningLength THEN
+                ADDY CurrentPosRight
+                ADDX OuterLightRadius   
+                ROTZ -90                 ! Points straight OUT (Right)
+                IF RightLightBool AND LightVisible THEN CALL "GF_Light"
+                RightLightBool = NOT(RightLightBool)
                 DEL 3
-                LastLightPosOut = CurrentPosLeft
+                LastLightPosOut = CurrentPosRight
                 HasPlacedStraightLightsOut = 1
             ENDIF
         NEXT j
@@ -1058,10 +1063,12 @@ RETURN
         LeftoverDistanceForCurveOut = LightDistance - DistanceToJointOut
         OuterStartAngleOffset = (LeftoverDistanceForCurveOut / OuterLightRadius) * (180 / PI)
     ELSE
-        ! Use LeftLightDistance for the Outer Left math fallback tracking
-        TotalRemainingLinearOut = LeftLightDistance + WideningLength
-        LeftoverDistanceForCurveOut = LightDistance - (TotalRemainingLinearOut MOD LightDistance)
-        IF LeftoverDistanceForCurveOut >= LightDistance THEN LeftoverDistanceForCurveOut = 0
+        IF RightLightDistance >= WideningLength THEN
+            LeftoverDistanceForCurveOut = RightLightDistance - WideningLength
+        ELSE
+            LeftoverDistanceForCurveOut = LightDistance - ((WideningLength - RightLightDistance) MOD LightDistance)
+            IF LeftoverDistanceForCurveOut >= LightDistance THEN LeftoverDistanceForCurveOut = 0
+        ENDIF
         OuterStartAngleOffset = (LeftoverDistanceForCurveOut / OuterLightRadius) * (180 / PI)
     ENDIF
     
@@ -1073,10 +1080,10 @@ RETURN
             CurrentAngle = OuterStartAngleOffset + (OuterAngleStep * j)
             IF CurrentAngle <= Angle THEN
                 ROTZ CurrentAngle      ! Sweeps forward counter-clockwise
-                ADDX OuterLightRadius  ! Positive steps out to the outer left edge
-                ROTZ -90               ! Aligns light pointing straight OUT
-                IF LeftLightBool AND LightVisible THEN CALL "GF_Light"
-                LeftLightBool = NOT(LeftLightBool)
+                ADDX OuterLightRadius  
+                ROTZ -90                ! Aligns light pointing straight OUT (Right)
+                IF RightLightBool AND LightVisible THEN CALL "GF_Light"
+                RightLightBool = NOT(RightLightBool)
                 DEL 3
             ENDIF
         NEXT j
@@ -1085,19 +1092,19 @@ RETURN
         ArcDistanceUsedOut = LastArcAngleUsedOut * (PI / 180) * OuterLightRadius
         FinalLeftoverLinearOut = OuterCurveArcLength - ArcDistanceUsedOut
         IF FinalLeftoverLinearOut > 0 THEN
-            LeftLightDistance = LightDistance - FinalLeftoverLinearOut
+            RightLightDistance = LightDistance - FinalLeftoverLinearOut
         ELSE
-            LeftLightDistance = 0
+            RightLightDistance = 0
         ENDIF
     ELSE
-        LeftLightDistance = LightDistance - (OuterCurveArcLength - (OuterStartAngleOffset * (PI / 180) * OuterLightRadius))
+        RightLightDistance = LightDistance - (OuterCurveArcLength - (OuterStartAngleOffset * (PI / 180) * OuterLightRadius))
     ENDIF
 
     DEL 3 ! Clear Outer Setup Stacks
 
 
     ! ====================================================================================================
-    ! --- LINE 2: INNER (RIGHT) EDGE LIGHT LINES (Handles Narrowing Transition + Inner Arc) ---------------
+    ! --- LINE 2: INNER (LEFT) EDGE LIGHT LINES (Handles Narrowing Transition + Inner Arc) ----------------
     ! ====================================================================================================
     ADDX CurveRadius   
     
@@ -1112,17 +1119,17 @@ RETURN
 
     ! SECTION A: Narrowing Straight
     IF NarrowingLength > 0.0001 THEN
-        ! Inner Right edge uses RightLightDistance
-        FOR k = 0 TO (RightLightDistance + NarrowingLength) / LightDistance
-            CurrentPosRight = RightLightDistance + (LightDistance * k)
-            IF CurrentPosRight <= NarrowingLength THEN
-                ADDY CurrentPosRight
-                ADDX InnerLightRadius    ! Lock directly to the inner right straight line boundary
-                ROTZ 90                 ! Points straight OUT (Right)
-                IF RightLightBool AND LightVisible THEN CALL "GF_Light"
-                RightLightBool = NOT(RightLightBool)
+        ! Inner Left edge uses LeftLightDistance
+        FOR k = 0 TO (LeftLightDistance + NarrowingLength) / LightDistance
+            CurrentPosLeft = LeftLightDistance + (LightDistance * k)
+            IF CurrentPosLeft <= NarrowingLength THEN
+                ADDY CurrentPosLeft
+                ADDX InnerLightRadius    
+                ROTZ 90                ! Points straight OUT (Left)
+                IF LeftLightBool AND LightVisible  THEN CALL "GF_Light"
+                LeftLightBool = NOT(LeftLightBool)
                 DEL 3
-                LastLightPosIn = CurrentPosRight
+                LastLightPosIn = CurrentPosLeft
                 HasPlacedStraightLightsIn = 1
             ENDIF
         NEXT k
@@ -1139,11 +1146,10 @@ RETURN
         LeftoverDistanceForCurveIn = LightDistance - DistanceToJointIn
         InnerStartAngleOffset = (LeftoverDistanceForCurveIn / InnerLightRadius) * (180 / PI)
     ELSE
-        ! Use RightLightDistance for Inner Right math configurations
-        IF RightLightDistance >= NarrowingLength THEN
-            LeftoverDistanceForCurveIn = RightLightDistance - NarrowingLength
+        IF LeftLightDistance >= NarrowingLength THEN
+            LeftoverDistanceForCurveIn = LeftLightDistance - NarrowingLength
         ELSE
-            LeftoverDistanceForCurveIn = LightDistance - ((NarrowingLength - RightLightDistance) MOD LightDistance)
+            LeftoverDistanceForCurveIn = LightDistance - ((NarrowingLength - LeftLightDistance) MOD LightDistance)
             IF LeftoverDistanceForCurveIn >= LightDistance THEN LeftoverDistanceForCurveIn = 0
         ENDIF
         InnerStartAngleOffset = (LeftoverDistanceForCurveIn / InnerLightRadius) * (180 / PI)
@@ -1157,10 +1163,11 @@ RETURN
             CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
             IF CurrentAngle <= Angle THEN
                 ROTZ CurrentAngle      ! Sweeps forward counter-clockwise
-                ADDX InnerLightRadius  ! Positive steps out to the inner right edge
-                ROTZ 90                ! Aligns light pointing straight OUT
-                IF RightLightBool AND LightVisible THEN CALL "GF_Light"
-                RightLightBool = NOT(RightLightBool)
+                ADDX InnerLightRadius  
+                ROTZ 90               ! Aligns light pointing straight OUT (Left)
+				IF NOT(LeftLightBool) AND CurveLeft[i-1] < 4 AND LightVisible THEN CALL "GF_Light"
+                IF LeftLightBool AND LightVisible THEN CALL "GF_Light"
+                LeftLightBool = NOT(LeftLightBool)
                 DEL 3
             ENDIF
         NEXT k
@@ -1169,12 +1176,12 @@ RETURN
         ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * InnerLightRadius
         FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
         IF FinalLeftoverLinearIn > 0 THEN
-            RightLightDistance = LightDistance - FinalLeftoverLinearIn
+            LeftLightDistance = LightDistance - FinalLeftoverLinearIn
         ELSE
-            RightLightDistance = 0
+            LeftLightDistance = 0
         ENDIF
     ELSE
-        RightLightDistance = LightDistance - (InnerCurveArcLength - (InnerStartAngleOffset * (PI / 180) * InnerLightRadius))
+        LeftLightDistance = LightDistance - (InnerCurveArcLength - (InnerStartAngleOffset * (PI / 180) * InnerLightRadius))
     ENDIF
 
     DEL 2 ! Clear Inner Base Setup
@@ -1194,21 +1201,33 @@ RETURN
 RETURN
 
 "LeftLines":
-	ADDZ TrackThickness
-	InnerRadius = CurveLeft[i-1] + LineMargin - LineWidth
-	OuterRadius = CurveLeft[i-1] + LineMargin + LineWidth
-	_xLineLeft  = CurveRadius + InnerRadius
-	_xLineRight = CurveRadius + OuterRadius
-	IF ChicaneBool AND Angle = 90 THEN Chicane = InnerRadius/8 ELSE Chicane = 0
-	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
-		_xLineLeft,               				0,                          					1,   
-		_xLineRight,              				0,                          					1,   
-		_xLineRight,              				WidthDifferenceIn,          					1,   
-		CurveRadius + Chicane,                  WidthDifferenceIn + Chicane,					900, 
-		CurveRadius + OuterRadius * COS(Angle), OuterRadius * SIN(Angle) + WidthDifferenceIn, 	3001,
-		CurveRadius + InnerRadius * COS(Angle), InnerRadius * SIN(Angle) + WidthDifferenceIn, 	1,   
-		CurveRadius,							WidthDifferenceIn,								900, 
-		_xLineLeft,								WidthDifferenceIn,								3001 
+ADDZ trackThickness
+    prevCurveLeft = CurveLeft[i-1]
+    innerTrackRad = prevCurveLeft + lineMargin - lineWidth
+    outerTrackRad = prevCurveLeft + lineMargin + lineWidth
+    xStartLeft    = curveRadius + innerTrackRad
+    xStartRight   = curveRadius + outerTrackRad
+    IF chicaneBool THEN
+        chicaneOffset = innerTrackRad / 8
+    ELSE
+        chicaneOffset = 0
+    ENDIF
+    halfAngle = angle / 2
+    outerMid_X = curveRadius + (outerTrackRad + chicaneOffset) * COS(halfAngle)
+    outerMid_Y = WidthDifferenceIn + (outerTrackRad + chicaneOffset) * SIN(halfAngle)
+    chicaneCenter_X = curveRadius + chicaneOffset * COS(halfAngle)
+    chicaneCenter_Y = WidthDifferenceIn + chicaneOffset * SIN(halfAngle)
+    EXTRUDE 10, 0, 0, lineThickness, extrudeValues,
+        xStartLeft,                               0,                                                  1,
+        xStartRight,                              0,                                                  1,
+        xStartRight,                              WidthDifferenceIn,                                  1,
+        chicaneCenter_X,                          chicaneCenter_Y,                                    900,
+        outerMid_X,                               outerMid_Y,                                         3001,
+        chicaneCenter_X,                          chicaneCenter_Y,                                    900,
+        curveRadius + outerTrackRad * COS(angle), outerTrackRad * SIN(angle) + WidthDifferenceIn,     3001,
+        curveRadius + innerTrackRad * COS(angle), innerTrackRad * SIN(angle) + WidthDifferenceIn,     1,
+        curveRadius,                              WidthDifferenceIn,                                  900,
+        xStartLeft,                               WidthDifferenceIn,                                  3001
 
 	_rOuterInner = CurveLeft[i-1] + Width[i-1] - LineMargin - LineWidth
 	_rOuterOuter = CurveLeft[i-1] + Width[i-1] - LineMargin + LineWidth
@@ -1229,7 +1248,6 @@ RETURN
 
 "LeftBarrier":
 	ADDZ BarrierHeight
-	Segments = 15
 	Reset = 0
 	! --- RIGHT SIDE BARRIER (Outer Path) ---
 	OuterRadius = CurveLeft[i-1] + Width[i-1] - .05
@@ -1244,8 +1262,8 @@ RETURN
 		PUT CurveRadius + OuterRadius, -1, 0, 0
 		PUT CurveRadius + OuterRadius, 0, 0, 0
 		IF WidthDifferenceOut > ESP THEN PUT CurveRadius + OuterRadius, WidthDifferenceOut, 0, 0
-		FOR n = 0 TO Segments
-			AngleSegment = (n / Segments) * LeftAngle[i]
+		FOR n = 0 TO SegmentsResolution
+			AngleSegment = (n / SegmentsResolution) * LeftAngle[i]
 			PUT CurveRadius + OuterRadius * COS(AngleSegment), OuterRadius * SIN(AngleSegment) + WidthDifferenceOut, 0, 0
 		NEXT n
 		_xEndOut = CurveRadius + OuterRadius * COS(LeftAngle[i]) - SIN(LeftAngle[i])
@@ -1262,8 +1280,8 @@ RETURN
 		PUT CurveRadius + InnerRadius, -1, 0, 0
 		PUT CurveRadius + InnerRadius, 0, 0, 0
 		IF WidthDifferenceIn > ESP THEN PUT CurveRadius + InnerRadius, WidthDifferenceIn, 0, 0
-		FOR n = 0 TO Segments
-			AngleSegment = (n / Segments) * LeftAngle[i]
+		FOR n = 0 TO SegmentsResolution
+			AngleSegment = (n / SegmentsResolution) * LeftAngle[i]
 			PUT CurveRadius + InnerRadius * COS(AngleSegment), InnerRadius * SIN(AngleSegment) + WidthDifferenceIn, 0, 0
 		NEXT n
 		_xEndIn = CurveRadius + InnerRadius * COS(LeftAngle[i]) - SIN(LeftAngle[i])
@@ -1331,11 +1349,12 @@ RETURN
 		centerX = - Width[i] / 2 - CurveLeft[i-1]
 		centerY = 0
 		LeftRadius = CurveLeft[i-1] - 1 
+		IF LeftAngle[i] >= 180 THEN LeftAngle[i] = LeftAngle[i] - 1
 		refX = centerX + LeftRadius * COS(-LeftAngle[i])
 		refY = centerY + LeftRadius * SIN(-LeftAngle[i])
-		HOTSPOT centerX, centerY, 		0, unID, LeftAngle[i], 6 		: unID = unID + 1
-		HOTSPOT refX,    refY,    		0, unID, LeftAngle[i], 4 + 128  : unID = unID + 1
-		HOTSPOT - Width[i] / 2 - 1, 0,  0, nID, LeftAngle[i], 5 		: unID = unID + 1
+		HOTSPOT centerX, centerY, 		0, unID,	LeftAngle[i], 6 		: unID = unID + 1
+		HOTSPOT refX,    refY,    		0, unID,	LeftAngle[i], 4 + 128  : unID = unID + 1
+		HOTSPOT - Width[i] / 2 - 1, 0,  0, unID,	LeftAngle[i], 5 		: unID = unID + 1
 	ENDIF
 RETURN
 
@@ -2355,6 +2374,14 @@ TrackMarginColor = 102
 CircleColor = 11
 TrackMargin = 0.45
 TrackMarginLine = 0.25
+
+RightLightDistance = 0
+LeftLightDistance = 0
+LightMargin = 0.2
+LightDistance = 3/2
+RightLightBool = 1
+LeftLightBool = 0
+
 IF TempWidth = 0 THEN TempWidth = 7
 
 IF Sectors THEN
@@ -2418,6 +2445,12 @@ UI_INFIELD "HomeStraightActive", 100, 140, 80, 18
 
 UI_OUTFIELD "Light Visible", 20, 180, 80, 15
 UI_INFIELD "LightVisible", 20, 200, 80, 18
+
+UI_OUTFIELD "Segments Resolution", 20, 220, 120, 15
+UI_INFIELD "SegmentsResolution", 20, 240, 80, 18
+
+
+
 ]]>
 </Script_UI>
 
@@ -4049,6 +4082,10 @@ VALUES "HomeStraight" vlist
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
 		</Boolean>
+		<Integer Name="SegmentsResolution">
+			<Description><![CDATA[""]]></Description>
+			<Value>15</Value>
+		</Integer>
 	</Parameters>
 </ParamSection>
 
