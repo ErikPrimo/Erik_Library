@@ -40,7 +40,6 @@ WHILE ObjectOrder[i] <> 0 DO
 	IF CurveLeft[i]  > ESP 		 THEN ObjectOrder[i+1] = 3
 	IF CurveRight[i] > ESP 		 THEN ObjectOrder[i+1] = 4
 	IF StraightResizing[i] > ESP THEN ObjectOrder[i+1] = 5
-
 	IF ObjectOrder[i] = 2 THEN
 		GOSUB "Straight"
 		GOSUB "StraightResizingHotSpot"
@@ -158,7 +157,7 @@ RETURN
 		ENDIF
 		!----------------------------------------------------------------------------------------------------------------------------------------
 
-		! --- LINE 1: Right Edge Lights ---
+		!---Right Edge Lights------------------------------------------------------------------------------------------------------------------
         FOR j = 0 TO (RightLightDistance + NextLength[i-1]) / LightDistance
             CurrentPosRight = RightLightDistance + (LightDistance * j)
             IF CurrentPosRight <= NextLength[i-1] THEN
@@ -170,14 +169,13 @@ RETURN
                 DEL 3
             ENDIF
         NEXT j
-        ! Update Right Remainder
         OuterRemainder = (RightLightDistance + NextLength[i-1]) MOD LightDistance
         IF OuterRemainder > 0 THEN
             RightLightDistance = LightDistance - OuterRemainder
         ELSE
             RightLightDistance = 0
         ENDIF
-        ! --- LINE 2: Left Edge Lights ---
+        !-------Left Edge Lights------------------------------------------------------------------------------------------------------------------
         FOR k = 0 TO (LeftLightDistance + NextLength[i-1]) / LightDistance
             CurrentPosLeft = LeftLightDistance + (LightDistance * k)
             IF CurrentPosLeft <= NextLength[i-1] THEN
@@ -189,13 +187,13 @@ RETURN
                 DEL 3
             ENDIF
         NEXT k
-        ! Update Left Remainder
         InnerRemainder = (LeftLightDistance + NextLength[i-1]) MOD LightDistance
         IF InnerRemainder > 0 THEN
             LeftLightDistance = LightDistance - InnerRemainder
         ELSE
             LeftLightDistance = 0
         ENDIF
+		!---------------------------------------------------------------------------------------------------------------
 	ENDIF
 	ADDY NextLength[i-1]
 	ROTZ Orietation
@@ -206,7 +204,6 @@ RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
 "StraightResizing":
-
 	GOSUB "StraightResizingBarrierRemoveHotSpot"
 	!GOSUB "BarrierRemoveHotSpot"
 	RightNarrowing[i] = RightNarrowing[i] + ESP
@@ -402,7 +399,7 @@ RETURN
 	! BARRIERS (Unified Blended S-Curve Logic)
 	! =========================================================================
 	ADDZ BarrierHeight
-	IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
+	IF NOT(BarrierRemove[i] < -Width[i]/2) AND BarrierVisible THEN
 		LeftBarrierStartX = -Width[i]/2 + 0.05
 		LeftBarrierEndX   = -Width[i]/2 - LeftNarrowing[i] + 0.05
 		
@@ -424,7 +421,7 @@ RETURN
 		PUT LeftBarrierEndX, StraightTotalLength + 1, 0, 0
 		GOSUB "SlimBarrier"
 	ENDIF
-	IF NOT(BarrierRemove[i] > Width[i]/2) THEN
+	IF NOT(BarrierRemove[i] > Width[i]/2) AND BarrierVisible THEN
 		RightBarrierStartX = Width[i]/2 - 0.05
 		RightBarrierEndX   = Width[i]/2 + RightNarrowing[i] - 0.05
 		PUT RightBarrierStartX, -1, 0, 0
@@ -687,6 +684,7 @@ RETURN
 	ADDY MoveY[i]
 	ROTZ -Orietation
 RETURN
+
 "RightCurveLights":
     ! Calculate transitional straight lengths based on track width resizing
     WideningLength = 0
@@ -1367,6 +1365,7 @@ RETURN
 RETURN
 
 "StraightHotSpot":
+	IF NextLength[i] < -ESP THEN NextLength[i] = ESP
 	HOTSPOT 0,  0,				0, unID, NextLength[i], 1 : unID = unID + 1
 	HOTSPOT 0,  NextLength[i], 	0, unID, NextLength[i], 2 : unID = unID + 1
 	HOTSPOT 0, -1,				0, unID, NextLength[i], 3 : unID = unID + 1
@@ -1601,6 +1600,7 @@ RETURN
 	DEL DelCounter
 	MATERIAL 133
 RETURN
+
 !----------------------------------------------------------------------------------------------------------------------------------------
 ]]>
 </Script_3D>
@@ -1618,8 +1618,8 @@ GOSUB "BegginingWidthHotSpot"
 IF ColorCircles THEN
 	POLY2_B 2, 1+2+4,
 		TrackColor, 0,
-		Width[1]/2,            0,   900,
-		CircleSize,            360, 4001
+		Width[1]/2,		0,   900,
+		CircleSize,		360, 4001
 ENDIF
 !----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -1635,7 +1635,6 @@ WHILE ObjectOrder[i] <> 0 DO
 	IF CurveLeft[i]  > ESP			THEN ObjectOrder[i+1] = 3
 	IF CurveRight[i] > ESP			THEN ObjectOrder[i+1] = 4
 	IF StraightResizing[i] > ESP	THEN ObjectOrder[i+1] = 5
-
 	IF ObjectOrder[i] = 2 THEN
 		GOSUB "Straight"
 		GOSUB "StraightResizingHotSpot"
@@ -1728,6 +1727,7 @@ RETURN
 RETURN
 
 "StraightResizing":
+
 	RightNarrowing[i] = RightNarrowing[i] + ESP
 	LeftNarrowing[i]  = LeftNarrowing[i] + ESP
 
@@ -1899,8 +1899,6 @@ RETURN
 	_lmPoints = NSP / 3
 	POLY2_B _lmPoints, 1+2+4, TrackMarginColor, 0, GET(NSP)
 	DEL 1
-
-
 	! =========================================================================
 	! RIGHT MARGIN LINE
 	! =========================================================================
@@ -1934,8 +1932,6 @@ RETURN
 	_rmLinePoints = NSP / 3
 	POLY2_B _rmLinePoints, 1, TrackMarginColor, 0, GET(NSP)
 	DEL 1
-
-
 	! =========================================================================
 	! LEFT MARGIN LINE
 	! =========================================================================
@@ -2253,6 +2249,7 @@ RETURN
 RETURN
 
 "StraightHotSpot":
+	IF NextLength[i] < -ESP THEN NextLength[i] = ESP
 	HOTSPOT2 0,  0,				unID, NextLength[i], 1 : unID = unID + 1
 	HOTSPOT2 0,  NextLength[i],	unID, NextLength[i], 2 : unID = unID + 1
 	HOTSPOT2 0, -1,				unID, NextLength[i], 3 : unID = unID + 1
@@ -2382,7 +2379,7 @@ LightDistance = 3/2
 RightLightBool = 1
 LeftLightBool = 0
 
-IF TempWidth = 0 THEN TempWidth = 7
+TempWidth = 7
 
 IF Sectors THEN
 	ExtrudeValues =  1+2+4+16+32
@@ -2392,21 +2389,21 @@ ENDIF
 
 FOR i = 1 TO 100
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
-	IF RightAngle[i] = 0 THEN RightAngle[i] = 90
-	IF LeftAngle[i] = 0 THEN LeftAngle[i] = 90
+	IF RightAngle[i] < ESP THEN RightAngle[i] = 90
+	IF LeftAngle[i] < ESP THEN LeftAngle[i] = 90
 	!-------------------------------------------------------------------------------------------------------------------------------------
 
 	!-----Makes Limits On The Width-------------------------------------------------------------------------------------------------------
-	IF Width[i] <> 0 THEN Width[i] = MIN(14, MAX(3, Width[i]))
+	IF Width[i] > ESP THEN Width[i] = MIN(14, MAX(3, Width[i]))
 	!-------------------------------------------------------------------------------------------------------------------------------------
 
 	!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------
-	IF Width[i] > 0 AND Width[i] <> TempWidth THEN
-		TempWidth = Width[i]
-	ENDIF
-	Width[i] = TempWidth
+	IF Width[i] > ESP AND ABS(Width[i] - TempWidth) > ESP THEN
+        TempWidth = Width[i]
+    ENDIF
+    Width[i] = TempWidth
 	!-------------------------------------------------------------------------------------------------------------------------------------
-	IF NextLength[i] < ESP THEN NextLength[i] = 0
+	!IF NextLength[i] < ESP THEN NextLength[i] = 0
 	!-----Sets Limit On Angle-------------------------------------------------------------------------------------------------------------
 	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
 	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
