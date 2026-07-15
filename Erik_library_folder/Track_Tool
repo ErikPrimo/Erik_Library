@@ -31,7 +31,7 @@ GOSUB "LineMarginHotSpot"
 i = 1
 GOSUB "StraightHotSpot"
 IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
-	GOSUB "Straight1"
+	GOSUB "FirstStraight"
 	GOSUB "RightHotSpot"
 	GOSUB "LeftHotSpot"
 ENDIF
@@ -91,7 +91,7 @@ ENDWHILE
 
 END
 !----Makes The Frist Staright------------------------------------------------------------------------------------------------------------------------------------
-"Straight1":
+"FirstStraight":
 	EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
 			-Width[i]/2,	0,					1,
 			Width[i]/2,		0,					1,
@@ -193,7 +193,7 @@ RETURN
         ELSE
             LeftLightDistance = 0
         ENDIF
-		!---------------------------------------------------------------------------------------------------------------
+		!-------------------------------------------------------------------------------------------------------------------------------------------------
 	ENDIF
 	ADDY NextLength[i-1]
 	ROTZ Orietation
@@ -216,7 +216,7 @@ RETURN
 	CurveEnd     = MiddleLength + (CurveHeight / 2)
 	HalfVerticalHeight = CurveHeight / 2
 
-	MaxAllowedNarrowing = StraightTotalLength * 0.30
+	MaxAllowedNarrowing = StraightTotalLength * 0.50
 
 	IF RightNarrowing[i] > MaxAllowedNarrowing  THEN RightNarrowing[i] = MaxAllowedNarrowing
 	IF RightNarrowing[i] < -MaxAllowedNarrowing THEN RightNarrowing[i] = -MaxAllowedNarrowing
@@ -230,8 +230,8 @@ RETURN
 	! =========================================================================
 	! MAIN TRACK EXTRUDE (Blended S-Curve Path)
 	! =========================================================================
-	PUT  Width[i]/2, 0, 1
-	PUT  Width[i]/2, CurveStart, 1
+	PUT  Width[i]/2,	0,				1
+	PUT  Width[i]/2,	CurveStart,		1
 	! Right Edge Curve
 	FOR stepIndex = 1 TO SegmentsResolution - 1
 		progressRatio = stepIndex / SegmentsResolution
@@ -296,10 +296,10 @@ RETURN
 			PUT currentX, perpendicularY, 1
 		NEXT stepIndex
 		
-		PUT Width[i]/2 - RightLineOuterMargin + RightNarrowing[i], CurveEnd, 1
+		PUT Width[i]/2 - RightLineOuterMargin + RightNarrowing[i], CurveEnd,			1
 		PUT Width[i]/2 - RightLineOuterMargin + RightNarrowing[i], StraightTotalLength, 1
 		PUT Width[i]/2 - RightLineInnerMargin + RightNarrowing[i], StraightTotalLength, 1
-		PUT Width[i]/2 - RightLineInnerMargin + RightNarrowing[i], CurveEnd, 1
+		PUT Width[i]/2 - RightLineInnerMargin + RightNarrowing[i], CurveEnd,			1
 		
 		! Right Line: Inner Edge (Offset Perpendicularly)
 		FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
@@ -416,9 +416,9 @@ RETURN
 			currentX = LeftBarrierStartX + (LeftBarrierEndX - LeftBarrierStartX) * blendedWeight
 			PUT currentX, currentY, 0, 0
 		NEXT stepIndex
-		PUT LeftBarrierEndX, CurveEnd, 0, 0
-		PUT LeftBarrierEndX, StraightTotalLength, 0, 0
-		PUT LeftBarrierEndX, StraightTotalLength + 1, 0, 0
+		PUT LeftBarrierEndX, CurveEnd,					0, 0
+		PUT LeftBarrierEndX, StraightTotalLength,		0, 0
+		PUT LeftBarrierEndX, StraightTotalLength + 1,	0, 0
 		GOSUB "SlimBarrier"
 	ENDIF
 	IF NOT(BarrierRemove[i] > Width[i]/2) AND BarrierVisible THEN
@@ -438,9 +438,9 @@ RETURN
 			currentX = RightBarrierStartX + (RightBarrierEndX - RightBarrierStartX) * blendedWeight
 			PUT currentX, currentY, 0, 0
 		NEXT stepIndex
-		PUT RightBarrierEndX, CurveEnd, 0, 0
-		PUT RightBarrierEndX, StraightTotalLength, 0, 0
-		PUT RightBarrierEndX, StraightTotalLength + 1, 0, 0
+		PUT RightBarrierEndX, CurveEnd, 				0, 0
+		PUT RightBarrierEndX, StraightTotalLength, 		0, 0
+		PUT RightBarrierEndX, StraightTotalLength + 1,	0, 0
 		GOSUB "SlimBarrier"
 	ENDIF
 	DEL 1
@@ -603,8 +603,6 @@ RETURN
             
             LeftLightDistance = LightDistance
         ENDIF
-        
-        ! --- FIX THE SPACING ---
         YStep = 0.01
         PathStep = YStep * SQR(1 + (deltaX / deltaY)^2)
         CurrentCurveY = CurrentCurveY + YStep
@@ -732,7 +730,6 @@ RETURN
         LeftoverDistanceForCurveOut = LightDistance - DistanceToJointOut
         OuterStartAngleOffset = (LeftoverDistanceForCurveOut / OuterLightRadius) * (180 / PI)
     ELSE
-        ! --- FIXED TRACK LOGIC ---
         IF LeftLightDistance >= WideningLength THEN
             LeftoverDistanceForCurveOut = LeftLightDistance - WideningLength
         ELSE
@@ -741,9 +738,7 @@ RETURN
         ENDIF
         OuterStartAngleOffset = (LeftoverDistanceForCurveOut / OuterLightRadius) * (180 / PI)
     ENDIF
-    
     RemainingCurveLengthOut = OuterCurveArcLength - (OuterStartAngleOffset * (PI / 180) * OuterLightRadius)
-    
     IF RemainingCurveLengthOut >= 0 THEN
         OuterTotalSteps = INT(RemainingCurveLengthOut / LightDistance)
         FOR j = 0 TO OuterTotalSteps
@@ -757,7 +752,6 @@ RETURN
                 DEL 3
             ENDIF
         NEXT j
-        
         LastArcAngleUsedOut = OuterStartAngleOffset + (OuterAngleStep * OuterTotalSteps)
         ArcDistanceUsedOut = LastArcAngleUsedOut * (PI / 180) * OuterLightRadius
         FinalLeftoverLinearOut = OuterCurveArcLength - ArcDistanceUsedOut
@@ -769,13 +763,10 @@ RETURN
     ELSE
         LeftLightDistance = LightDistance - (OuterCurveArcLength - (OuterStartAngleOffset * (PI / 180) * OuterLightRadius))
     ENDIF
-
-    DEL 3 ! Clear Outer Setup Stacks
-
-
-    ! ====================================================================================================
-    ! --- LINE 2: INNER (RIGHT) EDGE LIGHT LINES (Handles Narrowing Transition + Inner Arc) --------------
-    ! ====================================================================================================
+    DEL 3
+    !====================================================================================================
+    !--- LINE 2: INNER (RIGHT) EDGE LIGHT LINES (Handles Narrowing Transition + Inner Arc) --------------
+    !====================================================================================================
     ADDX CurveRadius
     
     AdjustYForWidening = 0
@@ -783,11 +774,9 @@ RETURN
         ADDY -WideningLength
         AdjustYForWidening = 1
     ENDIF
-
     LastLightPosIn = 0
     HasPlacedStraightLightsIn = 0
-
-    ! SECTION A: Narrowing Straight
+    !Narrowing Straight
     IF NarrowingLength > 0.0001 THEN
         FOR k = 0 TO (RightLightDistance + NarrowingLength) / LightDistance
             CurrentPosRight = RightLightDistance + (LightDistance * k)
@@ -804,7 +793,7 @@ RETURN
         NEXT k
     ENDIF
 
-    ! SECTION B: Inner Arc Curve
+    !Inner Arc Curve
     ADDY NarrowingLength
     
     InnerCurveArcLength = InnerLightRadius * (Angle * PI / 180)
@@ -891,8 +880,8 @@ ADDZ trackThickness
         xStartRight,                              0,                                                  1,
         xStartRight,                              WidthDifferenceIn,                                  1,
         curveRadius,                              WidthDifferenceIn,                                  900,
-        curveRadius - innerTrackRad * COS(angle), innerTrackRad * SIN(angle) + WidthDifferenceIn,       3001,
-        curveRadius - outerTrackRad * COS(angle), outerTrackRad * SIN(angle) + WidthDifferenceIn,       1,
+        curveRadius - innerTrackRad * COS(angle), innerTrackRad * SIN(angle) + WidthDifferenceIn,     3001,
+        curveRadius - outerTrackRad * COS(angle), outerTrackRad * SIN(angle) + WidthDifferenceIn,     1,
         chicaneCenter_X,                          chicaneCenter_Y,                                    900,
         outerMid_X,                               outerMid_Y,                                         3001,
         chicaneCenter_X,                          chicaneCenter_Y,                                    900,
@@ -1371,12 +1360,6 @@ RETURN
 	HOTSPOT 0, -1,				0, unID, NextLength[i], 3 : unID = unID + 1
 RETURN
 
-"StraightHotSpot1":
-	HOTSPOT 0,  0,					0, unID, NextLength[i], 1 : unID = unID + 1
-	HOTSPOT 0,  BeginningDistance, 	0, unID, NextLength[i], 2 : unID = unID + 1
-	HOTSPOT 0, -1,					0, unID, NextLength[i], 3 : unID = unID + 1
-RETURN
-
 "RemoveHotSpot":
 	HOTSPOT 0,  NextLength[i]-1,	0, unID, RemovePart[i], 1 : unID = unID + 1
 	HOTSPOT 0,  NextLength[i]-1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
@@ -1537,8 +1520,8 @@ RETURN
 		 0.06573435579,  0.24090543777750, 1,
 		 0.06014390549,  0.22273540489710, 1,
 		 0.04118990894,  0.18023953876170, 1,
-		 0.027242,       0.14896984022120, 1,
-		 0.021487,       0.12630637693340, 1,
+		 0.02724200000,  0.14896984022120, 1,
+		 0.02148700000,  0.12630637693340, 1,
 		 0.02544299754,  0.09674477541033, 1,
 		 0.03879386222,  0.06467300016915, 1,
 		 0.04448582786,  0.05191131116562, 1,
@@ -1626,7 +1609,7 @@ ENDIF
 i = 1
 GOSUB "StraightHotSpot"
 IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
-	GOSUB "Straight1"
+	GOSUB "FirstStraight"
 	GOSUB "RightHotSpot"
 	GOSUB "LeftHotSpot"
 ENDIF
@@ -1682,7 +1665,7 @@ TEXT2 0, -2, STR(TotalLength, 10, 3) + " m"
 
 END
 
-"Straight1":
+"FirstStraight":
 	POLY2_B 5, 1+2+4,
 		TrackColor, 0,
 		-Width[i]/2,    0,                  1,
@@ -1740,7 +1723,7 @@ RETURN
 	HalfVerticalHeight = CurveHeight / 2
 	
 	! --- DYNAMIC +/- 30% CONSTRAINT ---
-	MaxAllowedNarrowing = StraightTotalLength * 0.30
+	MaxAllowedNarrowing = StraightTotalLength * 0.50
 
 	IF RightNarrowing[i] > MaxAllowedNarrowing  THEN RightNarrowing[i] = MaxAllowedNarrowing
 	IF RightNarrowing[i] < -MaxAllowedNarrowing THEN RightNarrowing[i] = -MaxAllowedNarrowing
@@ -1764,10 +1747,10 @@ RETURN
 		PUT currentX, currentY, 1
 	NEXT stepIndex
 
-	PUT  Width[i]/2 + RightNarrowing[i], CurveEnd,    1
-	PUT  Width[i]/2 + RightNarrowing[i], StraightTotalLength, 1
-	PUT -Width[i]/2 - LeftNarrowing[i],  StraightTotalLength, 1
-	PUT -Width[i]/2 - LeftNarrowing[i],  CurveEnd,    1
+	PUT  Width[i]/2 + RightNarrowing[i], CurveEnd,				1
+	PUT  Width[i]/2 + RightNarrowing[i], StraightTotalLength,	1
+	PUT -Width[i]/2 - LeftNarrowing[i],  StraightTotalLength,	1
+	PUT -Width[i]/2 - LeftNarrowing[i],  CurveEnd,				1
 
 	! Left Edge Blended S-Curve Loop (Descending)
 	FOR stepIndex = SegmentsResolution - 1 TO 1 STEP -1
@@ -2263,18 +2246,6 @@ RETURN
 				4, 0,
 				0,			NextLength[i],	900,
 				CircleSize,	360, 			4001
-	ENDIF
-RETURN
-
-"StraightHotSpot1":
-	HOTSPOT2 0,  0,					unID, NextLength[i], 1 : unID = unID + 1
-	HOTSPOT2 0,  BeginningDistance,	unID, NextLength[i], 2 : unID = unID + 1
-	HOTSPOT2 0, -1,					unID, NextLength[i], 3 : unID = unID + 1
-	IF ColorCircles THEN
-		POLY2_B 2, 1+2+4,
-				4, 0,
-				0,			BeginningDistance,	900,
-				CircleSize,	360, 				4001
 	ENDIF
 RETURN
 
@@ -3131,115 +3102,6 @@ VALUES "HomeStraight" vlist
 				<AVal Row="140">0</AVal>
 			</ArrayValues>
 		</Length>
-		<Boolean Name="NegativeWidth">
-			<Description><![CDATA[""]]></Description>
-			<ArrayValues FirstDimension="104" SecondDimension="0">
-				<AVal Row="1">0</AVal>
-				<AVal Row="2">0</AVal>
-				<AVal Row="3">0</AVal>
-				<AVal Row="4">0</AVal>
-				<AVal Row="5">0</AVal>
-				<AVal Row="6">0</AVal>
-				<AVal Row="7">0</AVal>
-				<AVal Row="8">0</AVal>
-				<AVal Row="9">0</AVal>
-				<AVal Row="10">0</AVal>
-				<AVal Row="11">0</AVal>
-				<AVal Row="12">0</AVal>
-				<AVal Row="13">0</AVal>
-				<AVal Row="14">0</AVal>
-				<AVal Row="15">0</AVal>
-				<AVal Row="16">0</AVal>
-				<AVal Row="17">0</AVal>
-				<AVal Row="18">0</AVal>
-				<AVal Row="19">0</AVal>
-				<AVal Row="20">0</AVal>
-				<AVal Row="21">0</AVal>
-				<AVal Row="22">0</AVal>
-				<AVal Row="23">0</AVal>
-				<AVal Row="24">0</AVal>
-				<AVal Row="25">0</AVal>
-				<AVal Row="26">0</AVal>
-				<AVal Row="27">0</AVal>
-				<AVal Row="28">0</AVal>
-				<AVal Row="29">0</AVal>
-				<AVal Row="30">0</AVal>
-				<AVal Row="31">0</AVal>
-				<AVal Row="32">0</AVal>
-				<AVal Row="33">0</AVal>
-				<AVal Row="34">0</AVal>
-				<AVal Row="35">0</AVal>
-				<AVal Row="36">0</AVal>
-				<AVal Row="37">0</AVal>
-				<AVal Row="38">0</AVal>
-				<AVal Row="39">0</AVal>
-				<AVal Row="40">0</AVal>
-				<AVal Row="41">0</AVal>
-				<AVal Row="42">0</AVal>
-				<AVal Row="43">0</AVal>
-				<AVal Row="44">0</AVal>
-				<AVal Row="45">0</AVal>
-				<AVal Row="46">0</AVal>
-				<AVal Row="47">0</AVal>
-				<AVal Row="48">0</AVal>
-				<AVal Row="49">0</AVal>
-				<AVal Row="50">0</AVal>
-				<AVal Row="51">0</AVal>
-				<AVal Row="52">0</AVal>
-				<AVal Row="53">0</AVal>
-				<AVal Row="54">0</AVal>
-				<AVal Row="55">0</AVal>
-				<AVal Row="56">0</AVal>
-				<AVal Row="57">0</AVal>
-				<AVal Row="58">0</AVal>
-				<AVal Row="59">0</AVal>
-				<AVal Row="60">0</AVal>
-				<AVal Row="61">0</AVal>
-				<AVal Row="62">0</AVal>
-				<AVal Row="63">0</AVal>
-				<AVal Row="64">0</AVal>
-				<AVal Row="65">0</AVal>
-				<AVal Row="66">0</AVal>
-				<AVal Row="67">0</AVal>
-				<AVal Row="68">0</AVal>
-				<AVal Row="69">0</AVal>
-				<AVal Row="70">0</AVal>
-				<AVal Row="71">0</AVal>
-				<AVal Row="72">0</AVal>
-				<AVal Row="73">0</AVal>
-				<AVal Row="74">0</AVal>
-				<AVal Row="75">0</AVal>
-				<AVal Row="76">0</AVal>
-				<AVal Row="77">0</AVal>
-				<AVal Row="78">0</AVal>
-				<AVal Row="79">0</AVal>
-				<AVal Row="80">0</AVal>
-				<AVal Row="81">0</AVal>
-				<AVal Row="82">0</AVal>
-				<AVal Row="83">0</AVal>
-				<AVal Row="84">0</AVal>
-				<AVal Row="85">0</AVal>
-				<AVal Row="86">0</AVal>
-				<AVal Row="87">0</AVal>
-				<AVal Row="88">0</AVal>
-				<AVal Row="89">0</AVal>
-				<AVal Row="90">0</AVal>
-				<AVal Row="91">0</AVal>
-				<AVal Row="92">0</AVal>
-				<AVal Row="93">0</AVal>
-				<AVal Row="94">0</AVal>
-				<AVal Row="95">0</AVal>
-				<AVal Row="96">0</AVal>
-				<AVal Row="97">0</AVal>
-				<AVal Row="98">0</AVal>
-				<AVal Row="99">0</AVal>
-				<AVal Row="100">0</AVal>
-				<AVal Row="101">0</AVal>
-				<AVal Row="102">0</AVal>
-				<AVal Row="103">0</AVal>
-				<AVal Row="104">0</AVal>
-			</ArrayValues>
-		</Boolean>
 		<Integer Name="NodeCount">
 			<Description><![CDATA[""]]></Description>
 			<Value>48</Value>
