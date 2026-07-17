@@ -53,16 +53,13 @@ ROTY 90
 CYLIND PoleDepth+0.01, PoleWidth/2 + 0.01
 SPHERE PoleWidth/2 + 0.01
 DEL 1
-! --- The Light Source ---
-LIGHT   1.0, 1.0, 0,            ! RGB (Yellow light)
+LIGHT   1.0, 1.0, 1.0,            ! RGB (Yellow light)
         1,                      ! Shadow on
-        0.1,                    ! Radius / Source size
-        40.0, 50.0,             ! Cone angles (alpha, beta)
+        0,                    ! Radius / Source size
+        30.0, 40.0,             ! Cone angles (alpha, beta)
         0.3,                    ! Angle falloff
         0.2, 8.0,               ! Distance 1 & 2
         0.0,                    ! Constant intensity (no falloff over distance)
-        
-        ! --- ADD THIS TO OVERDRIVE BRIGHTNESS ---
         ADDITIONAL_DATA c4d_gen_Intensity = 1.5,     ! 500% power multiplier (Increase this to 10.0 or 20.0 if you want a blinding spotlight)
                         c4d_gen_Type = "Spot"       ! Directs the physics engine to treat it as a true spotlight
 
