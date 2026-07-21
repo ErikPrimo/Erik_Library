@@ -15,11 +15,6 @@
 PoleWidth = 0.03
 PoleDepth = 0.065
 BREAKPOINT 1
-! ADDX -5
-! ADDY -5
-! BLOCK 10, 10, 0.001
-! DEL 2
-! ADDZ 2
 
 ROTX 135
 
@@ -29,15 +24,15 @@ DEL 3
 ROTZ -90
 ROTY 45
 ! --- The Light Source ---
-LIGHT   1.0, 1.0, 1.0,            ! RGB (Yellow light)
+LIGHT   1.0, 1.0, 1.0,           ! RGB (Yellow light)
         1,                      ! Shadow on
-        0,                    ! Radius / Source size
+        0,                    	! Radius / Source size
         30.0, 40.0,             ! Cone angles (alpha, beta)
         0.3,                    ! Angle falloff
         0.2, 8.0,               ! Distance 1 & 2
         0.0,                    ! Constant intensity (no falloff over distance)
-        ADDITIONAL_DATA c4d_gen_Intensity = LightStrength,     ! 500% power multiplier (Increase this to 10.0 or 20.0 if you want a blinding spotlight)
-                        c4d_gen_Type = "Spot"       ! Directs the physics engine to treat it as a true spotlight
+        ADDITIONAL_DATA c4d_gen_Intensity = LightStrength,      ! 500% power multiplier
+                        c4d_gen_Type = "Spot"       			! Directs the physics engine to treat it as a true spotlight
 DEL 4
 ]]>
 </Script_3D>
