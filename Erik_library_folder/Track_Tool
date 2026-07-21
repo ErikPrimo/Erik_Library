@@ -205,7 +205,7 @@ RETURN
                 ROTZ -LightAngle
                 IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
                 IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-					ADDZ 0.8
+					ADDZ TopTubeLightHeight
 					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 					DEL 1
 				ENDIF
@@ -230,7 +230,7 @@ RETURN
                 ROTZ LightAngle
                 IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
                 IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-					ADDZ 0.8
+					ADDZ TopTubeLightHeight
 					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 					DEL 1
 				ENDIF
@@ -578,7 +578,7 @@ RETURN
             ROTZ -LightAngle
             IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 			IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-				ADDZ 0.8
+				ADDZ TopTubeLightHeight
 				CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 				DEL 1
 			ENDIF
@@ -621,7 +621,7 @@ RETURN
             ROTZ -LightAngle
             IF RightLightBool AND LightVisible AND NOT(TopTubeVisible)  THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 			IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-				ADDZ 0.8
+				ADDZ TopTubeLightHeight
 				CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 				DEL 1
 			ENDIF
@@ -653,7 +653,7 @@ RETURN
             ROTZ -LightAngle
             IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 			IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-				ADDZ 0.8
+				ADDZ TopTubeLightHeight
 				CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 				DEL 1
 			ENDIF
@@ -681,7 +681,7 @@ RETURN
             ROTZ LightAngle
             IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 			IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-				ADDZ 0.8
+				ADDZ TopTubeLightHeight
 				CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 				DEL 1
 			ENDIF
@@ -721,7 +721,7 @@ RETURN
             ROTZ LightAngle - headingAngle
             IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 			IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-				ADDZ 0.8
+				ADDZ TopTubeLightHeight
 				CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 				DEL 1
 			ENDIF
@@ -748,7 +748,7 @@ RETURN
             ROTZ LightAngle
             IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 			IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-				ADDZ 0.8
+				ADDZ TopTubeLightHeight
 				CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 				DEL 1
 			ENDIF
@@ -903,7 +903,7 @@ RETURN
 				ROTZ LightAngle
 				IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 				IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-					ADDZ 0.8
+					ADDZ TopTubeLightHeight
 					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 					DEL 1
 				ENDIF
@@ -943,7 +943,7 @@ RETURN
 				ROTZ LightAngle
 				IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 				IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-					ADDZ 0.8
+					ADDZ TopTubeLightHeight
 					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 					DEL 1
 				ENDIF
@@ -986,7 +986,7 @@ RETURN
 				ROTZ -LightAngle
 				IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 				IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-					ADDZ 0.8
+					ADDZ TopTubeLightHeight
 					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 					DEL 1
 				ENDIF
@@ -1029,7 +1029,7 @@ RETURN
 				IF NOT(RightLightBool) AND CurveRight[i-1] < 4 AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 				IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 				IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-					ADDZ 0.8
+					ADDZ TopTubeLightHeight
 					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 					DEL 1
 				ENDIF
@@ -1304,7 +1304,7 @@ RETURN
                 ROTZ -LightAngle                 ! Points straight OUT (Right)
                 IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 				IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-					ADDZ 0.8
+					ADDZ TopTubeLightHeight
 					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 					DEL 1
 				ENDIF
@@ -1344,7 +1344,7 @@ RETURN
                 ROTZ -LightAngle                ! Aligns light pointing straight OUT (Right)
                 IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 				IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-					ADDZ 0.8
+					ADDZ TopTubeLightHeight
 					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 					DEL 1
 				ENDIF
@@ -1394,7 +1394,7 @@ RETURN
                 ROTZ LightAngle                ! Points straight OUT (Left)
                 IF LeftLightBool AND LightVisible  AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 				IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-					ADDZ 0.8
+					ADDZ TopTubeLightHeight
 					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 					DEL 1
 				ENDIF
@@ -1440,7 +1440,7 @@ RETURN
 				IF NOT(LeftLightBool) AND CurveLeft[i-1] < 4 AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
                 IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 				IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-					ADDZ 0.8
+					ADDZ TopTubeLightHeight
 					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 					DEL 1
 				ENDIF
@@ -1834,7 +1834,7 @@ RETURN
 RETURN
 
 "LightTube":
-    MATERIAL 29
+    MATERIAL TubeColor
     tubeRad = 0.03
     TUBE 17, NSP/4, 1+2,
         tubeRad * COS(0),    tubeRad * SIN(0),    1,
@@ -2678,6 +2678,8 @@ LeftLightBool = 0
 
 TempWidth = 7
 
+TopTubeLightHeight = 0.8
+
 IF Sectors THEN
 	ExtrudeValues =  1+2+4+16+32
 ELSE
@@ -2750,12 +2752,16 @@ UI_INFIELD "LightVisible", 20, 180, 80, 18
 UI_OUTFIELD "TopTube Visible", 20, 200, 80, 15
 UI_INFIELD "TopTubeVisible", 20, 220, 80, 18
 
-UI_OUTFIELD "Light Strength", 20, 240, 80, 15
-UI_INFIELD "LightStrength", 20, 260, 80, 18
 
 
 UI_OUTFIELD "Segments Resolution", 150, 2, 80, 15
 UI_INFIELD "SegmentsResolution", 150, 20, 80, 18
+
+UI_OUTFIELD "Light Strength", 150, 40, 80, 15
+UI_INFIELD "LightStrength", 150, 60, 80, 18
+
+UI_OUTFIELD "Tube Color", 150, 80, 80, 15
+UI_INFIELD "TubeColor", 150, 100, 80, 18
 
 
 
@@ -4572,8 +4578,12 @@ VALUES "LightAngle" RANGE [0, 180]
 		</Material>
 		<Length Name="LightStrength">
 			<Description><![CDATA[""]]></Description>
-			<Value>2</Value>
+			<Value>4</Value>
 		</Length>
+		<Material Name="TubeColor">
+			<Description><![CDATA[""]]></Description>
+			<Value>135</Value>
+		</Material>
 	</Parameters>
 </ParamSection>
 
