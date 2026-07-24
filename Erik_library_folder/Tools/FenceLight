@@ -14,7 +14,7 @@
 <![CDATA[
 PoleWidth = 0.03
 PoleDepth = 0.065
-BREAKPOINT 1
+MATERIAL 133
 
 ROTX 135
 
