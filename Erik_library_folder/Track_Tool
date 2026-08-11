@@ -126,7 +126,7 @@ RETURN
 			IF h = 1 THEN MATERIAL 19
 			ADDX -Width[i]/2 + LineMargin
 			ADDZ TrackThickness
-			EXTRUDE 4, 0, 0, LineThickness, ExtrudeValues,
+			EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
 				-LineWidth,	0,					1,
 				LineWidth,	0,					1,
 				LineWidth,	NextLength[i-1], 	1,
@@ -134,7 +134,7 @@ RETURN
 			DEL 2
 			ADDX Width[i]/2 - LineMargin
 			ADDZ TrackThickness
-			EXTRUDE 4, 0, 0, LineThickness, ExtrudeValues,
+			EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
 				-LineWidth,	0,					1,
 				LineWidth,	0,					1,
 				LineWidth,	NextLength[i-1], 	1,
@@ -145,109 +145,110 @@ RETURN
 		NEXT h
 		LineMargin = ConstantLineMargin
 		MATERIAL Asfalt
-		!-----Barriers-----------------------------------------------------------------------------------------------------------------------------------
-		IF NextLength[i-1] > ESP AND BarrierVisible THEN
-			ADDZ BarrierHeight
-			ADDX -Width[i]/2 + .05
-			IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
-				PUT 0, -1, 					0, 0, 
-					0,  0, 					0, 0, 
-					0,  NextLength[i-1], 	0, 0, 
-					0,  NextLength[i-1]+1, 	0, 0 
-				GOSUB "SlimBarrier"
-			ENDIF
-			ADDX Width[i] - .05*2
-			IF NOT(BarrierRemove[i] > Width[i]/2) THEN
-				PUT 0, -1, 					0, 0,
-					0,  0, 					0, 0,
-					0,  NextLength[i-1], 	0, 0,
-					0,  NextLength[i-1]+1, 	0, 0
-				GOSUB "SlimBarrier"
-			ENDIF
-			DEL 3
-		ENDIF
-		!----------------------------------------------------------------------------------------------------------------------------------------
-
-		!------TopTube----------------------------------------------------------------------------------------------------------------------------------
-		IF TopTubeVisible THEN
-			TubeFi = 0.080
-			PoleHeigth = 1.148-TubeFi/2
-			ADDZ PoleHeigth - TubeFi/4
-			ADDX -Width[i]/2 - LightMargin + TubeFi/4
-			IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
-				PUT 0, -1, 					0, 0, 
-					0,  0, 					0, 0, 
-					0,  NextLength[i-1], 	0, 0, 
-					0,  NextLength[i-1]+1, 	0, 0 
-				GOSUB "LightTube"
-			ENDIF
-			DEL 1
-			ADDX Width[i]/2 + LightMargin + TubeFi/4
-			IF NOT(BarrierRemove[i] > Width[i]/2) THEN
-				PUT 0, -1, 					0, 0,
-					0,  0, 					0, 0,
-					0,  NextLength[i-1], 	0, 0,
-					0,  NextLength[i-1]+1, 	0, 0
-				GOSUB "LightTube"
-			ENDIF
-			DEL 2
-		ENDIF
-		!----------------------------------------------------------------------------------------------------------------------------------------
-
-		! --- Right Edge Lights --------------------------------------------------------------------------------------------------
-		IF RightLightRemainingDistance <= NextLength[i-1] THEN
-			NumLightsRight = INT((NextLength[i-1] - RightLightRemainingDistance) / LightDistance)
-			FOR j = 0 TO NumLightsRight
-				CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
-				IF CurrentPosRight <= NextLength[i-1] THEN
-					ADDY CurrentPosRight
-					ADDX Width[i]/2 + LightMargin
-					IF TopTubeVisible THEN CALL "GF_TopTube"
-					ROTZ -LightAngle
-					IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
-						CALL "GF_Light" PARAMETERS LightStrength = LightStrength
-					ENDIF
-					IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-						ADDZ TopTubeLightHeight
-						CALL "FenceLight" PARAMETERS LightStrength = LightStrength
-						DEL 1
-					ENDIF
-					RightLightBool = NOT(RightLightBool)
-					DEL 3
+		IF NOT(GLOB_FEEDBACK_MODE) THEN
+			!-----Barriers-----------------------------------------------------------------------------------------------------------------------------------
+			IF NextLength[i-1] > ESP AND BarrierVisible THEN
+				ADDZ BarrierHeight
+				ADDX -Width[i]/2 + .05
+				IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
+					PUT 0, -1, 					0, 0, 
+						0,  0, 					0, 0, 
+						0,  NextLength[i-1], 	0, 0, 
+						0,  NextLength[i-1]+1, 	0, 0 
+					GOSUB "SlimBarrier"
 				ENDIF
-				LastLightPosRight = CurrentPosRight
-			NEXT j
-			RightLightRemainingDistance = LightDistance - (NextLength[i-1] - LastLightPosRight)
-		ELSE
-			RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
-		ENDIF
-
-		! --- Left Edge Lights ---------------------------------------------------------------------------------------------------
-		IF LeftLightDistance <= NextLength[i-1] THEN
-			NumLightsLeft = INT((NextLength[i-1] - LeftLightDistance) / LightDistance)
-			FOR k = 0 TO NumLightsLeft
-				CurrentPosLeft = LeftLightDistance + (LightDistance * k)
-				IF CurrentPosLeft <= NextLength[i-1] THEN
-					ADDY CurrentPosLeft
-					ADDX -Width[i]/2 - LightMargin
-					IF TopTubeVisible THEN CALL "GF_TopTube"
-					ROTZ LightAngle
-					IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
-						CALL "GF_Light" PARAMETERS LightStrength = LightStrength
-					ENDIF
-					IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-						ADDZ TopTubeLightHeight
-						CALL "FenceLight" PARAMETERS LightStrength = LightStrength
-						DEL 1
-					ENDIF
-					LeftLightBool = NOT(LeftLightBool)
-					DEL 3
+				ADDX Width[i] - .05*2
+				IF NOT(BarrierRemove[i] > Width[i]/2) THEN
+					PUT 0, -1, 					0, 0,
+						0,  0, 					0, 0,
+						0,  NextLength[i-1], 	0, 0,
+						0,  NextLength[i-1]+1, 	0, 0
+					GOSUB "SlimBarrier"
 				ENDIF
-				LastLightPosLeft = CurrentPosLeft
-			NEXT k
-			LeftLightDistance = LightDistance - (NextLength[i-1] - LastLightPosLeft)
-		ELSE
-			LeftLightDistance = LeftLightDistance - NextLength[i-1]
+				DEL 3
+			ENDIF
+			!----------------------------------------------------------------------------------------------------------------------------------------
+
+			!------TopTube----------------------------------------------------------------------------------------------------------------------------------
+			IF TopTubeVisible THEN
+				TubeFi = 0.080
+				PoleHeigth = 1.148-TubeFi/2
+				ADDZ PoleHeigth - TubeFi/4
+				ADDX -Width[i]/2 - LightMargin + TubeFi/4
+				IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
+					PUT 0, -1, 					0, 0, 
+						0,  0, 					0, 0, 
+						0,  NextLength[i-1], 	0, 0, 
+						0,  NextLength[i-1]+1, 	0, 0 
+					GOSUB "LightTube"
+				ENDIF
+				DEL 1
+				ADDX Width[i]/2 + LightMargin + TubeFi/4
+				IF NOT(BarrierRemove[i] > Width[i]/2) THEN
+					PUT 0, -1, 					0, 0,
+						0,  0, 					0, 0,
+						0,  NextLength[i-1], 	0, 0,
+						0,  NextLength[i-1]+1, 	0, 0
+					GOSUB "LightTube"
+				ENDIF
+				DEL 2
+			ENDIF
+			!----------------------------------------------------------------------------------------------------------------------------------------
+			! --- Right Edge Lights --------------------------------------------------------------------------------------------------
+			IF RightLightRemainingDistance <= NextLength[i-1] THEN
+				NumLightsRight = INT((NextLength[i-1] - RightLightRemainingDistance) / LightDistance)
+				FOR j = 0 TO NumLightsRight
+					CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
+					IF CurrentPosRight <= NextLength[i-1] THEN
+						ADDY CurrentPosRight
+						ADDX Width[i]/2 + LightMargin
+						IF TopTubeVisible THEN CALL "GF_TopTube"
+						ROTZ -LightAngle
+						IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+							CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+						ENDIF
+						IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+							ADDZ TopTubeLightHeight
+							CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+							DEL 1
+						ENDIF
+						RightLightBool = NOT(RightLightBool)
+						DEL 3
+					ENDIF
+					LastLightPosRight = CurrentPosRight
+				NEXT j
+				RightLightRemainingDistance = LightDistance - (NextLength[i-1] - LastLightPosRight)
+			ELSE
+				RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
+			ENDIF
+
+			! --- Left Edge Lights ---------------------------------------------------------------------------------------------------
+			IF LeftLightDistance <= NextLength[i-1] THEN
+				NumLightsLeft = INT((NextLength[i-1] - LeftLightDistance) / LightDistance)
+				FOR k = 0 TO NumLightsLeft
+					CurrentPosLeft = LeftLightDistance + (LightDistance * k)
+					IF CurrentPosLeft <= NextLength[i-1] THEN
+						ADDY CurrentPosLeft
+						ADDX -Width[i]/2 - LightMargin
+						IF TopTubeVisible THEN CALL "GF_TopTube"
+						ROTZ LightAngle
+						IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+							CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+						ENDIF
+						IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
+							ADDZ TopTubeLightHeight
+							CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+							DEL 1
+						ENDIF
+						LeftLightBool = NOT(LeftLightBool)
+						DEL 3
+					ENDIF
+					LastLightPosLeft = CurrentPosLeft
+				NEXT k
+				LeftLightDistance = LightDistance - (NextLength[i-1] - LastLightPosLeft)
+			ELSE
+				LeftLightDistance = LeftLightDistance - NextLength[i-1]
+			ENDIF
 		ENDIF
 	ENDIF
 	ADDY NextLength[i-1]
@@ -358,7 +359,7 @@ RETURN
         PUT Width[i]/2 - RightLineInnerMargin, CurveStart, 1
         PUT Width[i]/2 - RightLineInnerMargin, 0, 1
         
-        EXTRUDE NSP / 3, 0, 0, LineThickness, ExtrudeValues, GET(NSP)
+        EXTRUDE NSP / 3, 0, 0, LineThickness, 1+2+4+16+32, GET(NSP)
 
         ! --- LEFT MARKING LINE PROFILE ---
         LeftLineOuterMargin = LineMargin - LineWidth
@@ -414,7 +415,7 @@ RETURN
         PUT -Width[i]/2 + LeftLineInnerMargin, CurveStart, 1
         PUT -Width[i]/2 + LeftLineInnerMargin, 0, 1
         
-        EXTRUDE NSP / 3, 0, 0, LineThickness, ExtrudeValues, GET(NSP)
+        EXTRUDE NSP / 3, 0, 0, LineThickness, 1+2+4+16+32, GET(NSP)
 
         LineMargin = LineMargin + LineWidth * 4
         MATERIAL 18
@@ -424,106 +425,108 @@ RETURN
     LineMargin = ConstantLineMargin
     MATERIAL Asfalt
     !-----BARRIERS--------------------------------------------------------------------------------------------------------------------------
-    ADDZ BarrierHeight
-    IF NOT(BarrierRemove[i] < -Width[i]/2) AND BarrierVisible THEN
-        LeftBarrierStartX = -Width[i]/2 + 0.05
-        LeftBarrierEndX   = -Width[i]/2 - LeftNarrowing[i] + 0.05
-        
-        PUT LeftBarrierStartX, -1, 0, 0
-        PUT LeftBarrierStartX,  0, 0, 0
-        PUT LeftBarrierStartX,  CurveStart, 0, 0
-        FOR stepIndex = 1 TO SegmentsResolution - 1
-            progressRatio = stepIndex / SegmentsResolution
-            currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-            baseWeight = (1 - COS(progressRatio * 180)) / 2
-            sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
-            blendedWeight = (baseWeight + sharpWeight) * 0.5
-            currentX = LeftBarrierStartX + (LeftBarrierEndX - LeftBarrierStartX) * blendedWeight
-            PUT currentX, currentY, 0, 0
-        NEXT stepIndex
-        PUT LeftBarrierEndX, CurveEnd,           0, 0
-        PUT LeftBarrierEndX, StraightTotalLength,   0, 0
-        PUT LeftBarrierEndX, StraightTotalLength + 1, 0, 0
-        GOSUB "SlimBarrier"
-    ENDIF
-    IF NOT(BarrierRemove[i] > Width[i]/2) AND BarrierVisible THEN
-        RightBarrierStartX = Width[i]/2 - 0.05
-        RightBarrierEndX   = Width[i]/2 + RightNarrowing[i] - 0.05
-        PUT RightBarrierStartX, -1, 0, 0
-        PUT RightBarrierStartX,  0, 0, 0
-        PUT RightBarrierStartX,  CurveStart, 0, 0
+	IF NOT(GLOB_FEEDBACK_MODE) THEN
+		ADDZ BarrierHeight
+		IF NOT(BarrierRemove[i] < -Width[i]/2) AND BarrierVisible THEN
+			LeftBarrierStartX = -Width[i]/2 + 0.05
+			LeftBarrierEndX   = -Width[i]/2 - LeftNarrowing[i] + 0.05
+			
+			PUT LeftBarrierStartX, -1, 0, 0
+			PUT LeftBarrierStartX,  0, 0, 0
+			PUT LeftBarrierStartX,  CurveStart, 0, 0
+			FOR stepIndex = 1 TO SegmentsResolution - 1
+				progressRatio = stepIndex / SegmentsResolution
+				currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+				baseWeight = (1 - COS(progressRatio * 180)) / 2
+				sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+				blendedWeight = (baseWeight + sharpWeight) * 0.5
+				currentX = LeftBarrierStartX + (LeftBarrierEndX - LeftBarrierStartX) * blendedWeight
+				PUT currentX, currentY, 0, 0
+			NEXT stepIndex
+			PUT LeftBarrierEndX, CurveEnd,           0, 0
+			PUT LeftBarrierEndX, StraightTotalLength,   0, 0
+			PUT LeftBarrierEndX, StraightTotalLength + 1, 0, 0
+			GOSUB "SlimBarrier"
+		ENDIF
+		IF NOT(BarrierRemove[i] > Width[i]/2) AND BarrierVisible THEN
+			RightBarrierStartX = Width[i]/2 - 0.05
+			RightBarrierEndX   = Width[i]/2 + RightNarrowing[i] - 0.05
+			PUT RightBarrierStartX, -1, 0, 0
+			PUT RightBarrierStartX,  0, 0, 0
+			PUT RightBarrierStartX,  CurveStart, 0, 0
 
-        FOR stepIndex = 1 TO SegmentsResolution - 1
-            progressRatio = stepIndex / SegmentsResolution
-            currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-            baseWeight = (1 - COS(progressRatio * 180)) / 2
-            sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
-            blendedWeight = (baseWeight + sharpWeight) * 0.5
-            currentX = RightBarrierStartX + (RightBarrierEndX - RightBarrierStartX) * blendedWeight
-            PUT currentX, currentY, 0, 0
-        NEXT stepIndex
-        PUT RightBarrierEndX, CurveEnd,         0, 0
-        PUT RightBarrierEndX, StraightTotalLength,  0, 0
-        PUT RightBarrierEndX, StraightTotalLength + 1, 0, 0
-        GOSUB "SlimBarrier"
-    ENDIF
-    DEL 1
-    ! TOP TUBES (Dynamic S-Curve Sweep)-------------------------------------------------------------------------------------------------------
-    IF TopTubeVisible THEN
-        TubeFi = 0.080
-        PoleHeigth = 1.148 - TubeFi/2
-        ADDZ PoleHeigth - TubeFi/4
+			FOR stepIndex = 1 TO SegmentsResolution - 1
+				progressRatio = stepIndex / SegmentsResolution
+				currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+				baseWeight = (1 - COS(progressRatio * 180)) / 2
+				sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+				blendedWeight = (baseWeight + sharpWeight) * 0.5
+				currentX = RightBarrierStartX + (RightBarrierEndX - RightBarrierStartX) * blendedWeight
+				PUT currentX, currentY, 0, 0
+			NEXT stepIndex
+			PUT RightBarrierEndX, CurveEnd,         0, 0
+			PUT RightBarrierEndX, StraightTotalLength,  0, 0
+			PUT RightBarrierEndX, StraightTotalLength + 1, 0, 0
+			GOSUB "SlimBarrier"
+		ENDIF
+		DEL 1
+		! TOP TUBES (Dynamic S-Curve Sweep)-------------------------------------------------------------------------------------------------------
+		IF TopTubeVisible THEN
+			TubeFi = 0.080
+			PoleHeigth = 1.148 - TubeFi/2
+			ADDZ PoleHeigth - TubeFi/4
 
-        ! --- LEFT TOP TUBE ---
-        IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
-            LeftTubeStartX = -Width[i]/2 - LightMargin + TubeFi/4
-            LeftTubeEndX   = -Width[i]/2 - LeftNarrowing[i] - LightMargin + TubeFi/4
+			! --- LEFT TOP TUBE ---
+			IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
+				LeftTubeStartX = -Width[i]/2 - LightMargin + TubeFi/4
+				LeftTubeEndX   = -Width[i]/2 - LeftNarrowing[i] - LightMargin + TubeFi/4
 
-            PUT LeftTubeStartX, -1, 0, 0
-            PUT LeftTubeStartX,  0, 0, 0
-            PUT LeftTubeStartX,  CurveStart, 0, 0
-            
-            FOR stepIndex = 1 TO SegmentsResolution - 1
-                progressRatio = stepIndex / SegmentsResolution
-                currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-                baseWeight = (1 - COS(progressRatio * 180)) / 2
-                sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
-                blendedWeight = (baseWeight + sharpWeight) * 0.5
-                currentX = LeftTubeStartX + (LeftTubeEndX - LeftTubeStartX) * blendedWeight
-                PUT currentX, currentY, 0, 0
-            NEXT stepIndex
-            
-            PUT LeftTubeEndX, CurveEnd,           0, 0
-            PUT LeftTubeEndX, StraightTotalLength,   0, 0
-            PUT LeftTubeEndX, StraightTotalLength + 1, 0, 0
-            GOSUB "LightTube"
-        ENDIF
-        ! --- RIGHT TOP TUBE ---
-        IF NOT(BarrierRemove[i] > Width[i]/2) THEN
-            RightTubeStartX = Width[i]/2 + LightMargin + TubeFi/4
-            RightTubeEndX   = Width[i]/2 + RightNarrowing[i] + LightMargin + TubeFi/4
+				PUT LeftTubeStartX, -1, 0, 0
+				PUT LeftTubeStartX,  0, 0, 0
+				PUT LeftTubeStartX,  CurveStart, 0, 0
+				
+				FOR stepIndex = 1 TO SegmentsResolution - 1
+					progressRatio = stepIndex / SegmentsResolution
+					currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+					baseWeight = (1 - COS(progressRatio * 180)) / 2
+					sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+					blendedWeight = (baseWeight + sharpWeight) * 0.5
+					currentX = LeftTubeStartX + (LeftTubeEndX - LeftTubeStartX) * blendedWeight
+					PUT currentX, currentY, 0, 0
+				NEXT stepIndex
+				
+				PUT LeftTubeEndX, CurveEnd,           0, 0
+				PUT LeftTubeEndX, StraightTotalLength,   0, 0
+				PUT LeftTubeEndX, StraightTotalLength + 1, 0, 0
+				GOSUB "LightTube"
+			ENDIF
+			! --- RIGHT TOP TUBE ---
+			IF NOT(BarrierRemove[i] > Width[i]/2) THEN
+				RightTubeStartX = Width[i]/2 + LightMargin + TubeFi/4
+				RightTubeEndX   = Width[i]/2 + RightNarrowing[i] + LightMargin + TubeFi/4
 
-            PUT RightTubeStartX, -1, 0, 0
-            PUT RightTubeStartX,  0, 0, 0
-            PUT RightTubeStartX,  CurveStart, 0, 0
+				PUT RightTubeStartX, -1, 0, 0
+				PUT RightTubeStartX,  0, 0, 0
+				PUT RightTubeStartX,  CurveStart, 0, 0
 
-            FOR stepIndex = 1 TO SegmentsResolution - 1
-                progressRatio = stepIndex / SegmentsResolution
-                currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
-                baseWeight = (1 - COS(progressRatio * 180)) / 2
-                sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
-                blendedWeight = (baseWeight + sharpWeight) * 0.5
-                currentX = RightTubeStartX + (RightTubeEndX - RightTubeStartX) * blendedWeight
-                PUT currentX, currentY, 0, 0
-            NEXT stepIndex
+				FOR stepIndex = 1 TO SegmentsResolution - 1
+					progressRatio = stepIndex / SegmentsResolution
+					currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+					baseWeight = (1 - COS(progressRatio * 180)) / 2
+					sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
+					blendedWeight = (baseWeight + sharpWeight) * 0.5
+					currentX = RightTubeStartX + (RightTubeEndX - RightTubeStartX) * blendedWeight
+					PUT currentX, currentY, 0, 0
+				NEXT stepIndex
 
-            PUT RightTubeEndX, CurveEnd,           0, 0
-            PUT RightTubeEndX, StraightTotalLength,   0, 0
-            PUT RightTubeEndX, StraightTotalLength + 1, 0, 0
-            GOSUB "LightTube"
-        ENDIF
-        DEL 1
-    ENDIF
+				PUT RightTubeEndX, CurveEnd,           0, 0
+				PUT RightTubeEndX, StraightTotalLength,   0, 0
+				PUT RightTubeEndX, StraightTotalLength + 1, 0, 0
+				GOSUB "LightTube"
+			ENDIF
+			DEL 1
+		ENDIF
+	ENDIF
     ! LIGHTS & WRAP-UP----------------------------------------------------------------------------------------------------------------
     GOSUB "StraightResizingLights"
     ChangedWidth = Width[i+1] + RightNarrowing[i] + LeftNarrowing[i]
@@ -540,6 +543,7 @@ RETURN
 
 ! ----- LIGHT PLACEMENT FOR RESIZING BLENDED S-CURVE STRAIGHTS ---------------------------------------
 "StraightResizingLights":
+IF NOT(GLOB_FEEDBACK_MODE) THEN
     ! Calculate transition length for Segment B
     CurveSegmentLength = CurveEnd - CurveStart
     ! LINE 1: RIGHT EDGE LIGHTS
@@ -750,6 +754,7 @@ RETURN
     ELSE
         LeftLightDistance = LeftLightDistance - TerminalLengthL
     ENDIF
+ENDIF
 RETURN
 !------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -791,8 +796,8 @@ RETURN
             LineMargin = ConstantLineMargin
             ADDY Width[i] - Width[i-1]
         ENDIF
-        IF BarrierVisible THEN GOSUB "RightBarrier"
-        IF TopTubeVisible THEN GOSUB "RightTopTube"
+        IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "RightBarrier"
+        IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "RightTopTube"
     ENDIF
     GOSUB "RightCurveLights"
     ADDX CurveRadius - rCenter * COS(Angle)
@@ -861,6 +866,7 @@ RETURN
 RETURN
 
 "RightCurveLights":
+IF NOT(GLOB_FEEDBACK_MODE) THEN
     ! Calculate transitional straight lengths based on track width resizing
     WideningLength = 0
     NarrowingLength = 0
@@ -1039,6 +1045,7 @@ RETURN
 
     DEL 2 ! Clears ADDX CurveRadius and ADDY NarrowingLength
     IF AdjustYForWidening THEN DEL 1
+ENDIF
 RETURN
 "RightTrack":
 	EXTRUDE 8, 0, 0, TrackThickness, ExtrudeValues,
@@ -1069,7 +1076,7 @@ RETURN
     outerMid_Y = WidthDifferenceIn + (outerTrackRad - chicaneOffset) * SIN(halfAngle)
     chicaneCenter_X = curveRadius - chicaneOffset * COS(halfAngle)
     chicaneCenter_Y = WidthDifferenceIn + chicaneOffset * SIN(halfAngle)
-    EXTRUDE 10, 0, 0, lineThickness, ExtrudeValues,
+    EXTRUDE 10, 0, 0, lineThickness, 1+2+4+16+32,
         xStartLeft,                               0,                                                  1,
         xStartRight,                              0,                                                  1,
         xStartRight,                              WidthDifferenceIn,                                  1,
@@ -1085,7 +1092,7 @@ RETURN
 	_rOuterOuter = CurveRight[i-1] + Width[i-1] - LineMargin + LineWidth
 	_xLineLeftOut  = CurveRadius - _rOuterOuter
 	_xLineRightOut = CurveRadius - _rOuterInner
-	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+	EXTRUDE 8, 0, 0, LineThickness, 1+2+4+16+32,
 		_xLineLeftOut,                			 0,                  								1,    
 		_xLineRightOut,               			 0,                  								1,    
 		_xLineRightOut,               			 WidthDifferenceOut,            					1,    
@@ -1182,8 +1189,8 @@ RETURN
             LineMargin = ConstantLineMargin
             ADDY Width[i] - Width[i-1]
         ENDIF
-        IF BarrierVisible THEN GOSUB "LeftBarrier"
-        IF TopTubeVisible THEN GOSUB "LeftTopTube"
+        IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "LeftBarrier"
+        IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "LeftTopTube"
     ENDIF
     GOSUB "LeftCurveLights"
 
@@ -1254,6 +1261,7 @@ RETURN
 RETURN
 
 "LeftCurveLights":
+IF NOT(GLOB_FEEDBACK_MODE) THEN
     ! Calculate transitional straight lengths based on track width resizing for a left curve
     WideningLength = 0
     NarrowingLength = 0
@@ -1438,6 +1446,7 @@ RETURN
 
     DEL 2 ! Clear Inner Base Setup
     IF AdjustYForWidening THEN DEL 1
+ENDIF
 RETURN
 
 "LeftTrack":
@@ -1469,7 +1478,7 @@ ADDZ trackThickness
     outerMid_Y = WidthDifferenceIn + (outerTrackRad + chicaneOffset) * SIN(halfAngle)
     chicaneCenter_X = curveRadius + chicaneOffset * COS(halfAngle)
     chicaneCenter_Y = WidthDifferenceIn + chicaneOffset * SIN(halfAngle)
-    EXTRUDE 10, 0, 0, lineThickness, ExtrudeValues,
+    EXTRUDE 10, 0, 0, lineThickness, 1+2+4+16+32,
         xStartLeft,                               0,                                                  1,
         xStartRight,                              0,                                                  1,
         xStartRight,                              WidthDifferenceIn,                                  1,
@@ -1486,7 +1495,7 @@ ADDZ trackThickness
 	_xLineLeftOut  = CurveRadius + _rOuterInner
 	_xLineRightOut = CurveRadius + _rOuterOuter
 	
-	EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+	EXTRUDE 8, 0, 0, LineThickness, 1+2+4+16+32,
 		_xLineLeftOut,                 				0,                          					1,    
 		_xLineRightOut,                				0,                          					1,    
 		_xLineRightOut,                				WidthDifferenceOut,                 			1,    
@@ -1897,7 +1906,13 @@ RETURN
 <![CDATA[
 SET FILL "Solid Fill"
 PEN 1
-IF SegmentsResolution >= 50 THEN PROJECT2 3, 270, 2
+IF SegmentsResolution >= 50 AND NOT(GLOB_FEEDBACK_MODE) THEN
+    PROJECT2 3, 270, 2
+    drawResolution = 10
+ELSE
+    drawResolution = SegmentsResolution
+ENDIF
+
 !----Beggining Width------------------------------------------------------------------------------------------------------------------------------------
 GOSUB "BegginingWidthHotSpot"
 
@@ -2664,7 +2679,6 @@ ELSE
 	ExtrudeValues =  1+2+4
 ENDIF
 
-BREAKPOINT 1
 FOR i = 1 TO 120
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
 	IF RightAngle[i] < ESP THEN RightAngle[i] = 90
