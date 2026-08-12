@@ -21,6 +21,7 @@ PolePlateDepth = 0.15
 PolePlateHeigth = 0.004
 MATERIAL 133
 
+IF CenterPosition THEN ADDX PoleWidth/2
 ! --- Main Pole ---
 BLOCK PoleWidth, PoleDepth, PoleHeigth - PoleWidth/2
 
@@ -140,6 +141,10 @@ ADDY PoleDepth / 2
 			</Flags>
 			<Value>0</Value>
 		</Length>
+		<Boolean Name="CenterPosition">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Boolean>
 	</Parameters>
 </ParamSection>
 

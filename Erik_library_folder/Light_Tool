@@ -1,0 +1,4221 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Symbol IsArchivable="false" IsPlaceable="true" MainGUID="84EBDB78-904D-406C-88B0-2A47E60A6B61" MigrationValue="Normal" Owner="1196638531" Signature="1196644685" Version="46">
+<Ancestry SectVersion="1" SectionFlags="0" SubIdent="0" Template="false">
+	<MainGUID>F938E33A-329D-4A36-BE3E-85E126820996</MainGUID>
+	<MainGUID>103E8D2C-8230-42E1-9597-46F84CCE28C0</MainGUID>
+</Ancestry>
+
+<CalledMacros SectVersion="2" SectionFlags="0" SubIdent="0">
+	<Macro>
+		<MName><![CDATA["GF_TopTube"]]></MName>
+		<MainGUID>50E0B58A-7166-4D4C-B488-2BE5249C11F7</MainGUID>
+	</Macro>
+	<Macro>
+		<MName><![CDATA["GF_Light"]]></MName>
+		<MainGUID>9858B02A-8785-49FC-9796-F01CE5D4FC00</MainGUID>
+	</Macro>
+	<Macro>
+		<MName><![CDATA["FenceLight"]]></MName>
+		<MainGUID>0FD86E54-F57C-404B-A9D4-3F0662B4C79D</MainGUID>
+	</Macro>
+</CalledMacros>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_3D SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+MATERIAL Asfalt
+RESOL 64
+BREAKPOINT 1
+!----Light Angle----------------------------------------------------------------------------------------------------------------------------------------------
+GOSUB "LightAngleHotSpot"
+!-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+!-------Main Loop Places All Objects------------------------------------------------------------------------------------------------------------------------------
+i = 1
+GOSUB "StraightHotSpot"
+IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
+	GOSUB "RightHotSpot"
+	GOSUB "LeftHotSpot"
+ENDIF
+WHILE ObjectOrder[i] <> 0 DO
+	IF NextLength[i] > ESP 		 THEN ObjectOrder[i+1] = 2
+	IF CurveLeft[i]  > ESP 		 THEN ObjectOrder[i+1] = 3
+	IF CurveRight[i] > ESP 		 THEN ObjectOrder[i+1] = 4
+	IF ObjectOrder[i] = 2 THEN
+		GOSUB "Straight"
+		GOSUB "RightHotSpot"
+		GOSUB "LeftHotSpot"
+		IF i < 2 GOSUB "StraightHotSpot"
+		GOTO "NextIter"
+	ENDIF
+
+	IF ObjectOrder[i] = 3 THEN
+		GOSUB "CurveLeft"
+		GOSUB "LeftAngleHotSpot"
+		GOSUB "StraightHotSpot"
+		ObjectOrder[i+1] = 2 
+		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		GOTO "NextIter"
+	ENDIF
+
+	IF ObjectOrder[i] = 4 THEN
+		GOSUB "CurveRight"
+		GOSUB "RightAngleHotSpot"
+		GOSUB "StraightHotSpot"
+		ObjectOrder[i+1] = 2 
+		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		GOTO "NextIter"
+	ENDIF
+	"NextIter":
+	i = i + 1
+ENDWHILE
+END
+
+!-----Makes The Straight-------------------------------------------------------------------------------------------------------------------------------------------------
+"Straight":
+	!------TopTube----------------------------------------------------------------------------------------------------------------------------------
+	TubeFi = 0.080
+	PoleHeigth = 1.148-TubeFi/2
+	ADDZ PoleHeigth - TubeFi/4
+	PUT 0, -1, 					0, 0,
+		0,  0, 					0, 0,
+		0,  NextLength[i-1], 	0, 0,
+		0,  NextLength[i-1]+1, 	0, 0
+	GOSUB "LightTube"
+	DEL 1
+	!----------------------------------------------------------------------------------------------------------------------------------------
+
+	! --- Right Edge Lights --------------------------------------------------------------------------------------------------
+	IF RightLightRemainingDistance <= NextLength[i-1] THEN
+		NumLightsRight = INT((NextLength[i-1] - RightLightRemainingDistance) / LightDistance)
+		FOR j = 0 TO NumLightsRight
+			CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
+			IF CurrentPosRight <= NextLength[i-1] THEN
+				ADDY CurrentPosRight
+				ADDX -PoleWidth/2
+				IF TopTubeVisible THEN CALL "GF_TopTube"
+				DEL 1
+				ROTZ -LightAngle
+				IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+					CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+				ENDIF
+				IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+					ADDZ TopTubeLightHeight
+					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+					DEL 1
+				ENDIF
+				RightLightBool = NOT(RightLightBool)
+				DEL 2
+			ENDIF
+			LastLightPosRight = CurrentPosRight
+		NEXT j
+		RightLightRemainingDistance = LightDistance - (NextLength[i-1] - LastLightPosRight)
+	ELSE
+		RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
+	ENDIF
+	ADDY NextLength[i-1]
+RETURN
+!----------------------------------------------------------------------------------------------------------------------------------------
+
+!-----Makes The Right Curving Part-----------------------------------------------------------------------------------------------------------------------------------
+"CurveRight":
+    Angle = RightAngle[i]
+    CurveRadius = CurveRight[i-1]
+	GOSUB "RightTopTube"
+	GOSUB "RightCurveLights"
+	ADDX EndingX
+	ADDY EndingY
+	ROTZ -Angle
+RETURN
+
+"RightTopTube":
+    TubeFi = 0.080
+    PoleHeigth = 1.148 - TubeFi/2
+    ADDZ PoleHeigth - TubeFi/4
+    PUT 0, -1, 0, 0
+    PUT 0,  0, 0, 0
+
+    EndingX = 0
+    EndingY = 0
+
+    FOR n = 0 TO SegmentsResolution
+        AngleSegment = (n / SegmentsResolution) * RightAngle[i]
+        EndingX = CurveRadius - CurveRadius * COS(AngleSegment)
+        EndingY = CurveRadius * SIN(AngleSegment)
+        PUT EndingX, EndingY, 0, 0
+    NEXT n
+
+    _xEndIn = CurveRadius - CurveRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
+    _yEndIn = CurveRadius * SIN(RightAngle[i]) + COS(RightAngle[i])
+    PUT _xEndIn, _yEndIn, 0, 0
+
+    GOSUB "LightTube"
+    DEL 1
+RETURN
+
+"RightCurveLights":
+    CurveRadius = CurveRadius
+
+    ! Center of curvature pivot
+    ADDX CurveRadius
+
+    InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
+    InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
+
+    InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
+    RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
+
+    IF RemainingCurveLengthIn >= 0 THEN
+        InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
+        FOR k = 0 TO InnerTotalSteps
+            CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
+            IF CurrentAngle <= Angle THEN
+                ROTZ -CurrentAngle
+                ADDX -CurveRadius - PoleWidth/2
+                IF TopTubeVisible THEN CALL "GF_TopTube"
+                ROTZ -LightAngle
+                IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+                    CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+                ENDIF
+
+                IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+                    ADDZ TopTubeLightHeight
+                    CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+                    DEL 1
+                ENDIF
+
+                RightLightBool = NOT(RightLightBool)
+                DEL 3
+            ENDIF
+        NEXT k
+
+        LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
+        ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
+        FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
+
+        RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
+    ELSE
+        RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
+    ENDIF
+
+    DEL 1 ! Clears ADDX CurveRadius
+RETURN
+
+!-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
+"CurveLeft":
+    Angle = LeftAngle[i]
+    CurveRadius = CurveLeft[i-1]
+
+	GOSUB "LeftTopTube"
+	GOSUB "LeftCurveLights"
+
+	ADDX -EndingX
+	ADDY EndingY
+	ROTZ Angle
+
+RETURN
+
+"LeftTopTube":
+    TubeFi = 0.080
+    PoleHeigth = 1.148 - TubeFi/2
+    ADDZ PoleHeigth - TubeFi/4
+
+    PUT 0, -1, 0, 0
+    PUT 0,  0, 0, 0
+
+    EndingX = 0
+    EndingY = 0
+
+    FOR n = 0 TO SegmentsResolution
+        AngleSegment = (n / SegmentsResolution) * LeftAngle[i]
+        EndingX = CurveLeft[i-1] - CurveLeft[i-1] * COS(AngleSegment)
+        EndingY = CurveLeft[i-1] * SIN(AngleSegment)
+        PUT -EndingX, EndingY, 0, 0
+    NEXT n
+
+    _xEndIn = -(CurveLeft[i-1] - CurveLeft[i-1] * COS(LeftAngle[i]) + SIN(LeftAngle[i]))
+    _yEndIn = CurveLeft[i-1] * SIN(LeftAngle[i]) + COS(LeftAngle[i])
+    PUT _xEndIn, _yEndIn, 0, 0
+
+    GOSUB "LightTube"
+    DEL 1
+RETURN
+
+"LeftCurveLights":
+    ADDX -CurveRadius
+
+    InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
+    InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
+
+    InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
+    RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
+
+    IF RemainingCurveLengthIn >= 0 THEN
+        InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
+        FOR k = 0 TO InnerTotalSteps
+            CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
+            IF CurrentAngle <= Angle THEN
+                ROTZ CurrentAngle
+                ADDX CurveRadius - PoleWidth/2
+                IF TopTubeVisible THEN CALL "GF_TopTube"
+                ROTZ LightAngle
+                IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+                    CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+                ENDIF
+
+                IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+                    ADDZ TopTubeLightHeight
+                    CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+                    DEL 1
+                ENDIF
+
+                RightLightBool = NOT(RightLightBool)
+                DEL 3
+            ENDIF
+        NEXT k
+
+        LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
+        ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
+        FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
+
+        RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
+    ELSE
+        RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
+    ENDIF
+
+    DEL 1
+RETURN
+
+!---Hot Spots-------------------------------------------------------------------------------------------------------------------------------------
+"LightAngleHotSpot":
+	IF LightVisible THEN
+		HOTSPOT 2,	 0,	0, unID, LightAngle, 518		: unID = unID + 1
+		HOTSPOT 2,	-1,	0, unID, LightAngle, 4 + 128	: unID = unID + 1
+		HOTSPOT 1,	 0,	0, unID, LightAngle, 5			: unID = unID + 1
+	ENDIF
+RETURN
+
+"RightHotSpot":
+	IF CurveLeft[i] < ESP AND StraightResizing[i] < ESP THEN
+		HOTSPOT 0.5,  0, 0, unID, CurveRight[i], 1 : unID = unID + 1
+		HOTSPOT 0.5,  0, 0, unID, CurveRight[i], 2 : unID = unID + 1
+		HOTSPOT 0.5, -1, 0, unID, CurveRight[i], 3 : unID = unID + 1
+	ENDIF
+RETURN
+
+"RightAngleHotSpot":
+	IF CurveRight[i] < ESP THEN 
+		centerX = 1 + CurveRight[i-1]
+		centerY = 0
+		RightRadius = CurveRight[i-1] - 1
+		refX = centerX - RightRadius * COS(RightAngle[i])
+		refY = centerY - RightRadius * SIN(RightAngle[i])
+		HOTSPOT centerX, centerY,  0, unID, RightAngle[i], 518 		: unID = unID + 1
+		HOTSPOT refX,    refY,     0, unID, RightAngle[i], 4 + 128  : unID = unID + 1
+		HOTSPOT 1 + 1, 0, 0, unID, RightAngle[i], 5   		: unID = unID + 1
+	ENDIF
+RETURN
+
+"LeftHotSpot":
+	IF CurveRight[i] < ESP AND StraightResizing[i] < ESP THEN
+		HOTSPOT -0.5,  0, 0, unID, CurveLeft[i], 1 : unID = unID + 1
+		HOTSPOT -0.5,  0, 0, unID, CurveLeft[i], 2 : unID = unID + 1
+		HOTSPOT -0.5, -1, 0, unID, CurveLeft[i], 3 : unID = unID + 1
+	ENDIF
+RETURN
+
+"LeftAngleHotSpot":
+	IF CurveLeft[i] < ESP AND Width[i] = Width[i-1] THEN 
+		centerX = - Width[i] / 2 - CurveLeft[i-1]
+		centerY = 0
+		LeftRadius = CurveLeft[i-1] - 1 
+		IF LeftAngle[i] >= 180 THEN LeftAngle[i] = LeftAngle[i] - 1
+		refX = centerX + LeftRadius * COS(-LeftAngle[i])
+		refY = centerY + LeftRadius * SIN(-LeftAngle[i])
+		HOTSPOT centerX, 			centerY,	0, unID,	LeftAngle[i], 6 		: unID = unID + 1
+		HOTSPOT refX,    			refY,		0, unID,	LeftAngle[i], 4 + 128	: unID = unID + 1
+		HOTSPOT -Width[i]/2 - 1,	0,			0, unID,	LeftAngle[i], 5 		: unID = unID + 1
+	ENDIF
+RETURN
+
+"StraightHotSpot":
+	IF NextLength[i] < -ESP THEN NextLength[i] = ESP
+	HOTSPOT 0,  0,				0, unID, NextLength[i], 1 : unID = unID + 1
+	HOTSPOT 0,  NextLength[i], 	0, unID, NextLength[i], 2 : unID = unID + 1
+	HOTSPOT 0, -1,				0, unID, NextLength[i], 3 : unID = unID + 1
+RETURN
+
+!----------------------------------------------------------------------------------------------------------------------------------------
+"LightTube":
+	IF TopTubeVisible THEN
+		MATERIAL TubeColor
+		tubeRad = 0.03
+		TUBE 17, NSP/4, 1+2,
+			tubeRad * COS(0),    tubeRad * SIN(0),    1,
+			tubeRad * COS(22.5), tubeRad * SIN(22.5), 1,
+			tubeRad * COS(45),   tubeRad * SIN(45),   1,
+			tubeRad * COS(67.5), tubeRad * SIN(67.5), 1,
+			tubeRad * COS(90),   tubeRad * SIN(90),   1,
+			tubeRad * COS(112.5),tubeRad * SIN(112.5),1,
+			tubeRad * COS(135),  tubeRad * SIN(135),  1,
+			tubeRad * COS(157.5),tubeRad * SIN(157.5),1,
+			tubeRad * COS(180),  tubeRad * SIN(180),  1,
+			tubeRad * COS(202.5),tubeRad * SIN(202.5),1,
+			tubeRad * COS(225),  tubeRad * SIN(225),  1,
+			tubeRad * COS(247.5),tubeRad * SIN(247.5),1,
+			tubeRad * COS(270),  tubeRad * SIN(270),  1,
+			tubeRad * COS(292.5),tubeRad * SIN(292.5),1,
+			tubeRad * COS(315),  tubeRad * SIN(315),  1,
+			tubeRad * COS(337.5),tubeRad * SIN(337.5),1,
+			tubeRad * COS(0),    tubeRad * SIN(0),    1,
+			GET(NSP)
+		MATERIAL Asfalt
+	ENDIF
+RETURN
+!----------------------------------------------------------------------------------------------------------------------------------------
+]]>
+</Script_3D>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+SET FILL "Solid Fill"
+PEN 1
+!=================================================================================================================================================
+! 2D SCRIPT - CORRECTED USING ROT2
+!=================================================================================================================================================
+PROJECT2 3, 270, 2
+LightAngle = LightAngle + 90
+
+!----Light Angle HotSpot--------------------------------------------------------------------------------------------------------------------------
+GOSUB "LightAngleHotSpot2D"
+!-------------------------------------------------------------------------------------------------------------------------------------------------
+
+!-------Main Loop Places All 2D Objects-----------------------------------------------------------------------------------------------------------
+i = 1
+GOSUB "StraightHotSpot2D"
+IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
+    GOSUB "RightHotSpot2D"
+    GOSUB "LeftHotSpot2D"
+ENDIF
+
+WHILE ObjectOrder[i] <> 0 DO
+    IF NextLength[i] > ESP       THEN ObjectOrder[i+1] = 2
+    IF CurveLeft[i]  > ESP       THEN ObjectOrder[i+1] = 3
+    IF CurveRight[i] > ESP       THEN ObjectOrder[i+1] = 4
+
+    IF ObjectOrder[i] = 2 THEN
+        GOSUB "Straight2D"
+        GOSUB "RightHotSpot2D"
+        GOSUB "LeftHotSpot2D"
+        IF i < 2 THEN GOSUB "StraightHotSpot2D"
+        GOTO "NextIter2D"
+    ENDIF
+
+    IF ObjectOrder[i] = 3 THEN
+        GOSUB "CurveLeft2D"
+        GOSUB "LeftAngleHotSpot2D"
+        GOSUB "StraightHotSpot2D"
+        ObjectOrder[i+1] = 2 
+        IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+        GOTO "NextIter2D"
+    ENDIF
+
+    IF ObjectOrder[i] = 4 THEN
+        GOSUB "CurveRight2D"
+        GOSUB "RightAngleHotSpot2D"
+        GOSUB "StraightHotSpot2D"
+        ObjectOrder[i+1] = 2 
+        IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+        GOTO "NextIter2D"
+    ENDIF
+
+    "NextIter2D":
+    i = i + 1
+ENDWHILE
+
+END
+
+!=================================================================================================================================================
+! SUBROUTINES
+!=================================================================================================================================================
+
+!-----2D Straight---------------------------------------------------------------------------------------------------------------------------------
+"Straight2D":
+    ! --- Top Tube Line ---
+    IF TopTubeVisible THEN
+        LINE2 0, 0, 0, NextLength[i-1]
+    ENDIF
+
+    ! --- Right Edge Lights (2D Symbol Placement) ---
+    IF RightLightRemainingDistance <= NextLength[i-1] THEN
+        NumLightsRight = INT((NextLength[i-1] - RightLightRemainingDistance) / LightDistance)
+        FOR j = 0 TO NumLightsRight
+            CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
+            IF CurrentPosRight <= NextLength[i-1] THEN
+                ADD2 -PoleWidth/2, CurrentPosRight
+                ROT2 -LightAngle
+                
+                GOSUB "DrawLightSymbol2D"
+                
+                RightLightBool = NOT(RightLightBool)
+                DEL 2
+            ENDIF
+            LastLightPosRight = CurrentPosRight
+        NEXT j
+        RightLightRemainingDistance = LightDistance - (NextLength[i-1] - LastLightPosRight)
+    ELSE
+        RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
+    ENDIF
+
+    ADD2 0, NextLength[i-1]
+RETURN
+
+!-----2D Right Curve------------------------------------------------------------------------------------------------------------------------------
+"CurveRight2D":
+    Angle = RightAngle[i]
+    CurveRadius = CurveRight[i-1]
+
+    GOSUB "RightTopTube2D"
+    GOSUB "RightCurveLights2D"
+
+    EndingX = CurveRadius - CurveRadius * COS(Angle)
+    EndingY = CurveRadius * SIN(Angle)
+
+    ADD2 EndingX, EndingY
+    ROT2 -Angle
+RETURN
+
+"RightTopTube2D":
+    IF TopTubeVisible THEN
+        ! Center of curvature pivot at (CurveRadius, 0)
+        ARC2 CurveRadius, 0, CurveRadius, 180 - RightAngle[i], 180
+    ENDIF
+RETURN
+
+"RightCurveLights2D":
+    ADD2 CurveRadius, 0
+
+    InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
+    InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
+
+    InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
+    RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
+
+    IF RemainingCurveLengthIn >= 0 THEN
+        InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
+        FOR k = 0 TO InnerTotalSteps
+            CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
+            IF CurrentAngle <= Angle THEN
+                ROT2 -CurrentAngle
+                ADD2 -CurveRadius - PoleWidth/2, 0
+                ROT2 -LightAngle
+
+                GOSUB "DrawLightSymbol2D"
+
+                RightLightBool = NOT(RightLightBool)
+                DEL 3
+            ENDIF
+        NEXT k
+
+        LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
+        ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
+        FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
+
+        RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
+    ELSE
+        RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
+    ENDIF
+
+    DEL 1 ! Clear ADD2 CurveRadius, 0
+RETURN
+
+!-----2D Left Curve-------------------------------------------------------------------------------------------------------------------------------
+"CurveLeft2D":
+    Angle = LeftAngle[i]
+    CurveRadius = CurveLeft[i-1]
+
+    GOSUB "LeftTopTube2D"
+    GOSUB "LeftCurveLights2D"
+
+    EndingX = -(CurveRadius - CurveRadius * COS(Angle))
+    EndingY = CurveRadius * SIN(Angle)
+
+    ADD2 EndingX, EndingY
+    ROT2 Angle
+RETURN
+
+"LeftTopTube2D":
+    IF TopTubeVisible THEN
+        ! Center of curvature pivot at (-CurveRadius, 0)
+        ARC2 -CurveRadius, 0, CurveRadius, 0, LeftAngle[i]
+    ENDIF
+RETURN
+
+"LeftCurveLights2D":
+    ADD2 -CurveRadius, 0
+
+    InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
+    InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
+
+    InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
+    RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
+
+    IF RemainingCurveLengthIn >= 0 THEN
+        InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
+        FOR k = 0 TO InnerTotalSteps
+            CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
+            IF CurrentAngle <= Angle THEN
+                ROT2 CurrentAngle
+                ADD2 CurveRadius - PoleWidth/2, 0
+                ROT2 LightAngle
+
+                GOSUB "DrawLightSymbol2D"
+
+                RightLightBool = NOT(RightLightBool)
+                DEL 3
+            ENDIF
+        NEXT k
+
+        LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
+        ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
+        FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
+
+        RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
+    ELSE
+        RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
+    ENDIF
+
+    DEL 1 ! Clear ADD2 -CurveRadius, 0
+RETURN
+
+!-----2D Light Symbol Helper---------------------------------------------------------------------------------------------------------------------
+"DrawLightSymbol2D":
+    IF LightVisible THEN
+        CIRCLE2 0, 0, 0.06
+        HOTSPOT2 0, 0
+
+        LINE2 0, 0, 0.2, 0
+        LINE2 0.2, 0, 0.15, 0.05
+        LINE2 0.2, 0, 0.15, -0.05
+    ENDIF
+RETURN
+
+!=================================================================================================================================================
+! 2D HOTSPOTS
+!=================================================================================================================================================
+
+"LightAngleHotSpot2D":
+    IF LightVisible THEN
+        HOTSPOT2 2,   0, unID, LightAngle, 518      : unID = unID + 1
+        HOTSPOT2 2,  -1, unID, LightAngle, 4 + 128  : unID = unID + 1
+        HOTSPOT2 1,   0, unID, LightAngle, 5        : unID = unID + 1
+        IF ColorCircles THEN
+            POLY2_B 2, 1+2+4,
+                10, 0,
+                1, 0, 900,
+                CircleSize, 360, 4001
+        ENDIF
+    ENDIF
+RETURN
+
+"RightHotSpot2D":
+    IF CurveLeft[i] < ESP AND StraightResizing[i] < ESP THEN
+        HOTSPOT2 0.5,   0, unID, CurveRight[i], 1 : unID = unID + 1
+        HOTSPOT2 0.5,   0, unID, CurveRight[i], 2 : unID = unID + 1
+        HOTSPOT2 0.5,  -1, unID, CurveRight[i], 3 : unID = unID + 1
+        IF ColorCircles THEN
+            POLY2_B 2, 1+2+4,
+                8, 0,
+                0.5, 0, 900,
+                CircleSize, 360, 4001
+        ENDIF
+    ENDIF
+RETURN
+
+"RightAngleHotSpot2D":
+    IF CurveRight[i] < ESP THEN 
+        centerX = 1 + CurveRight[i-1]
+        centerY = 0
+        RightRadius = CurveRight[i-1] - 1
+        refX = centerX - RightRadius * COS(RightAngle[i])
+        refY = centerY - RightRadius * SIN(RightAngle[i])
+        HOTSPOT2 centerX, centerY, unID, RightAngle[i], 518     : unID = unID + 1
+        HOTSPOT2 refX,    refY,    unID, RightAngle[i], 4 + 128 : unID = unID + 1
+        HOTSPOT2 2,       0,       unID, RightAngle[i], 5       : unID = unID + 1
+        IF ColorCircles THEN
+            POLY2_B 2, 1+2+4,
+                6, 0,
+                2, 0, 900,
+                CircleSize, 360, 4001
+        ENDIF
+    ENDIF
+RETURN
+
+"LeftHotSpot2D":
+    IF CurveRight[i] < ESP AND StraightResizing[i] < ESP THEN
+        HOTSPOT2 -0.5,  0, unID, CurveLeft[i], 1 : unID = unID + 1
+        HOTSPOT2 -0.5,  0, unID, CurveLeft[i], 2 : unID = unID + 1
+        HOTSPOT2 -0.5, -1, unID, CurveLeft[i], 3 : unID = unID + 1
+        IF ColorCircles THEN
+            POLY2_B 2, 1+2+4,
+                5, 0,
+                -0.5, 0, 900,
+                CircleSize, 360, 4001
+        ENDIF
+    ENDIF
+RETURN
+
+"LeftAngleHotSpot2D":
+    IF CurveLeft[i] < ESP AND Width[i] = Width[i-1] THEN 
+        centerX = - Width[i] / 2 - CurveLeft[i-1]
+        centerY = 0
+        LeftRadius = CurveLeft[i-1] - 1 
+        IF LeftAngle[i] >= 180 THEN LeftAngle[i] = LeftAngle[i] - 1
+        refX = centerX + LeftRadius * COS(-LeftAngle[i])
+        refY = centerY + LeftRadius * SIN(-LeftAngle[i])
+        HOTSPOT2 centerX,          centerY, unID, LeftAngle[i], 6       : unID = unID + 1
+        HOTSPOT2 refX,             refY,    unID, LeftAngle[i], 4 + 128 : unID = unID + 1
+        HOTSPOT2 -Width[i]/2 - 1,  0,       unID, LeftAngle[i], 5       : unID = unID + 1
+        IF ColorCircles THEN
+            POLY2_B 2, 1+2+4,
+                6, 0,
+                -Width[i]/2 - 1, 0, 900,
+                CircleSize, 360, 4001
+        ENDIF
+    ENDIF
+RETURN
+
+"StraightHotSpot2D":
+    IF NextLength[i] < -ESP THEN NextLength[i] = ESP
+    HOTSPOT2 0,  0,             unID, NextLength[i], 1 : unID = unID + 1
+    HOTSPOT2 0,  NextLength[i], unID, NextLength[i], 2 : unID = unID + 1
+    HOTSPOT2 0, -1,             unID, NextLength[i], 3 : unID = unID + 1
+    IF GLOB_CONTEXT = 22 THEN
+        LINE2  0,   0,                  0, NextLength[i]
+        LINE2 -0.3, NextLength[i] - 0.3, 0, NextLength[i]
+        LINE2  0.3, NextLength[i] - 0.3, 0, NextLength[i]
+    ENDIF
+    IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+				4, 0,
+				0,			NextLength[i],	900,
+				CircleSize,	360, 			4001
+    ENDIF
+RETURN
+]]>
+</Script_2D>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_1D SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+unID = 1
+ESP = 0.000001
+ExtrudeValues = 0
+BeginningDistance = 0.2
+
+LineWidth = 0.05
+LineThickness = 0.01
+TrackThickness = 0.01
+BarrierHeight = .24
+ConstantLineMargin = LineMargin
+
+Orietation = 0
+DefaultPen = 1
+CircleSize = 0.11
+TrackColor = 22
+TrackMarginColor = 102
+CircleColor = 11
+TrackMargin = 0.45
+TrackMarginLine = 0.25
+
+RightLightDistance = 0
+LeftLightDistance = 0
+LightMargin = 0.2
+LightDistance = 3/2
+RightLightBool = 1
+LeftLightBool = 0
+
+TempWidth = 7
+
+TopTubeLightHeight = 0.85
+
+PoleWidth = 0.042
+
+IF Sectors THEN
+	ExtrudeValues =  1+2+4+16+32
+ELSE
+	ExtrudeValues =  1+2+4
+ENDIF
+
+FOR i = 1 TO 120
+	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
+	IF RightAngle[i] < ESP THEN RightAngle[i] = 90
+	IF LeftAngle[i] < ESP THEN LeftAngle[i] = 90
+	!-------------------------------------------------------------------------------------------------------------------------------------
+
+	!-----Makes Limits On The Width-------------------------------------------------------------------------------------------------------
+	IF Width[i] > ESP THEN Width[i] = MIN(14, MAX(3, Width[i]))
+	!-------------------------------------------------------------------------------------------------------------------------------------
+
+	!-----Sets All Widths To The Last Changed One-----------------------------------------------------------------------------------------
+	IF Width[i] > ESP AND ABS(Width[i] - TempWidth) > ESP THEN
+		IF i = 1 THEN 
+			TempWidth = Width[i]
+		ELSE
+			IF NOT(CurveRight[i-1] < ESP AND CurveLeft[i-1] < ESP) THEN
+				TempWidth = Width[i]
+			ENDIF
+		ENDIF
+	ENDIF
+	Width[i] = TempWidth
+	!-------------------------------------------------------------------------------------------------------------------------------------
+
+	!-----Sets Limit On Angle-------------------------------------------------------------------------------------------------------------
+	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
+	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
+	!-------------------------------------------------------------------------------------------------------------------------------------
+NEXT i
+]]>
+</Script_1D>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_PR SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_PR>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_UI SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+UI_DIALOG "Settings", 480, 300
+
+UI_PAGE 1
+
+UI_OUTFIELD "Sectors", 20, 2, 80, 15
+UI_INFIELD "Sectors", 20, 20, 80, 18
+
+UI_OUTFIELD "Barrier Visible", 20, 40, 80, 15
+UI_INFIELD "BarrierVisible", 20, 60, 80, 18
+
+UI_OUTFIELD "Color Circles", 20, 80, 80, 15
+UI_INFIELD "ColorCircles", 20, 100, 80, 18
+
+UI_OUTFIELD "HomeStraight", 20, 120, 80, 15
+UI_INFIELD "HomeStraight", 20, 140, 80, 18
+UI_INFIELD "HomeStraightActive", 110, 120, 18, 18
+
+UI_OUTFIELD "Segments Resolution", 20, 160, 120, 15
+UI_INFIELD "SegmentsResolution", 20, 180, 80, 18
+
+UI_PAGE 2
+
+UI_OUTFIELD "Light Visible", 20, 2, 80, 15
+UI_INFIELD "LightVisible", 20, 20, 80, 18
+
+UI_OUTFIELD "TopTube Visible", 20, 40, 80, 15
+UI_INFIELD "TopTubeVisible", 20, 60, 80, 18
+
+UI_OUTFIELD "Light Strength", 20, 80, 80, 15
+UI_INFIELD "LightStrength", 20, 100, 80, 18
+
+UI_OUTFIELD "Tube Color", 20, 120, 80, 15
+UI_INFIELD "TubeColor", 20, 140, 80, 18
+
+
+
+]]>
+</Script_UI>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_VL SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+DIM vlist[]
+n = 1
+FOR i = 1 TO 100
+	IF NextLength[i] > ESP THEN 
+    	vlist[n] = i
+		n = n + 1
+	ENDIF
+NEXT i
+VALUES "HomeStraight" vlist
+
+VALUES "LightAngle" RANGE [0, 180]
+]]>
+</Script_VL>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_FWM SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_FWM>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_BWM SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_BWM>
+
+<ParamSection SectVersion="27" SectionFlags="0" SubIdent="0">
+	<ParamSectHeader>
+		<AutoHotspots>false</AutoHotspots>
+		<StatBits>
+			<STBit_UIDefault/>
+			<STBit_FixSize/>
+			<STBit_OneRunVLScript/>
+			<STBit_UIUseHierarchicalPages/>
+		</StatBits>
+		<WDLeftFrame>0</WDLeftFrame>
+		<WDRightFrame>0</WDRightFrame>
+		<WDTopFrame>0</WDTopFrame>
+		<WDBotFrame>0</WDBotFrame>
+		<LayFlags>65535</LayFlags>
+		<WDMirrorThickness>0</WDMirrorThickness>
+		<WDWallInset>0</WDWallInset>
+	</ParamSectHeader>
+	<Parameters>
+		<Length Name="A">
+			<Description><![CDATA["Dimension 1"]]></Description>
+			<Fix/>
+			<Value>1</Value>
+		</Length>
+		<Length Name="B">
+			<Description><![CDATA["Dimension 2"]]></Description>
+			<Fix/>
+			<Value>1</Value>
+		</Length>
+		<Length Name="ZZYZX">
+			<Description><![CDATA["Height"]]></Description>
+			<Fix/>
+			<Value>1</Value>
+		</Length>
+		<Boolean Name="AC_show2DHotspotsIn3D">
+			<Description><![CDATA["Show 2D Hotspots in 3D"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Hidden/>
+			</Flags>
+			<Value>1</Value>
+		</Boolean>
+		<Length Name="ac_bottomlevel">
+			<Description><![CDATA["Bottom Level"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Hidden/>
+			</Flags>
+			<Value>1</Value>
+		</Length>
+		<Length Name="ac_toplevel">
+			<Description><![CDATA["Top Level"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Hidden/>
+			</Flags>
+			<Value>0</Value>
+		</Length>
+		<Length Name="NextLength">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0.1</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="CurveRight">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="CurveLeft">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="RightAngle">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="LeftAngle">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="Width">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Integer Name="ObjectOrder">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">1</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Integer>
+		<Length Name="RemovePart">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="MoveX">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="MoveY">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="TotalLength">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Length>
+		<Boolean Name="Sectors">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Boolean>
+		<Boolean Name="BarrierVisible">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
+		<Length Name="LineMargin">
+			<Description><![CDATA[""]]></Description>
+			<Value>0.2</Value>
+		</Length>
+		<Boolean Name="ColorCircles">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
+		<Integer Name="HomeStraight">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Integer>
+		<Boolean Name="HomeStraightActive">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Boolean>
+		<Length Name="BarrierRemove">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="StraightResizing">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="RightNarrowing">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="LeftNarrowing">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Boolean Name="LightVisible">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
+		<Boolean Name="TopTubeVisible">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
+		<Integer Name="SegmentsResolution">
+			<Description><![CDATA[""]]></Description>
+			<Value>30</Value>
+		</Integer>
+		<Length Name="LightAngle">
+			<Description><![CDATA[""]]></Description>
+			<Value>90</Value>
+		</Length>
+		<Material Name="Asfalt">
+			<Description><![CDATA[""]]></Description>
+			<Value>84</Value>
+		</Material>
+		<Length Name="LightStrength">
+			<Description><![CDATA[""]]></Description>
+			<Value>4</Value>
+		</Length>
+		<Material Name="TubeColor">
+			<Description><![CDATA[""]]></Description>
+			<Value>135</Value>
+		</Material>
+		<Length Name="LeftRightOffset">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="66" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+			</ArrayValues>
+		</Length>
+	</Parameters>
+</ParamSection>
+
+<Copyright SectVersion="1" SectionFlags="0" SubIdent="0">
+	<Author></Author>
+	<License>
+		<Type>CC BY</Type>
+		<Version>4.0</Version>
+	</License>
+</Copyright>
+
+<Keywords SectVersion="1" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Keywords>
+
+<Comment SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Comment>
+
+<Picture MIME="image/png" SectVersion="19" SectionFlags="0" SubIdent="0" length_in_bytes="8916" platform="Win">
+	<![CDATA[
+	696D6167652F706E670089504E470D0A1A0A0000000D494844520000015C0000
+	015508020000002C7BC0B3000000017352474200AECE1CE90000000467414D41
+	0000B18F0BFC6105000000097048597300000B1200000B1201D2DD7EFC000022
+	5F49444154785EED9DDF8F5D577580F7B933638724354E2EA95BA49A16DA3C8C
+	D2973E14B592D5F250A50F55FB00A2821225C4641C040F883F04F1805AC62169
+	80B64808BFF16215C994692BF587AAA88D6E4B80D6B805EAC6639B918124E3B9
+	B70F7BE6CC99BDF7D93FD7DE7BAD7DD6A72B67727DEFF55A6BAFF3DD75CE9C7B
+	6EB7B87E4B24F3EA8DB527CE1FA8F7FA71F36EA7DE25C4B9B32BF5AE346EDEED
+	C05F13168E3011CF262CD36F469017B08FB04B9782E7620401BB72541643BD17
+	13F8234CE943BDDF72248BBF86305248598950A2578ECA62A8F762027F84B0AD
+	A8379B7FBF8D81BF86F4A4A0E3B372545642BD1713F8232CD3873EFD3606FE1A
+	F6112649A1CC4A84325CB9DDBD6E7E66456531D0823FC28AADE8690AFC356C59
+	0A43649E9ECB560542BD82196CAD88B9E5C6009002B665D0B177B3BE6C9607E7
+	C31E2406F04748A215D5BB84A8D57263B0140C18572EE81542098DB03CF82324
+	DD8AE55B6E8C61849152A0BB0CA1E8CB06F2B212A820F3813F42FCAD185AC6AC
+	2D3746AA14DA5B8620F4358B5BB67C1102823F48FCDD985E43A896B3D0BE14D2
+	97219488652B1F6428F8239C723746B4DC184A84C152C0BF067A92B5D097AD8F
+	0A498476F007C9DDA8A0B79C8F29DA9742C93508A55F33790285FC1967B498CB
+	D8C3DDE8836E0A25A42429E05F033D438428113AD7AC0AF8CBC8DD188DD272CA
+	397E0152E03580C219A4AE89C2A6704688016E4810FA08FBAE9BA90F6132E3D3
+	25E7CEAEF4DBCDBB9D72539FC620C367ADF1D0779AEFA4C05686023048A317D2
+	5F1C30C27C704342A107D9CEA4A0E78610D820F56982070A260863437A4D0A6C
+	6528AA0469F482258C2A4106C10D09853148B7147801A04015A46E0A191BAA20
+	C7E09E84C218643BBB0F4C1063FB1DBB7BBCEB31751C93022B190AA2411ABD50
+	3711EE4928C682E44981B1A10F147C2CB3796C93022B198AE683347A21FAD52C
+	90E8C9C46216632C489E141800F46962CA03C5D8C6860A4B90B3B1A522A1644B
+	62782011640E7C3431D67E4C45BAC5F55BFAC2BCF6C3F50B9BFBCA9D0821B1BD
+	719076F4F61B8B84C41B55DD62FA6309D27C4CE1D51B6B8F9D592A778EBD442D
+	2C59E1814490D8E2D43521DB8F84145055D282254E8314C64A3FB654EA5DA5B0
+	6485070E128A9B77BBD77EB8FEF83BEFF7F7E08C994A312D410648C1886E0ACB
+	3F06883D2B249008924A9C7A5BEABD57ACFD2C9028A63D48550A7AE943D197CA
+	F2CFC7614F090F24E22411A47F67EAED97A303C7A0524C7B9C27A4E059F750C0
+	D7C99E121248044925CEC4CED43B3053CA248AE90CB284148C44AF9333252490
+	88934490393A536F3FFF0EB440A29ECE208FA5005EF750F4753286EE4C090324
+	8224146799E6F4ECC031A814D319272229E8E88BB4BBD76D9E577F578A1067DD
+	914022CE8A9DA977A0C514248AE913E4A1142AD63D88A045AA854FDD3140254E
+	6CCDA937A12C23897AFA04D92DAEDFC256F431C6F2195BA45A8CC5890D127192
+	684E791D8AFE8B3C24386BEBB3E82D484147D744B145F20FB22E54E2A4DB9C7A
+	136228B81EA74EF7D56FDD215AF450CA2C527A9C65A012270929781653EFC04C
+	4D3886679C1392820EF822E508320754E2246184C47AEA4D18FD524E3CE354CF
+	68C489673220A42C52C93853A012E714A4A0A3776050135AF08C93A5E0465FA4
+	B160EAC6E9098920276B8431F426B4F4A111FF380948C13F996218572874916A
+	81B09E46580A4EF43EB444E21F277629F867529DC58D5933BF94C2004B21025D
+	1311A751B0146030C6A9AF90FE98C218E344081B0110D987C33329EC31A39602
+	898A4B3C43D535E15C21583CE3AC0E4B0116254E7B1FB21400488C535FA19457
+	B390186749580AB0F8C4D9F7215E29F8A48104F0503369023CCE4CB011C0090A
+	95A5904A9938754D849AA24C9C20B01460098D13A91442D3A848C55075535822
+	A9186710548C40A8A4A171F2374425115A6E587CBE6D457D0E0344DDA5CF0A46
+	29345CEEDC8C69627163260BCBA6609C60DC7DA022052A71EAA1EA5E409208EF
+	3B801311273A2944E4500B2AA1FAC4A96BA28A29A848C1A7A448880895A51009
+	95385342D54D11F73A9E5031424A49CB13112AAE630A11093076524A3A768482
+	0F6452216EF5114D0A7109548143ED317A21EE5FA43229E42E292071A1B21462
+	A0126AAD38755338C3A062848A558D202E542CBB0F71D1578150A8B5E0FD0ED2
+	609914086D691C2A08432FF4DF318F36DA1ECC2555880EB5FBEAB7EE0CFFBFCA
+	08171D7D7938D41CF4FB0EFA04812D0542558D0E559D145EBDB136FCDF329A88
+	8EBE3C1C6A0E2C0714B069825055A34355A5A0935B13D1A1978743CD81C50846
+	744D143305A1AAA684EA96828EAE891453A4445F180E3507A15230A29B2247FA
+	84AA9A126A8C148CE8A6F059E994D00BC3A16602440A3ABA26D24D41A8B029A1
+	824941C7471329A1178643CD4126238CA19BC2BF5084AA9A186A4629E8289AB8
+	736F7661737F780F5A12AB5C1842D11696828EBF2608553531D4A25250B879B7
+	7B7D4F3D7BAA6E8B8C9158E592100AB5BA118CE89A90A62054D8C450AB49612C
+	6E7DA7A3BA29C642C509A168714AC108956FFA9124F6401D298406AD9BA26433
+	85465B1142A1D292825E587DA04052793DD450684841A79826D2432D09A16809
+	19C1B3B0BA26AA98C227543B15A4901EB4914C9AC8146D0E08854A4B0A2985D5
+	4D11FD529EA4442B69470A3AE99A28162A0884A2256404F0C266D50448A8A5A5
+	00127434A19AA81B6D1084429DB81474744D449B0224D469494147D7446F0A6C
+	A1DAA1152D2129D42AAC6E0A9F3040A22D2A0590880B204D71E7DEEC918797F2
+	1EFC1D4CA5B6B48C80AAB03E9A008996A5604609551F2850B535A1C2B2140051
+	34B1BBD7CDCFACD2A32D2705CCC5D571468B4A13CE68F1C046C8878CD667A0B0
+	C3523010176A2D4DC4455B0B96423EC6A2D53561374521298C858B13A868CB68
+	022ADA32B01432111AAA6E8AFEE92C0595ACA1EA9A483445D668C16123E4233D
+	DA5E1325A4901E6E49CA47AB9BC27FCB291F6D0A2C857C00469B5D0A80B11600
+	49B49E9A4012AD27B48C40AEBC80D1B2144E80365AA326D0466B84961468D516
+	36DABC52808D3537B4A27DF5C6DAF0F4AAB169020F2C857CC046CB5238867AB4
+	C66942B9A7166C84ACC0069C510AB081E68656B49E01EB9AA8650A96423EC0A3
+	EDC43FADC481104B210E84F899583CBEAB3E2416F058B3329D68755314D85C59
+	0AF9008FB613FFB6122B717C5B1E09224D13E081E68656C0B0D1E6D6041B212B
+	E00177E23F5642BEE0500DC99A000F342B1CAD02AC26580A59010FB813AF1D49
+	417A61F8832E083F4D8047991B5A015789365A13B48C50ABBCD1E488B613DF5E
+	C9FF9E60F8AFF482F0D7C41B62F16BEE69020939CA9A1524017B6A82961490D4
+	D69F1C0177E2DF075218AA61329AC851D67C608E56D78484A5908F1C0177E25F
+	57A2138737E982A120C035211D814613396A9A155A011B3581D911B4CA9B29DA
+	4EFCDD4AAC0B313BBA75477F16D6C4528837C4E2574B6B22535933412BDAB17D
+	07DD14FA63AA40AEBC9902564F5EDABC3E171B62229AC854D37CD00AD8680423
+	483441ABBCF902EEAEBDB26B7F5D129AD8B97AE5C293EF57EF7591A9A699A015
+	6D901474AA68825685F345DB2DAEDFB25C83C5082E4DBC29B6BF7BF9CFB65F5A
+	1DB15CAD96CB832B5FFFC6E0750DE4AB6926C8059C22059DDC9A2057DE7C01AB
+	BB0F125A9AD8FEC7CB975FFCD26A2584581DFDB912BD2456ABE56AB55A1E7CED
+	EBDF180E14F96A9A035AD1821BC188AE89145390AB70BE80CD52D0B16B428FAF
+	9826B6772E7FE1CFFF52FECFEAF04EF9DF5E10879AF8F8D6478510520A7AC0C8
+	211770012918D14DE11906B90AE70BD8570A3A434DF85C703E9326B6BF79F9C5
+	97FFEAC4DF1CBAE184269EBBF8D4A5DFD83ADEEF784B2CDE6D383681967C1D90
+	835A4630E2A3095AE5CD1D70BC147AFAF8ECD3840E8826B6AF5D7EE98B5FE9EF
+	9363C1E04142BAE1631FFD934BBFBDA5EE7AC8A312E83591B50372804A0A3ABA
+	261E3BB3A455E1AC2D0129059D029AD8FE9B1352D0919AB8F8CC872FFDCED6F1
+	AEC7D80DA5262C15C6097229E8EC2C3686D7B0324E13A8C8DA12A952080D2E58
+	13DF9F8B759B26B6FFB6DF7DE83AF5B58F79F6E90F5D7ADF911424BD20EC9A18
+	9EACBD2F16BF525A13A115AE0E3923182BAC4F13789232060C486929E8246A62
+	FB9FFB038DBA150EEF78F6E90F5DFADDADA3FB4E3EC4A90921C4B2A626D22B5C
+	9836A4A0A36BA296293C038E26490A99820BD2C4CED52B975FFC92105D274EFC
+	21FF565AE1E2331FBE7461CB7E6CE2184C9AC854E1ACB42A0523BA290AE49E12
+	B00F18A5A063D1C4CED52B7FBAFD52D7759DE844272D205570FCC773CF7E4408
+	71E9B7B62CC726E235D1FF30340590268A55188A4919C148014D80C7AC102F85
+	DC91D9196AE2B57FF8DAE517BF2C7F7EEBCD37BAD9AC931C69E2D2C79E16425C
+	FAF52DB1367A6C4294D4C47DB1F865B726EA56380E96820EAC260A041C298502
+	91F9B373F54A2F051DA9894F3C7F51FE6F7F46E3E6F7E76243A0D0C452887D83
+	265015D9077246A855E4144D140878A6DED11CA74E3FB0B1714A08F199CF7E6E
+	78FFE25DBB8B77EE2ECEED2E1EDB5DCC77178FEC8A1F0B714F889F0AF13321DE
+	10E22D21DE12625F88FB42DC3F7C873FDE8CE5ADDFC27B8348B3F4B73521D68F
+	FE5C17E2D4D1EDB4100F08F1A0100F0AF190106F179BB7E79BB7E69BFF37DFFC
+	D17CF307F3CDEBF361B44C0E0A6C60469E387FA0DC5EBDB1A6DCD4E714246652
+	A855CA31EC938264EBE2539FF9ECE73EFDA94F3EFEDE0F0CEFB72752679A180E
+	14C38F7EDD178B77A9D3042AC84D0AD83A7988D10B654EB29A9C14944F585B0E
+	611A614D8C41CE08083BD9499993AC82A580B08E2952D0A1AE09F1A67A71ED32
+	909302C24E76A2C7AC0F14E9AB301529482F0C0F34FA13A989F5233BD4D584BC
+	1C66664D903302CE4E76E21373BA26C2A4E0135379724B4107AF26868E28A809
+	964201A2030ED5C4B4A4E0B9071101554D4847246B829C147076B21DC098ED9A
+	089002604CB06090820E194DF4A688D5043923606E660B59631E6AA2FDF3146A
+	71EEEC4AB9DDBCDB29B7E1E3E57913D74EDD56CF9BF819F47913F226CF9BD810
+	624388D347E74DBC4D8807857858889F13E21DE2F0BC89FF9D6FFE60BEF9DFF3
+	CDD7F8D4896A64358272EA84AF1472C73405E234B1F879EDF4AA2A9A78D8AC09
+	1E13DAC34B0A5CC44C288E9077D2D2C4071F3CCBD3446378490139179E7CBFFC
+	CD420334394D0C03662228FCAEEC9642E18026CB589D5BD0C42E224D8CD599E9
+	714B81C1068026F6CA6AE2F4B8267E585F138C82430AACD53224D6395813E7D1
+	68E2A1A3DF74B026D0E0900243144A9A901F242FA28944F956A17CCC3629948F
+	86C907A426DEA8A789D78135C1E8D8A4C094A1967CE335F18EDDAFFEE46E1D4D
+	C82BD38C69E23BAC090046A550AB5323D8B97A45BD8B892245138BF9AEB82D2A
+	6B626ED304A196EEA912F3A81498325459757FC63471E7DE4CD7C4E23DBB664D
+	FC048526DEF7D347799AF0C12C05E49DCA54E4DCD9D5EB7BB30B9BFB3ED3C4A1
+	267E119326949D8EFF996F7EF758133B57AFFCF11FFDFE07FFF0C90FFCC1EFF5
+	774E0DF3A724694941EE3E787E5012EA920A20D0AA738FF3F30E419F10DDFCDE
+	FC701B9657AFEA3F1B5AE613A2F2B6146229B6FFE5F2F617BEB85AC9AF2B5F89
+	D56AB512ABD572B55AAD56ABE572F9B5AFFFF5E0A54B50A5430C52A8124722FE
+	9F9E662924E2348211784DE88248D6C4F6DF5F7EE1A5BF10424AA1FFCF4AD3C4
+	EA131FBF58A0916AB587BAFB502B8E0932A9528F1D9B88DFE97853DBE990B794
+	9D0E2166F29B84669235F9E711EB6BEBEB6BEBEBEB1BEBC789B5882A85E6F9CC
+	673FC7BFADC000464D08D1755DD71D7DC3D8911C744D08212EFDE6D6E1B1899B
+	47C726BED7C821CC135220FADEA58FA64C26E2F61D3CA9AF092184105D27D530
+	E484269E7BF623972E6C1D7FA3CFDB84784888878578F4E8102684262A6E8CB3
+	36B628729F9EAEB8E484C8A2897DB326B6BF79F9A52F7EE5C43F7F84A2092146
+	7ED3E1A389FF8CD74431667DA1173766B259696982B7AE62641D133C89D0C4B5
+	B7DD3EA1891F8F684208F95B8601C37FF924F66313164D3C424013B3BED0F333
+	5E8566D2619101E2D4C4EE9EAA8913D3C49D234D08B15C2E97CB65FF3BC8C10F
+	3D472F643F3611AD891FA1D0C4E13105A54D9D8546A209DEBA189D61DF0A2136
+	CF2F2DADBB78F7A1268410070707CBE5C1C1C172B93C9076306A4208D7B109A7
+	26A423744DC84B4E3C223677E7EFDB7FF45813FF555413BEBF7D706A427D0233
+	02519161D87788C6DEBA7DF73EFFDCD3F7F7F70FEEEFDFBF7FFFE0E0FEC1C181
+	511342D88E4D786942FEE0AF89B3DA3491531387C71122DAD4B3D0F9880B9B61
+	8CEF70F2A4D88D53A7D7374EADAF6FACADADCF666BFBFB6FE99A10421CEF74E8
+	C726E86BC2775270622C74614D3099203A26F8BF6D8C3DECF4E907744D0821B6
+	BF7379F4D844454DDC86D1C4CCBF70A164D544BEB0B342346CA6E7F4E907E40F
+	63C7264E68C2FB17A2309A38E5D2C4752F4D804D0A3E64D504C394C4D9BD8B77
+	EF2E7E099926DE2E366FCF376F393431ABFBC6E5D484FA0421E8BEDF120DBBF9
+	7D87689CDD8B5413C38B6B2B9AF8C17CF3FABCE8A4E04350951906159434D13B
+	62A8898784787BD9DD8708F42A0FCFBCD4AB8C96026F5C4C31FC3F34AD37B05D
+	13D71EBDEDD0C49B409AE84DA16902BB147486675E0EABAC3ECEC4E517BFFCE9
+	4F7D52BD971987F71DC0B16B62774F6D66759A7834BB268849C1B8D8B2B2CA9D
+	A83086CD5024C7E7EE7A3BC8F32F9DD3446E4D1093025312A2634203D8A789DC
+	9AA02405A8F75B799D154B8919D240F5092A4A6A829214EC845E5221A8C42934
+	D9A30C38A17D02A6899FAA9A202385D09285125AE2E6E17D077284F6F0A1267E
+	41D504192994C75962F5092672BB8C51E0820F71F6B0511334A48064A583EA4B
+	1A1E135AC5471334A48013677D17372A9F45CE50A1E2DB9EDEC604A450B15EA1
+	28C59D9F5135D1D234811042AD82190252208DAE61FC9AE07D8789835D0A74DD
+	3F16B95313EA1398FC787EED6026C65AA516D8A53005EC8E28AC09BA6302B64D
+	8B2EA8A54077995322778E128535C14C0DD4526024AC09A62478A590F2665B97
+	029167D204EF3BF8E07F31051F4A46EE095E2930413835A13E816146402A857C
+	FACC7D9D957C91876277046B2282A04FDCD105A91418709CA3C4CE6283F71D0A
+	8333728C5288AE54E8A7A7278EE288471E56BF7391A7896982510A7489D65975
+	E42146E734A13E8D6911745228B35DC98B2FA9F7321A764760D04499869914E8
+	A440972974A77394C0A0092AA06D185C52405BA6B649393D8135D11EB8A44017
+	D6594F494D70D97380480ABCC0554819133C716A427DC204C0DCED88A44017CC
+	0B8C13BB23A6A9093C6091026F5753C6394A1835C13D93092C5260AA5060DF21
+	8E384D3020A0900269E5930E9E10BA26E477B152D404F29E99912B280305DA31
+	C1879B773BF95DAC9669427DCE0875AFC58690D95841FD6B9A08726BDA211D7C
+	7BD81D01D2D2B01753C0C9F1EE833E9E811794614AE26CE92A5D8DFF8DC4764C
+	01614151817F752D50DF7788ABBC5113EA834698CE07706D5250301634D111D1
+	AB3B067F7A9A0902B6FDDA20400A3A7647C469A200B92FBEC46405FC8D2488C4
+	AEAE1BBC27495250708E124A414914680CD2C193DE77A88BB3AB1B00520A3A76
+	4DECEEB5564D660AD8BBBA014DE495824E5F4721C4E679AAD7FFE231A116382B
+	DF98264A4B41C1594DF50970F0C597987C181B7B716326BD96B5B1D3A923058B
+	EFF55216D3842796E019668C736757F333A81BBBA78E14FC311A176D35F1C3FB
+	0E48C0DCD815A490B8B4CE6AAA4F0025317866B2383BC7D9D8B97BBBA78214C0
+	514AA9FE357304E9316182D4D2446929387DC93046B8737C34A13E218AD252C0
+	465029B92F196CD81DE1DFDB438A4A01E14605584AE4F0BE43458A75BE7394F0
+	E9EDA252408BB39425D795D141527C8A175370F6B6AE89725240B2AE9EE87554
+	2EFEA53E01373C268C31C1CB2E3935514E0A25C9F1E969E5E25F76D7328D91D2
+	51F8DF0E1547149242C9BA9499F1ECAE654D0052B27998A2BB0F74F1694AE748
+	565113BCEFC00451420A3E1B55610A5C67C5A909F5090C838312526024764764
+	D204F53101E13B4A1014E3CF2E058A4519922F7E1E25189C649702E38FDD11AC
+	09A60C79A590EF6DD682FFA5539CD759A9127F8F7394706A82F71DEA4234FEBC
+	5220C1CED52BF2A6FE053E9C9A509FC030E1649442154D466CDB9F7FE1E5CFBF
+	F0B2FEDC2AF1876277C49D7B19D7976995069B466EE1119439EB292B4341BCBE
+	37BBB0B94F77942021650B74E3CF25852A15091D13729FAA8001FB28414B134C
+	197249A116FD98B075F1299FF3D5E5E39F7FEE19654CA8223540C60E313A8F4A
+	B026982C52A8B2450DC7047998E0F32FBCBC5C1E483B783A62823835A13EA108
+	555A8891748BEBB7D4FB92A9B5A2CAEE83F1E0C2F3CF3DD3FFDC8F09CA01855A
+	F10332362944A07BA140718A2D81E747A7B72E3E1574C8A958FC398097028672
+	180F2E181D31A97D0728144DE4A855B125F091829C31590AF1202C87D1115213
+	3C26A4033E4A945C0296820EB014A8D462A8091E13C049D444B125F031428414
+	8AC59F892C071AF173E1C9F7F7B7E1FDD4971309380F5E329E404A81B728660C
+	BB23869AE02EAA0EA41498EA60D877F0C1324AC80BE4AA4F600A0226850604DF
+	400A74E9ED20BF9AD9324A20A7812E029302531D2A6382857E8BB28C12E43441
+	0E18293460C70652681BA726D42730B1C0488161CA637744154D34F0D602F365
+	306D14827A0A2DED3BC4C1A30414B3576FAC0D6FEADF330C59EC8E604D8C317B
+	E2FCC1F016EA8844BB63A08114181FF451427D042384E19882DD113E9A60CAC3
+	FB0E18682605550A0A8A23744DA84F60981679FCBD1F98CE1E87430A3A43413C
+	7666F9FA1EEDA3120DD8BD8131013F630726D4C73541B01414789460D2C1AC66
+	E5825D63072F1737663291E18389122F85B185B43B029526C65260184F7A3BC8
+	B3B3F551829026FACD215E0A9EF028919506F61D1A53B3FE3B0E728E889442CA
+	422271444A0A0CE38FDD11083511290540EC8E28A90972343026B441D01B0CFE
+	5122E6726C41254847F102D46650388B1C3420858AAB00782D36D82C742F00BE
+	F818C314EA4F0A4E728C12B0ABC83080384709DD1AB0044BA1FAE6A43842D784
+	FA844669604CA8C8D805BE2328B0453835A13E218D60292024D411055691F1A1
+	D642001AA1167647246A224C0AB5563108BB238C9A20078F09898C7D33105112
+	470965BB0E9302451447E8A766AB4F60188D9DAB57E44DB91FEDDBA4DD11764D
+	0448016DFEA14C6194C00FAD7692DF57ACDE4B07FB28A15C413B400A0D606C44
+	C511BA2694C75787F71D52D8B97A85F4E60DC55010CA15B47DA560DC9C5A8596
+	231826857ED3EE1DE12B8529637744614DB4312620798F513E0139869C2CE477
+	110F419205385E6734B6917CBE2C329D736984A5908271DF41D9DA95D31CB72E
+	3ED54BA1C96F1ED5B36029C0A3CF0E809B314B2185E1AF0F743B48F48980A5A0
+	A23F872275B3801A25D80820E8BF59948C6942A248A17A1650E889B0142A10ED
+	089642268C9A183A623A63825B0AC6E790037916FEBB1B2C8532181DC15238C4
+	F81C7290CBC2384AB01150D14622C62C6C52303E8122D413918EF8DECDD97BCE
+	2DE53D74ED407D2D246D64319648FB5268230B654C308E1224686339DACE6254
+	0A634F20471B89D8F71DA838A28DB5682691B12C1A97421B5938A5A0E07FE4B2
+	306D2C471B595812314B61ECD1E468239120231841324AB4B11C6D646149A465
+	29B49105881414AA8C12CD2C471B8958B23048C1F2685AB49108B8118C141825
+	DA588E6612B164D1AC14DAC8A29814147238A28D1569230B7B22AA142C0FA545
+	338954918242FAEE4633CB318544580AA8C1600423A1A3441BCBD14C22F62C4E
+	48C1FE50423493085A29283847893656A48D2C9C89B014F042C50846869AB873
+	6F766173FFC45FD3A48DBE7226722C05FBE308D14C22A4A530E4E6DDEEF53DF5
+	C27F14536BA6B5EC89B014F0D29214F415093D2A81016322E47066712805E7E3
+	A8D04C226D1B4107BF233C13C18F3311960252A6260505E791CBF2C425821067
+	22DDE2FA2DE783A8D04C222C059DEAA3045422D57126C252C0081BC149E15122
+	5F2285F149A4BBF6CAAEF34154F04998042C8508B28E122513C98A4F22ED48C1
+	275B12346384BA8B02EB888A89C0E293887A9A335D7CB22541335240B52229BB
+	1BA81249C4279746A4E0932A15580A65F01F259027E28F6722DDB5577695BB7C
+	9E860DCF6CF1D38C11C82D8A6594A0958805CF440C93C2CDBBDDF07F7D5EA52E
+	9EA992A0192934B028BD26EEDC9B3DF2F0B28175F15C14831414F03BC23355FC
+	3463849616A54FC47F77032D9E8BE2968202424778A68A1F960242C612B1EC6E
+	A0652C1785602928547784679E2468460A2D2D8A7F2EC84709FF4452A5A0A038
+	A28026FC53454E33466869515212C1364AF8E7022C059DACA3847F9EF8612920
+	043691BAA3847F2ED9A5A000EB08FF3C91C346C049D65C0A3BC23F97D2525048
+	71847F92F86129E0A4642E5977378212A92C0585A04312417922A71929B4B428
+	D573011C258272C125059DB151222849E4346384C6D6055B2E29A344502ED8A5
+	A0D03B6277AF9B9F59F9E7891996024EF0E7E23F4A04E5424C0A3D32C9B13982
+	16CD4821A8F390433197314784E642520A63495274443346B0AC0B451AC845F9
+	EC867D9418D2941414820E5BD682A580932673191B2514E8492165B5B08D126C
+	04B4B494CE582E63472EA7250585EA8E6029E064B2B9484DA85FE6859CA00C9D
+	9C3BBB1ADE6EDEED8637F5D10CD33A4F9C3F78E2FC01312964A5B023784C6070
+	42490A853BCFEE881C9A603050B8CD1042E99802B6D54A3924D1D29880706952
+	E05C284D0AD8B08F12EAA3DB25AEF318B4909102FECE63473400FE362B001929
+	90C3E2889DC5C6636796EA13180607348E2934E66F794021E590041E1A5B9A96
+	D289CE852785D2F487182DA304EF6E301521208568E1D1821D519D89749A1302
+	529826241CC15B51931038A6D052E7419D9EA07BA14A895A5A9AC6D249C905FB
+	A490925BC3287304DA518210DC693DD8A5D01250638291F28EE0ADA855504B81
+	DB2E9AF28E609A01B5141828D8118C3F780F3436362664DD774844F782B3F28D
+	AD0EA733842705469D237894983848A590A83A261176C494412A85C6C0BCEFE0
+	83E288C58D9914771B8EE07720059602138CFC6EAEB139A2014D9026DD71180F
+	34A667850AEA63828E7381687D00D4990E2DD2D3E1498109C3A7E7F8900469D0
+	49C1A7E7185A607604F79B0E3A2934467BFB0EE960760475401C874B0A202931
+	F9C8B1407647B026CA83EB40638E9EAB487B63429505CA77D8B24A3A5901C908
+	D7A4C0303AF651427D34930C222980488EC907920562478C01B54088A4D018ED
+	ED3BE0841D010E162940498E993876470C35C12D370696038D8DAD507B634233
+	0BD47B6177AF93E76BAB8F200BD41AA19814A092611827FD10218D3036479003
+	702342210586294CBF09D97737D4A74D83EEDA2BBBF22728CD8402683824F0BE
+	037E3C33D2BDE0F3AC2A7866E4C3F131857CA788D8014C06092C05FC4467546B
+	3371129D91CEE881C662C90326830496027200D329B699D801CCC82605854CC9
+	C326830136027EF26594693371029B91AF1414A092874D06032C05FC14CB086A
+	3371029B51A41414E29287CD04036C0412D44A2ADF614BD88C60A4A0E0E908D8
+	4C30C052C00FAA8C3CB7143BE019659182823173F04C30C052C00FE68C8C5B8A
+	13F08C4A484141662E4F32F5CF1C3F6C0412104ACAD311E019559082928667E6
+	F86129E0877446635B0A7852F5A5A030963972DA33827D9988D25246FD96023E
+	74A39382021547B42705FF3522447B49E518BA2B48216561A0D20687A54082F6
+	92B26414BDB11093824274DAB0B46704D86542427B190525E5BFB19496827F0E
+	11F8A70D4B7B52C8BA4CB5E0A486281BCB707B694A0A0A651CD19E110A2F5331
+	DA4B0A36A37E7B292A05D81C42C9E408960209DACB285F5213BAF2125F63C793
+	4CADC650614252500071449363023371CA4901F9FB0F882318A618F936A8FF07
+	35A6FF321A8836110000000049454E44AE426082
+	]]>
+</Picture>
+
+</Symbol>
