@@ -259,7 +259,7 @@ RETURN
                 ROTZ CurrentAngle
                 ADDX CurveRadius - PoleWidth/2
                 IF TopTubeVisible THEN CALL "GF_TopTube"
-                ROTZ LightAngle
+                ROTZ -LightAngle
                 IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
                     CALL "GF_Light" PARAMETERS LightStrength = LightStrength
                 ENDIF
@@ -311,9 +311,9 @@ RETURN
 		RightRadius = CurveRight[i-1] - 1
 		refX = centerX - RightRadius * COS(RightAngle[i])
 		refY = centerY - RightRadius * SIN(RightAngle[i])
-		HOTSPOT centerX, centerY,  0, unID, RightAngle[i], 518 		: unID = unID + 1
-		HOTSPOT refX,    refY,     0, unID, RightAngle[i], 4 + 128  : unID = unID + 1
-		HOTSPOT 1 + 1, 0, 0, unID, RightAngle[i], 5   		: unID = unID + 1
+		HOTSPOT centerX,	centerY,	0, unID, RightAngle[i], 518 		: unID = unID + 1
+		HOTSPOT refX,		refY,		0, unID, RightAngle[i], 4 + 128 	: unID = unID + 1
+		HOTSPOT 1 + 1,	 	0,			0, unID, RightAngle[i], 5   		: unID = unID + 1
 	ENDIF
 RETURN
 
@@ -333,9 +333,9 @@ RETURN
 		IF LeftAngle[i] >= 180 THEN LeftAngle[i] = LeftAngle[i] - 1
 		refX = centerX + LeftRadius * COS(-LeftAngle[i])
 		refY = centerY + LeftRadius * SIN(-LeftAngle[i])
-		HOTSPOT centerX, 			centerY,	0, unID,	LeftAngle[i], 6 		: unID = unID + 1
-		HOTSPOT refX,    			refY,		0, unID,	LeftAngle[i], 4 + 128	: unID = unID + 1
-		HOTSPOT -1,	0,			0, unID,	LeftAngle[i], 5 		: unID = unID + 1
+		HOTSPOT centerX,	centerY,	0, unID,	LeftAngle[i], 6 		: unID = unID + 1
+		HOTSPOT refX,   	refY,		0, unID,	LeftAngle[i], 4 + 128	: unID = unID + 1
+		HOTSPOT -1,			0,			0, unID,	LeftAngle[i], 5 		: unID = unID + 1
 	ENDIF
 RETURN
 
@@ -383,9 +383,7 @@ RETURN
 <![CDATA[
 SET FILL "Solid Fill"
 PEN 1
-!=================================================================================================================================================
-! 2D SCRIPT - CORRECTED USING ROT2
-!=================================================================================================================================================
+
 PROJECT2 3, 270, 2
 LightAngle = LightAngle + 90
 
@@ -397,210 +395,199 @@ GOSUB "LightAngleHotSpot2D"
 i = 1
 GOSUB "StraightHotSpot2D"
 IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
-    GOSUB "RightHotSpot2D"
-    GOSUB "LeftHotSpot2D"
+	GOSUB "RightHotSpot2D"
+	GOSUB "LeftHotSpot2D"
 ENDIF
 
 WHILE ObjectOrder[i] <> 0 DO
-    IF NextLength[i] > ESP       THEN ObjectOrder[i+1] = 2
-    IF CurveLeft[i]  > ESP       THEN ObjectOrder[i+1] = 3
-    IF CurveRight[i] > ESP       THEN ObjectOrder[i+1] = 4
+	IF NextLength[i] > ESP	THEN ObjectOrder[i+1] = 2
+	IF CurveLeft[i]  > ESP	THEN ObjectOrder[i+1] = 3
+	IF CurveRight[i] > ESP	THEN ObjectOrder[i+1] = 4
 
-    IF ObjectOrder[i] = 2 THEN
-        GOSUB "Straight2D"
-        GOSUB "RightHotSpot2D"
-        GOSUB "LeftHotSpot2D"
-        IF i < 2 THEN GOSUB "StraightHotSpot2D"
-        GOTO "NextIter2D"
-    ENDIF
+	IF ObjectOrder[i] = 2 THEN
+		GOSUB "Straight2D"
+		TotalTrackLength = TotalTrackLength + NextLength[i-1]
+		GOSUB "RightHotSpot2D"
+		GOSUB "LeftHotSpot2D"
+		IF i < 2 THEN GOSUB "StraightHotSpot2D"
+		GOTO "NextIter2D"
+	ENDIF
 
-    IF ObjectOrder[i] = 3 THEN
-        GOSUB "CurveLeft2D"
-        GOSUB "LeftAngleHotSpot2D"
-        GOSUB "StraightHotSpot2D"
-        ObjectOrder[i+1] = 2 
-        IF NextLength[i] <= 0 THEN NextLength[i] = ESP
-        GOTO "NextIter2D"
-    ENDIF
+	IF ObjectOrder[i] = 3 THEN
+		GOSUB "CurveLeft2D"
+		TotalTrackLength = TotalTrackLength + (CurveLeft[i-1] * (LeftAngle[i] * PI / 180))
+		GOSUB "LeftAngleHotSpot2D"
+		GOSUB "StraightHotSpot2D"
+		ObjectOrder[i+1] = 2 
+		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		GOTO "NextIter2D"
+	ENDIF
 
-    IF ObjectOrder[i] = 4 THEN
-        GOSUB "CurveRight2D"
-        GOSUB "RightAngleHotSpot2D"
-        GOSUB "StraightHotSpot2D"
-        ObjectOrder[i+1] = 2 
-        IF NextLength[i] <= 0 THEN NextLength[i] = ESP
-        GOTO "NextIter2D"
-    ENDIF
+	IF ObjectOrder[i] = 4 THEN
+		GOSUB "CurveRight2D"
+		TotalTrackLength = TotalTrackLength + (CurveRight[i-1] * (RightAngle[i] * PI / 180))
+		GOSUB "RightAngleHotSpot2D"
+		GOSUB "StraightHotSpot2D"
+		ObjectOrder[i+1] = 2 
+		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		GOTO "NextIter2D"
+	ENDIF
 
-    "NextIter2D":
-    i = i + 1
+	"NextIter2D":
+	i = i + 1
 ENDWHILE
+ROT2 Orietation
+IF ObjectOrder[i+1] = 0 THEN TEXT2 0, -2, STR(TotalTrackLength, 10, 3) + " m"
 
 END
 
-!=================================================================================================================================================
-! SUBROUTINES
-!=================================================================================================================================================
-
 !-----2D Straight---------------------------------------------------------------------------------------------------------------------------------
 "Straight2D":
-    ! --- Top Tube Line ---
-    IF TopTubeVisible THEN
-        LINE2 0, 0, 0, NextLength[i-1]
-    ENDIF
+	! --- Top Tube Line ---
+	IF TopTubeVisible THEN
+		LINE2 0, 0, 0, NextLength[i-1]
+	ENDIF
 
-    ! --- Right Edge Lights (2D Symbol Placement) ---
-    IF RightLightRemainingDistance <= NextLength[i-1] THEN
-        NumLightsRight = INT((NextLength[i-1] - RightLightRemainingDistance) / LightDistance)
-        FOR j = 0 TO NumLightsRight
-            CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
-            IF CurrentPosRight <= NextLength[i-1] THEN
-                ADD2 -PoleWidth/2, CurrentPosRight
-                ROT2 -LightAngle
-                
-                GOSUB "DrawLightSymbol2D"
-                
-                RightLightBool = NOT(RightLightBool)
-                DEL 2
-            ENDIF
-            LastLightPosRight = CurrentPosRight
-        NEXT j
-        RightLightRemainingDistance = LightDistance - (NextLength[i-1] - LastLightPosRight)
-    ELSE
-        RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
-    ENDIF
+	! --- Right Edge Lights (2D Symbol Placement) ---
+	IF RightLightRemainingDistance <= NextLength[i-1] THEN
+		NumLightsRight = INT((NextLength[i-1] - RightLightRemainingDistance) / LightDistance)
+		FOR j = 0 TO NumLightsRight
+			CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
+			IF CurrentPosRight <= NextLength[i-1] THEN
+				ADD2 -PoleWidth/2, CurrentPosRight
+				ROT2 -LightAngle
+				
+				GOSUB "DrawLightSymbol2D"
+				
+				RightLightBool = NOT(RightLightBool)
+				DEL 2
+			ENDIF
+			LastLightPosRight = CurrentPosRight
+		NEXT j
+		RightLightRemainingDistance = LightDistance - (NextLength[i-1] - LastLightPosRight)
+	ELSE
+		RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
+	ENDIF
 
-    ADD2 0, NextLength[i-1]
+	ADD2 0, NextLength[i-1]
 RETURN
 
 !-----2D Right Curve------------------------------------------------------------------------------------------------------------------------------
 "CurveRight2D":
-    Angle = RightAngle[i]
-    CurveRadius = CurveRight[i-1]
+	Angle = RightAngle[i]
+	CurveRadius = CurveRight[i-1]
 
-    GOSUB "RightTopTube2D"
-    GOSUB "RightCurveLights2D"
+	IF TopTubeVisible THEN ARC2 CurveRadius, 0, CurveRadius, 180 - RightAngle[i], 180
+	GOSUB "RightCurveLights2D"
 
-    EndingX = CurveRadius - CurveRadius * COS(Angle)
-    EndingY = CurveRadius * SIN(Angle)
+	EndingX = CurveRadius - CurveRadius * COS(Angle)
+	EndingY = CurveRadius * SIN(Angle)
 
-    ADD2 EndingX, EndingY
-    ROT2 -Angle
-RETURN
-
-"RightTopTube2D":
-    IF TopTubeVisible THEN
-        ! Center of curvature pivot at (CurveRadius, 0)
-        ARC2 CurveRadius, 0, CurveRadius, 180 - RightAngle[i], 180
-    ENDIF
+	ADD2 EndingX, EndingY
+	ROT2 -Angle
+	Orietation = Orietation + Angle
 RETURN
 
 "RightCurveLights2D":
-    ADD2 CurveRadius, 0
+	ADD2 CurveRadius, 0
 
-    InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
-    InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
+	InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
+	InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
 
-    InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
-    RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
+	InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
+	RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
 
-    IF RemainingCurveLengthIn >= 0 THEN
-        InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
-        FOR k = 0 TO InnerTotalSteps
-            CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
-            IF CurrentAngle <= Angle THEN
-                ROT2 -CurrentAngle
-                ADD2 -CurveRadius - PoleWidth/2, 0
-                ROT2 -LightAngle
+	IF RemainingCurveLengthIn >= 0 THEN
+		InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
+		FOR k = 0 TO InnerTotalSteps
+			CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
+			IF CurrentAngle <= Angle THEN
+				ROT2 -CurrentAngle
+				ADD2 -CurveRadius - PoleWidth/2, 0
+				ROT2 -LightAngle
 
-                GOSUB "DrawLightSymbol2D"
+				GOSUB "DrawLightSymbol2D"
 
-                RightLightBool = NOT(RightLightBool)
-                DEL 3
-            ENDIF
-        NEXT k
+				RightLightBool = NOT(RightLightBool)
+				DEL 3
+			ENDIF
+		NEXT k
 
-        LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
-        ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
-        FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
+		LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
+		ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
+		FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
 
-        RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
-    ELSE
-        RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
-    ENDIF
+		RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
+	ELSE
+		RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
+	ENDIF
 
-    DEL 1 ! Clear ADD2 CurveRadius, 0
+	DEL 1
 RETURN
 
 !-----2D Left Curve-------------------------------------------------------------------------------------------------------------------------------
 "CurveLeft2D":
-    Angle = LeftAngle[i]
-    CurveRadius = CurveLeft[i-1]
+	Angle = LeftAngle[i]
+	CurveRadius = CurveLeft[i-1]
 
-    GOSUB "LeftTopTube2D"
-    GOSUB "LeftCurveLights2D"
+	IF TopTubeVisible THEN ARC2 -CurveRadius, 0, CurveRadius, 0, LeftAngle[i]
+	GOSUB "LeftCurveLights2D"
 
-    EndingX = -(CurveRadius - CurveRadius * COS(Angle))
-    EndingY = CurveRadius * SIN(Angle)
+	EndingX = -(CurveRadius - CurveRadius * COS(Angle))
+	EndingY = CurveRadius * SIN(Angle)
 
-    ADD2 EndingX, EndingY
-    ROT2 Angle
-RETURN
-
-"LeftTopTube2D":
-    IF TopTubeVisible THEN
-        ! Center of curvature pivot at (-CurveRadius, 0)
-        ARC2 -CurveRadius, 0, CurveRadius, 0, LeftAngle[i]
-    ENDIF
+	ADD2 EndingX, EndingY
+	ROT2 Angle
+	Orietation = Orietation - Angle
 RETURN
 
 "LeftCurveLights2D":
-    ADD2 -CurveRadius, 0
+	ADD2 -CurveRadius, 0
 
-    InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
-    InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
+	InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
+	InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
 
-    InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
-    RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
+	InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
+	RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
 
-    IF RemainingCurveLengthIn >= 0 THEN
-        InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
-        FOR k = 0 TO InnerTotalSteps
-            CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
-            IF CurrentAngle <= Angle THEN
-                ROT2 CurrentAngle
-                ADD2 CurveRadius - PoleWidth/2, 0
-                ROT2 LightAngle
+	IF RemainingCurveLengthIn >= 0 THEN
+		InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
+		FOR k = 0 TO InnerTotalSteps
+			CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
+			IF CurrentAngle <= Angle THEN
+				ROT2 CurrentAngle
+				ADD2 CurveRadius - PoleWidth/2, 0
+				ROT2 -LightAngle
 
-                GOSUB "DrawLightSymbol2D"
+				GOSUB "DrawLightSymbol2D"
 
-                RightLightBool = NOT(RightLightBool)
-                DEL 3
-            ENDIF
-        NEXT k
+				RightLightBool = NOT(RightLightBool)
+				DEL 3
+			ENDIF
+		NEXT k
 
-        LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
-        ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
-        FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
+		LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
+		ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
+		FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
 
-        RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
-    ELSE
-        RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
-    ENDIF
+		RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
+	ELSE
+		RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
+	ENDIF
 
-    DEL 1 ! Clear ADD2 -CurveRadius, 0
+	DEL 1
 RETURN
 
 !-----2D Light Symbol Helper---------------------------------------------------------------------------------------------------------------------
 "DrawLightSymbol2D":
-    IF LightVisible THEN
-        CIRCLE2 0, 0, 0.06
-        HOTSPOT2 0, 0
+	IF LightVisible THEN
+		CIRCLE2 0, 0, 0.06
+		HOTSPOT2 0, 0
 
-        LINE2 0, 0, 0.2, 0
-        LINE2 0.2, 0, 0.15, 0.05
-        LINE2 0.2, 0, 0.15, -0.05
-    ENDIF
+		LINE2 0, 0, 0.2, 0
+		LINE2 0.2, 0, 0.15, 0.05
+		LINE2 0.2, 0, 0.15, -0.05
+	ENDIF
 RETURN
 
 !=================================================================================================================================================
@@ -608,102 +595,102 @@ RETURN
 !=================================================================================================================================================
 
 "LightAngleHotSpot2D":
-    IF LightVisible THEN
-        HOTSPOT2 2,   0, unID, LightAngle, 518      : unID = unID + 1
-        HOTSPOT2 2,  -1, unID, LightAngle, 4 + 128  : unID = unID + 1
-        HOTSPOT2 1,   0, unID, LightAngle, 5        : unID = unID + 1
-        IF ColorCircles THEN
-            POLY2_B 2, 1+2+4,
-                10, 0,
-                1, 0, 900,
-                CircleSize, 360, 4001
-        ENDIF
-    ENDIF
+	IF LightVisible THEN
+		HOTSPOT2 2,   0, unID, LightAngle, 518      : unID = unID + 1
+		HOTSPOT2 2,  -1, unID, LightAngle, 4 + 128  : unID = unID + 1
+		HOTSPOT2 1,   0, unID, LightAngle, 5        : unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				10, 0,
+				1, 0, 900,
+				CircleSize, 360, 4001
+		ENDIF
+	ENDIF
 RETURN
 
 "RightHotSpot2D":
-    IF CurveLeft[i] < ESP THEN
-        HOTSPOT2 0.5,   0, unID, CurveRight[i], 1 : unID = unID + 1
-        HOTSPOT2 0.5,   0, unID, CurveRight[i], 2 : unID = unID + 1
-        HOTSPOT2 0.5,  -1, unID, CurveRight[i], 3 : unID = unID + 1
-        IF ColorCircles THEN
-            POLY2_B 2, 1+2+4,
-                8, 0,
-                0.5, 0, 900,
-                CircleSize, 360, 4001
-        ENDIF
-    ENDIF
+	IF CurveLeft[i] < ESP THEN
+		HOTSPOT2 0.5,   0, unID, CurveRight[i], 1 : unID = unID + 1
+		HOTSPOT2 0.5,   0, unID, CurveRight[i], 2 : unID = unID + 1
+		HOTSPOT2 0.5,  -1, unID, CurveRight[i], 3 : unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				8, 0,
+				0.5, 0, 900,
+				CircleSize, 360, 4001
+		ENDIF
+	ENDIF
 RETURN
 
 "RightAngleHotSpot2D":
-    IF CurveRight[i] < ESP THEN 
-        centerX = 1 + CurveRight[i-1]
-        centerY = 0
-        RightRadius = CurveRight[i-1] - 1
-        refX = centerX - RightRadius * COS(RightAngle[i])
-        refY = centerY - RightRadius * SIN(RightAngle[i])
-        HOTSPOT2 centerX, centerY, unID, RightAngle[i], 518     : unID = unID + 1
-        HOTSPOT2 refX,    refY,    unID, RightAngle[i], 4 + 128 : unID = unID + 1
-        HOTSPOT2 2,       0,       unID, RightAngle[i], 5       : unID = unID + 1
-        IF ColorCircles THEN
-            POLY2_B 2, 1+2+4,
-                6, 0,
-                2, 0, 900,
-                CircleSize, 360, 4001
-        ENDIF
-    ENDIF
+	IF CurveRight[i] < ESP THEN 
+		centerX = 1 + CurveRight[i-1]
+		centerY = 0
+		RightRadius = CurveRight[i-1] - 1
+		refX = centerX - RightRadius * COS(RightAngle[i])
+		refY = centerY - RightRadius * SIN(RightAngle[i])
+		HOTSPOT2 centerX, centerY, unID, RightAngle[i], 518     : unID = unID + 1
+		HOTSPOT2 refX,    refY,    unID, RightAngle[i], 4 + 128 : unID = unID + 1
+		HOTSPOT2 2,       0,       unID, RightAngle[i], 5       : unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				6, 0,
+				2, 0, 900,
+				CircleSize, 360, 4001
+		ENDIF
+	ENDIF
 RETURN
 
 "LeftHotSpot2D":
-    IF CurveRight[i] < ESP THEN
-        HOTSPOT2 -0.5,  0, unID, CurveLeft[i], 1 : unID = unID + 1
-        HOTSPOT2 -0.5,  0, unID, CurveLeft[i], 2 : unID = unID + 1
-        HOTSPOT2 -0.5, -1, unID, CurveLeft[i], 3 : unID = unID + 1
-        IF ColorCircles THEN
-            POLY2_B 2, 1+2+4,
-                5, 0,
-                -0.5, 0, 900,
-                CircleSize, 360, 4001
-        ENDIF
-    ENDIF
+	IF CurveRight[i] < ESP THEN
+		HOTSPOT2 -0.5,  0, unID, CurveLeft[i], 1 : unID = unID + 1
+		HOTSPOT2 -0.5,  0, unID, CurveLeft[i], 2 : unID = unID + 1
+		HOTSPOT2 -0.5, -1, unID, CurveLeft[i], 3 : unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				5, 0,
+				-0.5, 0, 900,
+				CircleSize, 360, 4001
+		ENDIF
+	ENDIF
 RETURN
 
 "LeftAngleHotSpot2D":
-    IF CurveLeft[i] < ESP THEN 
-        centerX =  - CurveLeft[i-1]
-        centerY = 0
-        LeftRadius = CurveLeft[i-1] - 1 
-        IF LeftAngle[i] >= 180 THEN LeftAngle[i] = LeftAngle[i] - 1
-        refX = centerX + LeftRadius * COS(-LeftAngle[i])
-        refY = centerY + LeftRadius * SIN(-LeftAngle[i])
-        HOTSPOT2 centerX,          centerY, unID, LeftAngle[i], 6       : unID = unID + 1
-        HOTSPOT2 refX,             refY,    unID, LeftAngle[i], 4 + 128 : unID = unID + 1
-        HOTSPOT2 - 1,  0,       unID, LeftAngle[i], 5       : unID = unID + 1
-        IF ColorCircles THEN
-            POLY2_B 2, 1+2+4,
-                6, 0,
-                - 1, 0, 900,
-                CircleSize, 360, 4001
-        ENDIF
-    ENDIF
+	IF CurveLeft[i] < ESP THEN 
+		centerX =  - CurveLeft[i-1]
+		centerY = 0
+		LeftRadius = CurveLeft[i-1] - 1 
+		IF LeftAngle[i] >= 180 THEN LeftAngle[i] = LeftAngle[i] - 1
+		refX = centerX + LeftRadius * COS(-LeftAngle[i])
+		refY = centerY + LeftRadius * SIN(-LeftAngle[i])
+		HOTSPOT2 centerX,          centerY, unID, LeftAngle[i], 6       : unID = unID + 1
+		HOTSPOT2 refX,             refY,    unID, LeftAngle[i], 4 + 128 : unID = unID + 1
+		HOTSPOT2 - 1,  0,       unID, LeftAngle[i], 5       : unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				6, 0,
+				- 1, 0, 900,
+				CircleSize, 360, 4001
+		ENDIF
+	ENDIF
 RETURN
 
 "StraightHotSpot2D":
-    IF NextLength[i] < -ESP THEN NextLength[i] = ESP
-    HOTSPOT2 0,  0,             unID, NextLength[i], 1 : unID = unID + 1
-    HOTSPOT2 0,  NextLength[i], unID, NextLength[i], 2 : unID = unID + 1
-    HOTSPOT2 0, -1,             unID, NextLength[i], 3 : unID = unID + 1
-    IF GLOB_CONTEXT = 22 THEN
-        LINE2  0,   0,                  0, NextLength[i]
-        LINE2 -0.3, NextLength[i] - 0.3, 0, NextLength[i]
-        LINE2  0.3, NextLength[i] - 0.3, 0, NextLength[i]
-    ENDIF
-    IF ColorCircles THEN
+	IF NextLength[i] < -ESP THEN NextLength[i] = ESP
+	HOTSPOT2 0,  0,             unID, NextLength[i], 1 : unID = unID + 1
+	HOTSPOT2 0,  NextLength[i], unID, NextLength[i], 2 : unID = unID + 1
+	HOTSPOT2 0, -1,             unID, NextLength[i], 3 : unID = unID + 1
+	IF GLOB_CONTEXT = 22 THEN
+		LINE2  0,   0,                  0, NextLength[i]
+		LINE2 -0.3, NextLength[i] - 0.3, 0, NextLength[i]
+		LINE2  0.3, NextLength[i] - 0.3, 0, NextLength[i]
+	ENDIF
+	IF ColorCircles THEN
 		POLY2_B 2, 1+2+4,
-				4, 0,
-				0,			NextLength[i],	900,
-				CircleSize,	360, 			4001
-    ENDIF
+			4, 0,
+			0, NextLength[i], 900,
+			CircleSize, 360, 4001
+	ENDIF
 RETURN
 ]]>
 </Script_2D>
@@ -734,6 +721,7 @@ TopTubeLightHeight = 0.85
 PoleWidth = 0.042
 
 RightLightRemainingDistance = 0
+TotalTrackLength = 0
 
 
 FOR i = 1 TO 120
@@ -764,35 +752,23 @@ UI_DIALOG "Settings", 480, 300
 
 UI_PAGE 1
 
-UI_OUTFIELD "Sectors", 20, 2, 80, 15
-UI_INFIELD "Sectors", 20, 20, 80, 18
+UI_OUTFIELD "Color Circles", 20, 20, 80, 15
+UI_INFIELD "ColorCircles", 20, 40, 80, 18
 
-UI_OUTFIELD "Barrier Visible", 20, 40, 80, 15
-UI_INFIELD "BarrierVisible", 20, 60, 80, 18
+UI_OUTFIELD "Segments Resolution", 20, 60, 120, 15
+UI_INFIELD "SegmentsResolution", 20, 80, 80, 18
 
-UI_OUTFIELD "Color Circles", 20, 80, 80, 15
-UI_INFIELD "ColorCircles", 20, 100, 80, 18
+UI_OUTFIELD "Light Visible", 20, 100, 80, 15
+UI_INFIELD "LightVisible", 20, 120, 80, 18
 
-UI_OUTFIELD "HomeStraight", 20, 120, 80, 15
-UI_INFIELD "HomeStraight", 20, 140, 80, 18
-UI_INFIELD "HomeStraightActive", 110, 120, 18, 18
+UI_OUTFIELD "TopTube Visible", 20, 140, 80, 15
+UI_INFIELD "TopTubeVisible", 20, 160, 80, 18
 
-UI_OUTFIELD "Segments Resolution", 20, 160, 120, 15
-UI_INFIELD "SegmentsResolution", 20, 180, 80, 18
+UI_OUTFIELD "Light Strength", 20, 180, 80, 15
+UI_INFIELD "LightStrength", 20, 200, 80, 18
 
-UI_PAGE 2
-
-UI_OUTFIELD "Light Visible", 20, 2, 80, 15
-UI_INFIELD "LightVisible", 20, 20, 80, 18
-
-UI_OUTFIELD "TopTube Visible", 20, 40, 80, 15
-UI_INFIELD "TopTubeVisible", 20, 60, 80, 18
-
-UI_OUTFIELD "Light Strength", 20, 80, 80, 15
-UI_INFIELD "LightStrength", 20, 100, 80, 18
-
-UI_OUTFIELD "Tube Color", 20, 120, 80, 15
-UI_INFIELD "TubeColor", 20, 140, 80, 18
+UI_OUTFIELD "Tube Color", 200, 20, 80, 15
+UI_INFIELD "TubeColor", 200, 40, 80, 18
 
 
 
@@ -811,9 +787,6 @@ FOR i = 1 TO 100
 		n = n + 1
 	ENDIF
 NEXT i
-VALUES "HomeStraight" vlist
-
-!VALUES "LightAngle" RANGE [0, 180]
 ]]>
 </Script_VL>
 
