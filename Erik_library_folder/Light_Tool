@@ -750,28 +750,48 @@ NEXT i
 <![CDATA[
 UI_DIALOG "Settings", 480, 300
 
-UI_PAGE 1
+UI_PAGE 1, -1, "Lighting & Fence"
 
-UI_OUTFIELD "Color Circles", 20, 20, 80, 15
-UI_INFIELD "ColorCircles", 20, 40, 80, 18
+! --- SECTION 1: LIGHTING -----------------------------------------------------
+UI_STYLE 0, 1
+UI_OUTFIELD "Lighting Options",     20,   10,  150, 15
+UI_STYLE 0, 0
 
-UI_OUTFIELD "Segments Resolution", 20, 60, 120, 15
-UI_INFIELD "SegmentsResolution", 20, 80, 80, 18
+! Light Visibility
+UI_OUTFIELD "Light Visible",        20,   32,  100, 15
+UI_INFIELD  "LightVisible",         20,   50,  100, 20
 
-UI_OUTFIELD "Light Visible", 20, 100, 80, 15
-UI_INFIELD "LightVisible", 20, 120, 80, 18
+! Light Strength
+UI_OUTFIELD "Light Strength",      130,   32,  100, 15
+UI_INFIELD  "LightStrength",       130,   50,  100, 20
 
-UI_OUTFIELD "TopTube Visible", 20, 140, 80, 15
-UI_INFIELD "TopTubeVisible", 20, 160, 80, 18
-
-UI_OUTFIELD "Light Strength", 20, 180, 80, 15
-UI_INFIELD "LightStrength", 20, 200, 80, 18
-
-UI_OUTFIELD "Tube Color", 200, 20, 80, 15
-UI_INFIELD "TubeColor", 200, 40, 80, 18
+! --- HORIZONTAL SEPARATOR ----------------------------------------------------
+UI_SEPARATOR 20, 85, 420, 85
 
 
+! --- SECTION 2: TOP TUBE & FENCE --------------------------------------------
+UI_STYLE 0, 1
+UI_OUTFIELD "Top Tube",        20,   95,  150, 15
+UI_STYLE 0, 0
 
+! Top Tube Visibility
+UI_OUTFIELD "Top Tube Visible",     20,  117,  100, 15
+UI_INFIELD  "TopTubeVisible",       20,  135,  100, 20
+
+! Tube Color / Surface
+UI_OUTFIELD "Tube Color",           20,  165,  100, 15
+UI_INFIELD  "TubeColor",            20,  183,  120, 25   ! Color/Surface picker fits nicely at 25px height
+IF LightVisible THEN
+	IF TopTubeVisible THEN
+		UI_PICT     "Fence_Large_Light",   170,  115,  180, 100, 1
+	ELSE
+		UI_PICT     "Light",               170,   115,   100, 120, 1
+	ENDIF
+ELSE
+	IF TopTubeVisible THEN
+		UI_PICT     "Fence_Large",   170,  115,  180, 100, 1
+	ENDIF
+ENDIF
 ]]>
 </Script_UI>
 
