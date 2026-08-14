@@ -1992,8 +1992,7 @@ WHILE ObjectOrder[i] <> 0 DO
 	i = i + 1
 ENDWHILE
 ROT2 -Orietation
-TEXT2 0, -2, STR(TotalLength, 10, 3) + " m"
-
+IF Information THEN TEXT2 0, -2, STR(TotalLength_Calc, 10, 3) + " m"
 END
 
 "FirstStraight":
@@ -2279,7 +2278,6 @@ RETURN
 	POLY2_B _lmLinePoints, 1, TrackMarginColor, 0, GET(NSP)
 	DEL 1
 
-	TotalLength = TotalLength + StraightTotalLength
 	ADD2 0, StraightTotalLength
 	ROT2 Orietation
 	ADD2 MoveX[i], MoveY[i]
@@ -2298,10 +2296,8 @@ RETURN
 			GOSUB "RightTrackMargin"
 			LINE2 0, 0,	
 				0, (Width[i-1]-Width[i])/2
-			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
 			ARC2 CurveRadius, (Width[i-1]-Width[i])/2,
 				CurveRadius, 180-Angle, 180
-			TotalLength = TotalLength + (Angle * PI * ABS(CurveRadius) / 180)
 		ELSE
 			InnerMargin = 0
 			OuterMargin = Width[i]-Width[i-1]
@@ -2309,10 +2305,8 @@ RETURN
 			GOSUB "RightTrackMargin"
 			LINE2 0, 0,
 				0, (Width[i] - Width[i-1])/2
-			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
 			ARC2 CurveRadius, (Width[i] - Width[i-1])/2,
 				CurveRadius, Angle, 180
-			TotalLength = TotalLength + (Angle * PI * ABS(CurveRadius) / 180)
 			ADD2 0, Width[i] - Width[i-1]
 		ENDIF
 	ENDIF
@@ -2385,10 +2379,8 @@ RETURN
 			GOSUB "LeftTrackMargin"
 			LINE2 0, 0,
 				0, (Width[i-1] - Width[i])/2
-			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
 			ARC2 CurveRadius, (Width[i-1] - Width[i])/2,
 				-CurveRadius, 0, Angle
-			TotalLength = TotalLength + (Angle * PI * ABS(CurveRadius) / 180)
 
 		ELSE
 			InnerMargin = 0
@@ -2397,10 +2389,8 @@ RETURN
 			GOSUB "LeftTrackMargin"
 			LINE2 0, 0,	
 				0, (Width[i] - Width[i-1])/2
-			TotalLength = TotalLength + ABS((Width[i-1]-Width[i])/2)
 			ARC2 CurveRadius, (Width[i] - Width[i-1])/2,
 				-CurveRadius, 0, Angle
-			TotalLength = TotalLength + (Angle * PI * ABS(CurveRadius) / 180)
 
 			ADD2 0, Width[i] - Width[i-1]
 		ENDIF
@@ -2720,6 +2710,67 @@ FOR i = 1 TO 120
 	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
 	!-------------------------------------------------------------------------------------------------------------------------------------
 NEXT i
+
+
+!------Calculate Length----------------------------------------------------------------------------------------------------------------------
+TotalLength_Calc = 0
+
+IF Information THEN
+	! --- 1. First Straight Evaluation ---
+	IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
+		TotalLength_Calc = TotalLength_Calc + BeginningDistance
+	ENDIF
+
+	! --- 2. Iterate Segments to Calculate Total Length ---
+	i = 1
+	WHILE ObjectOrder[i] <> 0 DO
+		IF NextLength[i] > ESP        THEN ObjectOrder[i+1] = 2
+		IF CurveLeft[i]  > ESP        THEN ObjectOrder[i+1] = 3
+		IF CurveRight[i] > ESP        THEN ObjectOrder[i+1] = 4
+		IF StraightResizing[i] > ESP  THEN ObjectOrder[i+1] = 5
+
+		IF ObjectOrder[i] = 2 THEN
+			TotalLength_Calc = TotalLength_Calc + NextLength[i-1]
+			GOTO "NextMasterIter"
+		ENDIF
+
+		IF ObjectOrder[i] = 3 THEN
+			_Angle = LeftAngle[i]
+			_CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
+			
+			TotalLength_Calc = TotalLength_Calc + ABS((Width[i-1] - Width[i]) / 2)
+			TotalLength_Calc = TotalLength_Calc + (_Angle * PI * ABS(_CurveRadius) / 180)
+			
+			ObjectOrder[i+1] = 2
+			IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+			GOTO "NextMasterIter"
+		ENDIF
+
+		IF ObjectOrder[i] = 4 THEN
+			_Angle = RightAngle[i]
+			_CurveRadius = Width[i-1]/2 + CurveRight[i-1]
+			
+			TotalLength_Calc = TotalLength_Calc + ABS((Width[i-1] - Width[i]) / 2)
+			TotalLength_Calc = TotalLength_Calc + (_Angle * PI * ABS(_CurveRadius) / 180)
+			
+			ObjectOrder[i+1] = 2
+			IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+			GOTO "NextMasterIter"
+		ENDIF
+
+		IF ObjectOrder[i] = 5 THEN
+			_StraightTotalLength = StraightResizing[i-1]
+			TotalLength_Calc = TotalLength_Calc + _StraightTotalLength
+			
+			ObjectOrder[i+1] = 2
+			IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+			GOTO "NextMasterIter"
+		ENDIF
+
+		"NextMasterIter":
+		i = i + 1
+	ENDWHILE
+ENDIF
 ]]>
 </Script_1D>
 
@@ -2792,6 +2843,9 @@ ELSE
 	UI_PICT     "Detailed_False",         230,  120,  90.2+150, 28.5+50, 1
 ENDIF
 
+
+UI_OUTFIELD "Information",         230,  210,  100, 15
+UI_INFIELD  "Information",         230,  230,  120, 25
 ! PAGE 2 - LIGHTING & FENCE SETTINGS
 
 UI_PAGE 2, -1, "Lighting & Fence"
@@ -2824,7 +2878,7 @@ UI_INFIELD  "TopTubeVisible",       20,  135,  100, 20
 
 ! Tube Color / Surface
 UI_OUTFIELD "Tube Color",           20,  165,  100, 15
-UI_INFIELD  "TubeColor",            20,  183,  120, 25   ! Color/Surface picker fits nicely at 25px height
+UI_INFIELD  "TubeColor",            20,  183,  120, 25
 IF LightVisible THEN
 	IF TopTubeVisible THEN
 		UI_PICT     "Fence_Large_Light",   170,  115,  180, 100, 1
@@ -2836,6 +2890,7 @@ ELSE
 		UI_PICT     "Fence_Large",   170,  115,  180, 100, 1
 	ENDIF
 ENDIF
+
 ]]>
 </Script_UI>
 
@@ -2854,6 +2909,13 @@ NEXT i
 VALUES "HomeStraight" vlist
 
 VALUES "LightAngle" RANGE [0, 180]
+
+LOCK "TotalLength"
+
+! Push the pre-calculated value into the parameter table
+IF ABS(TotalLength - TotalLength_Calc) > ESP THEN
+    PARAMETERS TotalLength = TotalLength_Calc
+ENDIF
 ]]>
 </Script_VL>
 
@@ -5855,6 +5917,10 @@ VALUES "LightAngle" RANGE [0, 180]
 		<Boolean Name="DetailOverlay">
 			<Description><![CDATA[""]]></Description>
 			<Value>1</Value>
+		</Boolean>
+		<Boolean Name="Information">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
 		</Boolean>
 	</Parameters>
 </ParamSection>
