@@ -1154,7 +1154,11 @@ RETURN
 		_xEndIn = CurveRadius - InnerRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
 		_yEndIn = InnerRadius * SIN(RightAngle[i]) + COS(RightAngle[i]) + WidthDifferenceIn
 		PUT _xEndIn, _yEndIn, 0, 0
-		GOSUB "Barrier"
+		IF CurveRight[i-1] < 6 THEN
+			GOSUB "Barrier"
+		ELSE
+			GOSUB "SlimBarrier"
+		ENDIF
 	ENDIF
 	IF Reset THEN DEL 1
 	DEL 1
@@ -1561,7 +1565,11 @@ RETURN
 		_xEndIn = CurveRadius + InnerRadius * COS(LeftAngle[i]) - SIN(LeftAngle[i])
 		_yEndIn = InnerRadius * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + WidthDifferenceIn
 		PUT _xEndIn, _yEndIn, 0, 0
-		GOSUB "Barrier"
+		IF CurveLeft[i-1] < 6 THEN
+			GOSUB "Barrier"
+		ELSE
+			GOSUB "SlimBarrier"
+		ENDIF
 	ENDIF
 	IF Reset THEN DEL 1
 	DEL 1
@@ -1919,6 +1927,11 @@ RETURN
 <![CDATA[
 SET FILL "Solid Fill"
 PEN 1
+
+!----Light Angle----------------------------------------------------------------------------------------------------------------------------------------------
+GOSUB "LightAngleHotSpot"
+!-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 IF DetailOverlay AND NOT(GLOB_FEEDBACK_MODE) THEN
     PROJECT2 3, 270, 2
     drawResolution = 10
@@ -2453,10 +2466,25 @@ POLY2_B 8, 1+2+4,
 			CurveLeft[i-1] + Width[i-1] + TrackMarginLine, 0, Angle
 RETURN
 
+
 "BegginingWidthHotSpot":
 	HOTSPOT2  -Width[1]/2,		0,	unID, Width[1], 1 : unID = unID + 1
 	HOTSPOT2   Width[1]/2,		0,	unID, Width[1], 2 : unID = unID + 1
 	HOTSPOT2  -1-Width[1]/2,	0,	unID, Width[1], 3 : unID = unID + 1
+RETURN
+
+"LightAngleHotSpot":
+	IF LightVisible THEN
+		HOTSPOT2 Width[1]/2 + 2,	 0,	unID, LightAngle, 518		: unID = unID + 1
+		HOTSPOT2 Width[1]/2 + 2,	-1,	unID, LightAngle, 4 + 128	: unID = unID + 1
+		HOTSPOT2 Width[1]/2 + 1,	 0,	unID, LightAngle, 5			: unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				22, 0,
+				Width[1]/2 + 1, 	0, 900,
+				CircleSize,			360, 4001
+		ENDIF
+	ENDIF
 RETURN
 
 "RightHotSpot":
@@ -2848,7 +2876,7 @@ UI_OUTFIELD "Information",         230,  210,  100, 15
 UI_INFIELD  "Information",         230,  230,  120, 25
 ! PAGE 2 - LIGHTING & FENCE SETTINGS
 
-UI_PAGE 2, -1, "Lighting & Fence"
+UI_PAGE 2, -1, "Lighting & Fence"!---------------------------------PAGE 2-------------------------------------------------------------------------------------------------------
 
 ! --- SECTION 1: LIGHTING -----------------------------------------------------
 UI_STYLE 0, 1
@@ -2909,6 +2937,12 @@ NEXT i
 VALUES "HomeStraight" vlist
 
 VALUES "LightAngle" RANGE [0, 180]
+
+! Parameter Script
+VALUES{2} "SegmentsResolution",
+    15, "Low",
+    30, "Medium",
+    80, "High"
 
 LOCK "TotalLength"
 
@@ -5896,7 +5930,7 @@ ENDIF
 		</Boolean>
 		<Integer Name="SegmentsResolution">
 			<Description><![CDATA[""]]></Description>
-			<Value>30</Value>
+			<Value>15</Value>
 		</Integer>
 		<Length Name="LightAngle">
 			<Description><![CDATA[""]]></Description>
