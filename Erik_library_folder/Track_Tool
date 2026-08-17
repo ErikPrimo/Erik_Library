@@ -449,7 +449,11 @@ RETURN
 			PUT LeftBarrierEndX, CurveEnd,           0, 0
 			PUT LeftBarrierEndX, StraightTotalLength,   0, 0
 			PUT LeftBarrierEndX, StraightTotalLength + 1, 0, 0
-			GOSUB "SlimBarrier"
+			IF LeftNarrowing[i] > ESP OR LeftNarrowing[i] < -ESP THEN
+				GOSUB "Barrier"
+			ELSE
+				GOSUB "SlimBarrier"
+			ENDIF
 		ENDIF
 		IF NOT(BarrierRemove[i] > Width[i]/2) AND BarrierVisible THEN
 			RightBarrierStartX = Width[i]/2 - 0.05
@@ -470,7 +474,11 @@ RETURN
 			PUT RightBarrierEndX, CurveEnd,         0, 0
 			PUT RightBarrierEndX, StraightTotalLength,  0, 0
 			PUT RightBarrierEndX, StraightTotalLength + 1, 0, 0
-			GOSUB "SlimBarrier"
+			IF RightNarrowing[i] > ESP OR RightNarrowing[i] < -ESP THEN
+				GOSUB "Barrier"
+			ELSE
+				GOSUB "SlimBarrier"
+			ENDIF
 		ENDIF
 		DEL 1
 		! TOP TUBES (Dynamic S-Curve Sweep)-------------------------------------------------------------------------------------------------------
@@ -534,7 +542,7 @@ RETURN
 	GOSUB "StraightResizingLights"
 	ChangedWidth = Width[i+1] + RightNarrowing[i] + LeftNarrowing[i]
 	OldWidth = Width[i]
-	FOR j = i TO 100
+	FOR j = i TO 200
 		IF Width[j] = OldWidth THEN
 			Width[j] = ChangedWidth
 		ENDIF
@@ -2116,7 +2124,7 @@ RETURN
 
 	ChangedWidth = Width[i+1] + RightNarrowing[i] + LeftNarrowing[i]
 	OldWidth = Width[i]
-	FOR j = i TO 100
+	FOR j = i TO 200
 		IF Width[j] = OldWidth THEN
 			Width[j] = ChangedWidth
 		ENDIF
@@ -2703,14 +2711,15 @@ LeftLightBool = 0
 TempWidth = 7
 
 TopTubeLightHeight = 0.8
-
+SlimLength = 0 
+FlexiLength = 0 
 IF Sectors THEN
 	ExtrudeValues =  1+2+4+16+32
 ELSE
 	ExtrudeValues =  1+2+4
 ENDIF
 
-FOR i = 1 TO 120
+FOR i = 1 TO 200
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
 	IF RightAngle[i] < ESP THEN RightAngle[i] = 90
 	IF LeftAngle[i] < ESP THEN LeftAngle[i] = 90
@@ -2739,17 +2748,15 @@ FOR i = 1 TO 120
 	!-------------------------------------------------------------------------------------------------------------------------------------
 NEXT i
 
-
 !------Calculate Length----------------------------------------------------------------------------------------------------------------------
 TotalLength_Calc = 0
-
 IF Information THEN
 	! --- 1. First Straight Evaluation ---
 	IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
 		TotalLength_Calc = TotalLength_Calc + BeginningDistance
 	ENDIF
 
-	! --- 2. Iterate Segments to Calculate Total Length ---
+	! --- Total Length ---
 	i = 1
 	WHILE ObjectOrder[i] <> 0 DO
 		IF NextLength[i] > ESP        THEN ObjectOrder[i+1] = 2
@@ -2759,37 +2766,113 @@ IF Information THEN
 
 		IF ObjectOrder[i] = 2 THEN
 			TotalLength_Calc = TotalLength_Calc + NextLength[i-1]
+			SlimLength = SlimLength + NextLength[i-1]
+
 			GOTO "NextMasterIter"
 		ENDIF
 
 		IF ObjectOrder[i] = 3 THEN
-			_Angle = LeftAngle[i]
-			_CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
+			BREAKPOINT 1
+			Angle = LeftAngle[i]
+			CurveRadius = Width[i-1]/2 + CurveLeft[i-1]
 			
 			TotalLength_Calc = TotalLength_Calc + ABS((Width[i-1] - Width[i]) / 2)
-			TotalLength_Calc = TotalLength_Calc + (_Angle * PI * ABS(_CurveRadius) / 180)
+			TotalLength_Calc = TotalLength_Calc + (Angle * PI * ABS(CurveRadius) / 180)
 			
+			SlimLength = SlimLength + (Angle * PI * ABS(CurveRadius + Width[i-1]/2) / 180)
+			IF CurveLeft[i-1] < 6 THEN
+				FlexiLength = FlexiLength + (Angle * PI * ABS(CurveLeft[i-1]) / 180)
+			ELSE
+				SlimLength = SlimLength + (Angle * PI * ABS(CurveLeft[i-1]) / 180)
+			ENDIF
+
 			ObjectOrder[i+1] = 2
 			IF NextLength[i] <= 0 THEN NextLength[i] = ESP
 			GOTO "NextMasterIter"
 		ENDIF
 
 		IF ObjectOrder[i] = 4 THEN
-			_Angle = RightAngle[i]
-			_CurveRadius = Width[i-1]/2 + CurveRight[i-1]
+			Angle = RightAngle[i]
+			CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 			
 			TotalLength_Calc = TotalLength_Calc + ABS((Width[i-1] - Width[i]) / 2)
-			TotalLength_Calc = TotalLength_Calc + (_Angle * PI * ABS(_CurveRadius) / 180)
+			TotalLength_Calc = TotalLength_Calc + (Angle * PI * ABS(CurveRadius) / 180)
 			
+			SlimLength = SlimLength + (Angle * PI * ABS(CurveRadius + Width[i-1]/2) / 180)
+			IF CurveRight[i-1] < 6 THEN
+				FlexiLength = FlexiLength + (Angle * PI * ABS(CurveRight[i-1]) / 180)
+			ELSE
+				SlimLength = SlimLength + (Angle * PI * ABS(CurveRight[i-1]) / 180)
+			ENDIF
+
 			ObjectOrder[i+1] = 2
 			IF NextLength[i] <= 0 THEN NextLength[i] = ESP
 			GOTO "NextMasterIter"
 		ENDIF
 
 		IF ObjectOrder[i] = 5 THEN
-			_StraightTotalLength = StraightResizing[i-1]
-			TotalLength_Calc = TotalLength_Calc + _StraightTotalLength
-			
+			StraightTotalLength = StraightResizing[i-1]
+			TotalLength_Calc    = TotalLength_Calc + StraightTotalLength
+
+			! Dynamic narrowing constraints (+/- 30%)
+			MaxAllowedNarrowing = StraightTotalLength * 0.30
+
+			CurrentRightNarrowing = RightNarrowing[i] + ESP
+			CurrentLeftNarrowing  = LeftNarrowing[i]  + ESP
+
+			IF CurrentRightNarrowing >  MaxAllowedNarrowing THEN CurrentRightNarrowing =  MaxAllowedNarrowing
+			IF CurrentRightNarrowing < -MaxAllowedNarrowing THEN CurrentRightNarrowing = -MaxAllowedNarrowing
+			IF CurrentLeftNarrowing  >  MaxAllowedNarrowing THEN CurrentLeftNarrowing  =  MaxAllowedNarrowing
+			IF CurrentLeftNarrowing  < -MaxAllowedNarrowing THEN CurrentLeftNarrowing  = -MaxAllowedNarrowing
+
+			! S-Curve Geometry
+			CurveHeight = StraightTotalLength * 0.60
+			CurveStart  = (StraightTotalLength / 2) - (CurveHeight / 2)
+			CurveEnd    = (StraightTotalLength / 2) + (CurveHeight / 2)
+
+			RightEdgeLength = CurveStart + (StraightTotalLength - CurveEnd)
+			LeftEdgeLength  = CurveStart + (StraightTotalLength - CurveEnd)
+
+			Resolution = 16
+			PreviousRightX = 0 : PreviousRightY = CurveStart
+			PreviousLeftX  = 0 : PreviousLeftY  = CurveStart
+
+			FOR stepIndex = 1 TO Resolution
+				progressRatio = stepIndex / Resolution
+				currentY = CurveStart + (CurveEnd - CurveStart) * progressRatio
+				
+				baseWeight    = (1 - COS(progressRatio * 180)) / 2
+				sharpWeight   = baseWeight^2 * (3 - 2 * baseWeight)
+				blendedWeight = (baseWeight + sharpWeight) * 0.5
+				
+				currentRightX = CurrentRightNarrowing * blendedWeight
+				currentLeftX  = -CurrentLeftNarrowing * blendedWeight
+				
+				RightEdgeLength = RightEdgeLength + SQR((currentRightX - PreviousRightX)^2 + (currentY - PreviousRightY)^2)
+				LeftEdgeLength  = LeftEdgeLength  + SQR((currentLeftX  - PreviousLeftX)^2  + (currentY - PreviousLeftY)^2)
+				
+				PreviousRightX = currentRightX : PreviousRightY = currentY
+				PreviousLeftX  = currentLeftX  : PreviousLeftY  = currentY
+			NEXT stepIndex
+
+			! --- Left side barrier ---
+			IF NOT(BarrierRemove[i] < -Width[i]/2) AND BarrierVisible THEN
+				IF LeftNarrowing[i] > ESP OR LeftNarrowing[i] < -ESP THEN
+					FlexiLength = FlexiLength + LeftEdgeLength
+				ELSE
+					SlimLength  = SlimLength  + LeftEdgeLength
+				ENDIF
+			ENDIF
+
+			! --- Right side barrier ---
+			IF NOT(BarrierRemove[i] > Width[i]/2) AND BarrierVisible THEN
+				IF RightNarrowing[i] > ESP OR RightNarrowing[i] < -ESP THEN
+					FlexiLength = FlexiLength + RightEdgeLength
+				ELSE
+					SlimLength  = SlimLength  + RightEdgeLength
+				ENDIF
+			ENDIF
+
 			ObjectOrder[i+1] = 2
 			IF NextLength[i] <= 0 THEN NextLength[i] = ESP
 			GOTO "NextMasterIter"
@@ -2928,7 +3011,7 @@ ENDIF
 <![CDATA[
 DIM vlist[]
 n = 1
-FOR i = 1 TO 100
+FOR i = 1 TO 200
 	IF NextLength[i] > ESP THEN 
     	vlist[n] = i
 		n = n + 1
@@ -2950,6 +3033,13 @@ LOCK "TotalLength"
 IF ABS(TotalLength - TotalLength_Calc) > ESP THEN
     PARAMETERS TotalLength = TotalLength_Calc
 ENDIF
+
+LOCK "SlimLength"
+
+ PARAMETERS SlimLength = SlimLength
+LOCK "FlexiLength"
+
+ PARAMETERS FlexiLength = FlexiLength
 ]]>
 </Script_VL>
 
@@ -5074,7 +5164,7 @@ ENDIF
 		</Length>
 		<Length Name="TotalLength">
 			<Description><![CDATA[""]]></Description>
-			<Value>0</Value>
+			<Value>0.1</Value>
 		</Length>
 		<Boolean Name="Sectors">
 			<Description><![CDATA[""]]></Description>
@@ -5954,8 +6044,16 @@ ENDIF
 		</Boolean>
 		<Boolean Name="Information">
 			<Description><![CDATA[""]]></Description>
-			<Value>0</Value>
+			<Value>1</Value>
 		</Boolean>
+		<Length Name="FlexiLength">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Length>
+		<Length Name="SlimLength">
+			<Description><![CDATA[""]]></Description>
+			<Value>0.1</Value>
+		</Length>
 	</Parameters>
 </ParamSection>
 
