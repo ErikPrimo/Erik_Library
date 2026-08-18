@@ -101,6 +101,7 @@ WHILE ObjectOrder[i] <> 0 DO
 ENDWHILE
 
 END
+
 !----Makes The Frist Staright--------------------------------------------------------------------------------------------------------------------------------------------
 "FirstStraight":
 	EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
@@ -450,7 +451,7 @@ RETURN
 			PUT LeftBarrierEndX, StraightTotalLength,   0, 0
 			PUT LeftBarrierEndX, StraightTotalLength + 1, 0, 0
 			IF LeftNarrowing[i] > ESP OR LeftNarrowing[i] < -ESP THEN
-				GOSUB "Barrier"
+				GOSUB "FlexiBarrier"
 			ELSE
 				GOSUB "SlimBarrier"
 			ENDIF
@@ -475,7 +476,7 @@ RETURN
 			PUT RightBarrierEndX, StraightTotalLength,  0, 0
 			PUT RightBarrierEndX, StraightTotalLength + 1, 0, 0
 			IF RightNarrowing[i] > ESP OR RightNarrowing[i] < -ESP THEN
-				GOSUB "Barrier"
+				GOSUB "FlexiBarrier"
 			ELSE
 				GOSUB "SlimBarrier"
 			ENDIF
@@ -1163,7 +1164,7 @@ RETURN
 		_yEndIn = InnerRadius * SIN(RightAngle[i]) + COS(RightAngle[i]) + WidthDifferenceIn
 		PUT _xEndIn, _yEndIn, 0, 0
 		IF CurveRight[i-1] < 6 THEN
-			GOSUB "Barrier"
+			GOSUB "FlexiBarrier"
 		ELSE
 			GOSUB "SlimBarrier"
 		ENDIF
@@ -1574,7 +1575,7 @@ RETURN
 		_yEndIn = InnerRadius * SIN(LeftAngle[i]) + COS(LeftAngle[i]) + WidthDifferenceIn
 		PUT _xEndIn, _yEndIn, 0, 0
 		IF CurveLeft[i-1] < 6 THEN
-			GOSUB "Barrier"
+			GOSUB "FlexiBarrier"
 		ELSE
 			GOSUB "SlimBarrier"
 		ENDIF
@@ -1742,9 +1743,9 @@ RETURN
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
-!-------Barrier Shape---------------------------------------------------------------------------------------------------------------------------------
-"Barrier":
-	MATERIAL 19
+!-------FlexiBarrier Shape---------------------------------------------------------------------------------------------------------------------------------
+"FlexiBarrier":
+	MATERIAL FlexiMaterial
 	TUBE 45, NSP/4, ExtrudeValues,
 		-0.053495266155, -0.225064470749, 1,
 		0.043073357115, -0.225064470749, 1,
@@ -1796,7 +1797,7 @@ RETURN
 RETURN
 
 "SlimBarrier":
-	MATERIAL 133
+	MATERIAL SlimMaterial
 	ADDZ -.12
 	TUBE 40, NSP/4, ExtrudeValues,
 		0.06693162618, -0.06718562778032, 1,
@@ -1941,10 +1942,10 @@ GOSUB "LightAngleHotSpot"
 !-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 IF DetailOverlay AND NOT(GLOB_FEEDBACK_MODE) THEN
-    PROJECT2 3, 270, 2
-    drawResolution = 10
+	PROJECT2 3, 270, 2
+	drawResolution = 10
 ELSE
-    drawResolution = SegmentsResolution
+	drawResolution = SegmentsResolution
 ENDIF
 
 !----Beggining Width------------------------------------------------------------------------------------------------------------------------------------
@@ -2012,7 +2013,8 @@ WHILE ObjectOrder[i] <> 0 DO
 	"NextIter":
 	i = i + 1
 ENDWHILE
-ROT2 -Orietation
+
+ROT2 -Orietation - SYMB_ROTANGLE
 IF Information THEN TEXT2 0, -2, STR(TotalLength_Calc, 10, 3) + " m"
 END
 
@@ -2713,6 +2715,7 @@ TempWidth = 7
 TopTubeLightHeight = 0.8
 SlimLength = 0 
 FlexiLength = 0 
+FlexiPieceCount = 0
 IF Sectors THEN
 	ExtrudeValues =  1+2+4+16+32
 ELSE
@@ -2759,10 +2762,10 @@ IF Information THEN
 	! --- Total Length ---
 	i = 1
 	WHILE ObjectOrder[i] <> 0 DO
-		IF NextLength[i] > ESP        THEN ObjectOrder[i+1] = 2
-		IF CurveLeft[i]  > ESP        THEN ObjectOrder[i+1] = 3
-		IF CurveRight[i] > ESP        THEN ObjectOrder[i+1] = 4
-		IF StraightResizing[i] > ESP  THEN ObjectOrder[i+1] = 5
+		IF NextLength[i] > ESP			THEN ObjectOrder[i+1] = 2
+		IF CurveLeft[i]  > ESP			THEN ObjectOrder[i+1] = 3
+		IF CurveRight[i] > ESP			THEN ObjectOrder[i+1] = 4
+		IF StraightResizing[i] > ESP	THEN ObjectOrder[i+1] = 5
 
 		IF ObjectOrder[i] = 2 THEN
 			TotalLength_Calc = TotalLength_Calc + NextLength[i-1]
@@ -2781,7 +2784,13 @@ IF Information THEN
 			
 			SlimLength = SlimLength + (Angle * PI * ABS(CurveRadius + Width[i-1]/2) / 180)
 			IF CurveLeft[i-1] < 6 THEN
-				FlexiLength = FlexiLength + (Angle * PI * ABS(CurveLeft[i-1]) / 180)
+				CurrentCurveArc   = (Angle * PI * ABS(CurveLeft[i-1])) / 180
+				CurrentCurvePieces = INT(CurrentCurveArc / 1.5 + 0.9999)
+
+				FlexiPieceCount = FlexiPieceCount + CurrentCurvePieces
+				FlexiLength     = FlexiLength + (CurrentCurvePieces * 1.5)
+
+				SlimLength = SlimLength - ((CurrentCurvePieces * 1.5) - CurrentCurveArc)
 			ELSE
 				SlimLength = SlimLength + (Angle * PI * ABS(CurveLeft[i-1]) / 180)
 			ENDIF
@@ -2800,7 +2809,13 @@ IF Information THEN
 			
 			SlimLength = SlimLength + (Angle * PI * ABS(CurveRadius + Width[i-1]/2) / 180)
 			IF CurveRight[i-1] < 6 THEN
-				FlexiLength = FlexiLength + (Angle * PI * ABS(CurveRight[i-1]) / 180)
+				CurrentCurveArc   = (Angle * PI * ABS(CurveRight[i-1])) / 180
+				CurrentCurvePieces = INT(CurrentCurveArc / 1.5 + 0.9999)
+
+				FlexiPieceCount = FlexiPieceCount + CurrentCurvePieces
+				FlexiLength     = FlexiLength + (CurrentCurvePieces * 1.5)
+
+				SlimLength = SlimLength - ((CurrentCurvePieces * 1.5) - CurrentCurveArc)
 			ELSE
 				SlimLength = SlimLength + (Angle * PI * ABS(CurveRight[i-1]) / 180)
 			ENDIF
@@ -2858,7 +2873,12 @@ IF Information THEN
 			! --- Left side barrier ---
 			IF NOT(BarrierRemove[i] < -Width[i]/2) AND BarrierVisible THEN
 				IF LeftNarrowing[i] > ESP OR LeftNarrowing[i] < -ESP THEN
-					FlexiLength = FlexiLength + LeftEdgeLength
+					CurrentCurvePieces = INT(LeftEdgeLength / 1.5 + 0.9999)
+
+					FlexiPieceCount = FlexiPieceCount + CurrentCurvePieces
+					FlexiLength     = FlexiLength + (CurrentCurvePieces * 1.5)
+
+					SlimLength = SlimLength - ((CurrentCurvePieces * 1.5) - LeftEdgeLength)
 				ELSE
 					SlimLength  = SlimLength  + LeftEdgeLength
 				ENDIF
@@ -2867,7 +2887,12 @@ IF Information THEN
 			! --- Right side barrier ---
 			IF NOT(BarrierRemove[i] > Width[i]/2) AND BarrierVisible THEN
 				IF RightNarrowing[i] > ESP OR RightNarrowing[i] < -ESP THEN
-					FlexiLength = FlexiLength + RightEdgeLength
+					CurrentCurvePieces = INT(LeftEdgeLength / 1.5 + 0.9999)
+
+					FlexiPieceCount = FlexiPieceCount + CurrentCurvePieces
+					FlexiLength     = FlexiLength + (CurrentCurvePieces * 1.5)
+
+					SlimLength = SlimLength - ((CurrentCurvePieces * 1.5) - LeftEdgeLength)
 				ELSE
 					SlimLength  = SlimLength  + RightEdgeLength
 				ENDIF
@@ -2899,19 +2924,23 @@ UI_DIALOG "Settings", 480, 300
 
 UI_PAGE 1, -1, "General"
 
-UI_STYLE 0, 0
-
 ! COLUMN 1 (Left Side - 3D Settings)
 
 UI_STYLE 0, 1   ! Bold Header
 UI_OUTFIELD "3D Settings",          20,   10,  150, 15
 UI_STYLE 0, 0   ! Regular Text
 
-UI_OUTFIELD "Sectors",              20,   30,  120, 15
-UI_INFIELD  "Sectors",              20,   48,  120, 20
+UI_OUTFIELD "Sectors",              20,  30,  70, 15
+UI_INFIELD  "Sectors",              20,  48,  20, 20
 
-UI_OUTFIELD "Barrier Visible",      20,   80,  120, 15
-UI_INFIELD  "BarrierVisible",       20,   98,  120, 20
+UI_OUTFIELD "Barrier Visible",      20,  80,  75, 15
+UI_INFIELD  "BarrierVisible",       20,  98,  20, 20
+
+UI_OUTFIELD "FlexiBarrier Color",   100, 80,  100, 15
+UI_INFIELD  "FlexiMaterial",       	100, 98,  100, 20
+
+UI_OUTFIELD "SlimBarrier Color",   	100, 30,  100, 15
+UI_INFIELD  "SlimMaterial",       	100, 48,  100, 20
 
 UI_OUTFIELD "Home Straight",        20,  130,  120, 15
 UI_INFIELD  "HomeStraight",         20,  148,   95, 20
@@ -2928,7 +2957,7 @@ UI_INFIELD  "SegmentsResolution",  20,  250,  120, 20
 
 ! VERTICAL SEPARATOR LINE
 
-UI_SEPARATOR 210, 10, 210, 230
+UI_SEPARATOR 210, 10, 210, 300
 
 ! COLUMN 2 (Right Side - 2D Settings)
 
@@ -2940,9 +2969,9 @@ UI_OUTFIELD "Color Circles",        230,   30,  65, 15
 UI_INFIELD  "ColorCircles",         230,   48,  65, 20
 
 IF ColorCircles THEN
-	UI_PICT     "Dots_True",   300,  0,  200, 75, 1
+	UI_PICT     "Dots_True",   300,  0,  180, 65, 1
 ELSE
-	UI_PICT     "Dots_False",  300,  0,  200, 75, 1
+	UI_PICT     "Dots_False",  300,  0,  180, 65, 1
 ENDIF
 
 UI_OUTFIELD "Detail Overlay",      230,   80,  90, 15
@@ -2951,7 +2980,7 @@ UI_INFIELD  "DetailOverlay",       230,   98,  120, 20
 IF DetailOverlay THEN
 	UI_PICT     "Detailed_True",   230,  120,  90.2+150, 28.5+50, 1
 ELSE
-	UI_PICT     "Detailed_False",         230,  120,  90.2+150, 28.5+50, 1
+	UI_PICT     "Detailed_False",  230,  120,  90.2+150, 28.5+50, 1
 ENDIF
 
 
@@ -3035,11 +3064,14 @@ IF ABS(TotalLength - TotalLength_Calc) > ESP THEN
 ENDIF
 
 LOCK "SlimLength"
+PARAMETERS SlimLength = SlimLength
 
- PARAMETERS SlimLength = SlimLength
 LOCK "FlexiLength"
+PARAMETERS FlexiLength = FlexiLength
 
- PARAMETERS FlexiLength = FlexiLength
+LOCK "FlexiPieceCount"
+PARAMETERS FlexiPieceCount = FlexiPieceCount
+
 ]]>
 </Script_VL>
 
@@ -6020,7 +6052,7 @@ LOCK "FlexiLength"
 		</Boolean>
 		<Integer Name="SegmentsResolution">
 			<Description><![CDATA[""]]></Description>
-			<Value>15</Value>
+			<Value>30</Value>
 		</Integer>
 		<Length Name="LightAngle">
 			<Description><![CDATA[""]]></Description>
@@ -6054,6 +6086,18 @@ LOCK "FlexiLength"
 			<Description><![CDATA[""]]></Description>
 			<Value>0.1</Value>
 		</Length>
+		<Integer Name="FlexiPieceCount">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Integer>
+		<Material Name="SlimMaterial">
+			<Description><![CDATA[""]]></Description>
+			<Value>133</Value>
+		</Material>
+		<Material Name="FlexiMaterial">
+			<Description><![CDATA[""]]></Description>
+			<Value>19</Value>
+		</Material>
 	</Parameters>
 </ParamSection>
 
