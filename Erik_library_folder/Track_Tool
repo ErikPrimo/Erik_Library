@@ -1950,13 +1950,6 @@ ENDIF
 
 !----Beggining Width------------------------------------------------------------------------------------------------------------------------------------
 GOSUB "BegginingWidthHotSpot"
-
-IF ColorCircles THEN
-	POLY2_B 2, 1+2+4,
-		TrackColor, 0,
-		Width[1]/2,		0,   900,
-		CircleSize,		360, 4001
-ENDIF
 !----------------------------------------------------------------------------------------------------------------------------------------
 
 i = 1
@@ -2053,7 +2046,6 @@ RETURN
 			ADD2 -Width[i]-TrackMargin, 0
 		NEXT j
 		DEL 3
-
 	ENDIF
 	TotalLength = TotalLength + NextLength[i-1]
 	ADD2 0, NextLength[i-1]
@@ -2481,6 +2473,12 @@ RETURN
 	HOTSPOT2  -Width[1]/2,		0,	unID, Width[1], 1 : unID = unID + 1
 	HOTSPOT2   Width[1]/2,		0,	unID, Width[1], 2 : unID = unID + 1
 	HOTSPOT2  -1-Width[1]/2,	0,	unID, Width[1], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			TrackColor, 0,
+			Width[1]/2,		0,   900,
+			CircleSize,		360, 4001
+	ENDIF
 RETURN
 
 "LightAngleHotSpot":
@@ -2665,6 +2663,7 @@ RETURN
 			CircleSize,            360, 					 4001
 	ENDIF
 RETURN
+
 "LeftNarrowing":
 	HOTSPOT2  -Width[i]/2, 		-StraightResizing[i-1]/4,	unID, LeftNarrowing[i], 1 : unID = unID + 1
 	HOTSPOT2  -Width[i]/2, 		-StraightResizing[i-1]/4,	unID, LeftNarrowing[i], 2 : unID = unID + 1
