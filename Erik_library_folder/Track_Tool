@@ -907,6 +907,7 @@ RETURN
 							ADDX -OuterLightRadius
 							IF TopTubeVisible THEN CALL "GF_TopTube"
 							ROTZ LightAngle
+							IF CurveRadius < 3 THEN LeftLightBool = 1
 							IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 							IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
 								ADDZ TopTubeLightHeight
@@ -950,6 +951,7 @@ RETURN
 						ADDX -OuterLightRadius
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ LightAngle
+						IF CurveRadius < 3 THEN LeftLightBool = 1
 						IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
 							ADDZ TopTubeLightHeight
@@ -995,6 +997,7 @@ RETURN
 							ADDX -InnerLightRadius
 							IF TopTubeVisible THEN CALL "GF_TopTube"
 							ROTZ -LightAngle
+							IF CurveRadius < 3 THEN LeftLightBool = 1
 							IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 							IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
 								ADDZ TopTubeLightHeight
@@ -1038,6 +1041,7 @@ RETURN
 						ADDX -InnerLightRadius
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ -LightAngle
+						IF CurveRadius < 3 THEN LeftLightBool = 1
 						IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
 							ADDZ TopTubeLightHeight
@@ -1312,6 +1316,7 @@ RETURN
 						ADDX OuterLightRadius   
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ -LightAngle                 ! Points straight OUT (Right)
+						IF CurveRadius < 3 THEN RightLightBool = 1
 						IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
 							ADDZ TopTubeLightHeight
@@ -1352,6 +1357,7 @@ RETURN
 						ADDX OuterLightRadius  
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ -LightAngle                ! Aligns light pointing straight OUT (Right)
+						IF CurveRadius < 3 THEN RightLightBool = 1
 						IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
 							ADDZ TopTubeLightHeight
@@ -1400,6 +1406,7 @@ RETURN
 						ADDX InnerLightRadius    
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ LightAngle                ! Points straight OUT (Left)
+						IF CurveRadius < 3 THEN RightLightBool = 1
 						IF LeftLightBool AND LightVisible  AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
 							ADDZ TopTubeLightHeight
@@ -1445,6 +1452,7 @@ RETURN
 						ADDX InnerLightRadius  
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ LightAngle               ! Aligns light pointing straight OUT (Left)
+						IF CurveRadius < 3 THEN RightLightBool = 1
 						IF NOT(LeftLightBool) AND CurveLeft[i-1] < 4 AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
@@ -1941,17 +1949,20 @@ PEN 1
 GOSUB "LightAngleHotSpot"
 !-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+!-----If beeing edited uses simple version------------------------------------------------------------------------------------------------------------------------------------------------------------
 IF DetailOverlay AND NOT(GLOB_FEEDBACK_MODE) THEN
 	PROJECT2 3, 270, 2
 	drawResolution = 10
 ELSE
 	drawResolution = SegmentsResolution
 ENDIF
+!-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 !----Beggining Width------------------------------------------------------------------------------------------------------------------------------------
 GOSUB "BegginingWidthHotSpot"
 !----------------------------------------------------------------------------------------------------------------------------------------
 
+!-------Main Loop Places All Objects------------------------------------------------------------------------------------------------------------------------------
 i = 1
 GOSUB "StraightHotSpot"
 IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
@@ -1995,8 +2006,8 @@ WHILE ObjectOrder[i] <> 0 DO
 
 	IF ObjectOrder[i] = 5 THEN
 		GOSUB "StraightResizing"
-		GOSUB "RightNarrowing"
-		GOSUB "LeftNarrowing"
+		GOSUB "RightNarrowingHotSpot"
+		GOSUB "LeftNarrowingHotSpot"
 		GOSUB "StraightHotSpot"
 		ObjectOrder[i+1] = 2 
 		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
@@ -2006,11 +2017,16 @@ WHILE ObjectOrder[i] <> 0 DO
 	"NextIter":
 	i = i + 1
 ENDWHILE
+!----------------------------------------------------------------------------------------------------------------------------------------
 
+!-------Writes Lenght Of The Track------------------------------------------------------------------------------------------------------------------------------
 ROT2 -Orietation - SYMB_ROTANGLE
 IF Information THEN TEXT2 0, -2, STR(TotalLength_Calc, 10, 3) + " m"
-END
+!-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+END!---------END------------END------------EMD------------------------------
+
+!------Functions For All Segments Of The Track-----------------------------------------------------------------------------------------------------------------------------------------------------
 "FirstStraight":
 	POLY2_B 5, 1+2+4,
 		TrackColor, 0,
@@ -2454,7 +2470,6 @@ POLY2_B 8, 1+2+4,
 		CurveRadius,                                                               OuterMargin,                                                           	900,
 		Width[i-1]/2,                                                              OuterMargin,                                                           	3001
 
-
 		LINE2 -Width[i-1]/2 - TrackMarginLine, 0,	
 			-Width[i-1]/2 - TrackMarginLine, InnerMargin	
 
@@ -2468,7 +2483,7 @@ POLY2_B 8, 1+2+4,
 			CurveLeft[i-1] + Width[i-1] + TrackMarginLine, 0, Angle
 RETURN
 
-
+!-----------HotSpots------------------------------------------------------------------------------------------------------------------------------------------------
 "BegginingWidthHotSpot":
 	HOTSPOT2  -Width[1]/2,		0,	unID, Width[1], 1 : unID = unID + 1
 	HOTSPOT2   Width[1]/2,		0,	unID, Width[1], 2 : unID = unID + 1
@@ -2652,7 +2667,7 @@ RETURN
 	ENDIF
 RETURN
 
-"RightNarrowing":
+"RightNarrowingHotSpot":
 	HOTSPOT2  Width[i]/2, 		-StraightResizing[i-1]/4,	unID, RightNarrowing[i], 1 : unID = unID + 1
 	HOTSPOT2  Width[i]/2, 		-StraightResizing[i-1]/4,	unID, RightNarrowing[i], 2 : unID = unID + 1
 	HOTSPOT2  Width[i]/2 - 1, 	-StraightResizing[i-1]/4,	unID, RightNarrowing[i], 3 : unID = unID + 1
@@ -2664,7 +2679,7 @@ RETURN
 	ENDIF
 RETURN
 
-"LeftNarrowing":
+"LeftNarrowingHotSpot":
 	HOTSPOT2  -Width[i]/2, 		-StraightResizing[i-1]/4,	unID, LeftNarrowing[i], 1 : unID = unID + 1
 	HOTSPOT2  -Width[i]/2, 		-StraightResizing[i-1]/4,	unID, LeftNarrowing[i], 2 : unID = unID + 1
 	HOTSPOT2  -Width[i]/2 + 1, 	-StraightResizing[i-1]/4,	unID, LeftNarrowing[i], 3 : unID = unID + 1

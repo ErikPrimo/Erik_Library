@@ -1,0 +1,279 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Symbol IsArchivable="false" IsPlaceable="true" MainGUID="F7FECD20-7419-41C8-B0E8-A147BD5EF070" MigrationValue="Normal" Owner="1196638531" Signature="1196644685" Version="46">
+<Ancestry SectVersion="1" SectionFlags="0" SubIdent="0" Template="false">
+	<MainGUID>F938E33A-329D-4A36-BE3E-85E126820996</MainGUID>
+	<MainGUID>103E8D2C-8230-42E1-9597-46F84CCE28C0</MainGUID>
+</Ancestry>
+
+<CalledMacros SectVersion="2" SectionFlags="0" SubIdent="0">
+</CalledMacros>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_3D SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+MATERIAL Asfalt
+
+!---------HOT SPOTS-------------------------------------------------------------------------------------------------------------------------------------------------------------
+HOTSPOT   0,	0,	0, unID, Length, 1 : unID = unID + 1
+HOTSPOT   0,	0,	0, unID, Length, 2 : unID = unID + 1
+HOTSPOT  -1,	0,	0, unID, Length, 3 : unID = unID + 1
+
+HOTSPOT   0,	0,	0, unID, Width, 1 : unID = unID + 1
+HOTSPOT   0,	0,	0, unID, Width, 2 : unID = unID + 1
+HOTSPOT   0,	-1,	0, unID, Width, 3 : unID = unID + 1
+
+HOTSPOT   0,	Width,	0, unID, RightRadi, 1 : unID = unID + 1
+HOTSPOT   0,	Width,	0, unID, RightRadi, 2 : unID = unID + 1
+HOTSPOT   0,	Width + 1,	0, unID, RightRadi, 3 : unID = unID + 1
+!-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+EXTRUDE 17, 0, 0, TrackThickness, ExtrudeValues,
+	0,					0,						1,
+	Length,				0,						1,
+	Length,				0 + RightRadi,			900,  
+	Length + RightRadi,	0 + RightRadi,			3001, 
+	Length + RightRadi,	0 + RightRadi,			1,
+	Length + RightRadi,	 Width - RightRadi,		1,
+	Length,				 Width - RightRadi,		900,  
+	Length,	 			 Width,					3001,
+	Length,				 Width,					1,
+	0,					 Width,					1,
+	0,					 Width - RightRadi,		900,  
+	-RightRadi,			 Width - RightRadi,		3001,
+	-RightRadi,			 Width - RightRadi,		1,
+	-RightRadi,			0 + RightRadi,			1,
+	0,					0 + RightRadi,			900,  
+	0,					0,						3001,
+	0,					0,						1
+
+
+MATERIAL 18
+ADDZ TrackThickness * 2
+ROTZ -90
+ADD -Width / 2, Length / 2, 0
+
+! --- DIMENSIONS ---
+BoxWidth       = 1.7 / 2     ! 0.85
+BoxHeight      = 0.70
+BoxMargin      = 0.40
+FrontLineWidth = 0.20
+SideLineWidth  = 0.10
+
+! --- INSTANT COUNT COMPUTATION ---
+StepX = BoxWidth * 2 + BoxMargin
+StepY = BoxHeight * 2 + BoxMargin * 2
+
+Rows  = MIN(20, MAX(0, INT(Width / (BoxWidth * 2 + BoxMargin * 2))))
+Lines = MIN(20,  MAX(0, INT((Length - 0.2) / (BoxHeight * 2 + BoxMargin * 2))))
+
+! --- STARTING LINE (TRANSVERSE) ---
+IF Lines > 0 AND Rows > 0 THEN
+    ! --- ALTERNATING ROWS (COLUMNS ACROSS TRACK) ---
+    StartY = -(StepY * Lines) / 2
+    StartX = -(StepX * Rows) / 2 + (StepX / 2)
+
+    FOR j = 1 TO Rows
+        curX = StartX + (j - 1) * StepX
+
+        IF j MOD 2 = 1 THEN
+            ! --- ODD ROWS: VERTICAL COLUMN OF BOXES ALONG LENGTH ---
+            FOR i = 1 TO Lines
+                curY = StartY + (i - 1) * StepY
+                ADD curX, curY, 0
+                EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+                    -BoxWidth,                  0,                          1,
+                    -BoxWidth,                  BoxHeight,                  1,
+                     BoxWidth,                  BoxHeight,                  1,
+                     BoxWidth,                  0,                          1,
+                     BoxWidth - SideLineWidth,  0,                          1,
+                     BoxWidth - SideLineWidth,  BoxHeight - FrontLineWidth, 1,
+                    -BoxWidth + SideLineWidth,  BoxHeight - FrontLineWidth, 1,
+                    -BoxWidth + SideLineWidth,  0,                          1
+                DEL 1
+            NEXT i
+        ELSE
+            ! --- EVEN ROWS: CATWALK COLUMN (CENTERED ACROSS LENGTH) ---
+            ADD curX, -Length/2, 0
+            GOSUB "CatWalk"
+            DEL 1
+        ENDIF
+    NEXT j
+ENDIF
+
+DEL 3   ! Restores ADD, ROTZ, ADDZ
+MATERIAL Asfalt
+
+END 
+
+"CatWalk":
+	ROTZ 90
+	MATERIAL 19
+	EXTRUDE 17, 0, 0, .2, ExtrudeValues,
+		0,							-CatWalkThickness/2,						1,
+		CatWalkLength,				-CatWalkThickness/2,						1,
+		CatWalkLength,				-CatWalkThickness/2 + CatWalkRadi,			900,  
+		CatWalkLength + CatWalkRadi,-CatWalkThickness/2 + CatWalkRadi,			3001, 
+		CatWalkLength + CatWalkRadi,-CatWalkThickness/2 + CatWalkRadi,			1,
+		CatWalkLength + CatWalkRadi, CatWalkThickness/2 - CatWalkRadi,			1,
+		CatWalkLength,				 CatWalkThickness/2 - CatWalkRadi,			900,  
+		CatWalkLength,	 			 CatWalkThickness/2,						3001,
+		CatWalkLength,				 CatWalkThickness/2,						1,
+		0,							 CatWalkThickness/2,						1,
+		0,							 CatWalkThickness/2 - CatWalkRadi,			900,  
+		-CatWalkRadi,				 CatWalkThickness/2 - CatWalkRadi,			3001,
+		-CatWalkRadi,				 CatWalkThickness/2 - CatWalkRadi,			1,
+		-CatWalkRadi,				-CatWalkThickness/2 + CatWalkRadi,			1,
+		0,							-CatWalkThickness/2 + CatWalkRadi,			900,  
+		0,							-CatWalkThickness/2,						3001,
+		0,							-CatWalkThickness/2,						1
+	MATERIAL 18
+	DEL 1
+RETURN
+]]>
+</Script_3D>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_2D SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_2D>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_1D SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+unID = 1
+ESP = 0.000001
+TrackThickness = 0.01
+ExtrudeValues =  1+2+4+16+32
+CatWalkThickness = 1
+CatWalkLength = Length
+CatWalkRadi = CatWalkThickness/2
+]]>
+</Script_1D>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_PR SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_PR>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_UI SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_UI>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_VL SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[
+VALUES "Length" RANGE [1, )
+VALUES "Width"  RANGE [1, )
+VALUES "RightRadi"  RANGE [1, Width/2)
+]]>
+</Script_VL>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_FWM SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_FWM>
+
+<!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
+
+<Script_BWM SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Script_BWM>
+
+<ParamSection SectVersion="27" SectionFlags="0" SubIdent="0">
+	<ParamSectHeader>
+		<AutoHotspots>false</AutoHotspots>
+		<StatBits>
+			<STBit_FixSize/>
+		</StatBits>
+		<WDLeftFrame>0</WDLeftFrame>
+		<WDRightFrame>0</WDRightFrame>
+		<WDTopFrame>0</WDTopFrame>
+		<WDBotFrame>0</WDBotFrame>
+		<LayFlags>65535</LayFlags>
+		<WDMirrorThickness>0</WDMirrorThickness>
+		<WDWallInset>0</WDWallInset>
+	</ParamSectHeader>
+	<Parameters>
+		<Length Name="A">
+			<Description><![CDATA["Dimension 1"]]></Description>
+			<Fix/>
+			<Value>1</Value>
+		</Length>
+		<Length Name="B">
+			<Description><![CDATA["Dimension 2"]]></Description>
+			<Fix/>
+			<Value>1</Value>
+		</Length>
+		<Length Name="ZZYZX">
+			<Description><![CDATA["Height"]]></Description>
+			<Fix/>
+			<Value>1</Value>
+		</Length>
+		<Boolean Name="AC_show2DHotspotsIn3D">
+			<Description><![CDATA["Show 2D Hotspots in 3D"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Hidden/>
+			</Flags>
+			<Value>1</Value>
+		</Boolean>
+		<Length Name="ac_bottomlevel">
+			<Description><![CDATA["Bottom Level"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Hidden/>
+			</Flags>
+			<Value>1</Value>
+		</Length>
+		<Length Name="ac_toplevel">
+			<Description><![CDATA["Top Level"]]></Description>
+			<Fix/>
+			<Flags>
+				<ParFlg_Hidden/>
+			</Flags>
+			<Value>0</Value>
+		</Length>
+		<Length Name="Length">
+			<Description><![CDATA[""]]></Description>
+			<Value>10</Value>
+		</Length>
+		<Length Name="Width">
+			<Description><![CDATA[""]]></Description>
+			<Value>13</Value>
+		</Length>
+		<Length Name="RightRadi">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Length>
+		<Material Name="Asfalt">
+			<Description><![CDATA[""]]></Description>
+			<Value>84</Value>
+		</Material>
+	</Parameters>
+</ParamSection>
+
+<Copyright SectVersion="1" SectionFlags="0" SubIdent="0">
+	<Author></Author>
+	<License>
+		<Type>CC BY</Type>
+		<Version>4.0</Version>
+	</License>
+</Copyright>
+
+<Keywords SectVersion="1" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Keywords>
+
+<Comment SectVersion="20" SectionFlags="0" SubIdent="0">
+<![CDATA[]]>
+</Comment>
+
+</Symbol>
