@@ -56,7 +56,7 @@ EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
 DEL 3
 TrackWidth = RightRadi
 ADDY Width-TrackWidth
-ROTZ EntryAngle + 180
+ROTZ (90 - EntryAngle) + 180
 GOSUB "EntryLengthHotSpot"
 EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
 	0,				0,				1,
@@ -97,22 +97,23 @@ END
 		StartX = -(StepX * Rows) / 2 + (StepX / 2)
 
 		FOR j = 1 TO Rows
-			curX = StartX + (j - 1) * StepX
+			curX = StartX + (j - 1) * StepX 
 
-			IF j MOD 2 = 1 THEN
+			IF j MOD 2 = NOT(1) THEN
 				! --- ODD ROWS: VERTICAL COLUMN OF BOXES ALONG LENGTH ---
 				FOR i = 1 TO Lines
-					curY = StartY + (i - 1) * StepY
-					ADD curX, curY, 0
-					EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
-						-BoxWidth,                  0,                          1,
-						-BoxWidth,                  BoxHeight,                  1,
-						BoxWidth,                  BoxHeight,                  1,
-						BoxWidth,                  0,                          1,
-						BoxWidth - SideLineWidth,  0,                          1,
-						BoxWidth - SideLineWidth,  BoxHeight - FrontLineWidth, 1,
-						-BoxWidth + SideLineWidth,  BoxHeight - FrontLineWidth, 1,
-						-BoxWidth + SideLineWidth,  0,                          1
+					curY = StartY + (i - 1) * StepY +BoxHeight 
+					ADD curX-BoxWidth, curY, 0
+					BLOCK BoxWidth*2 , SideLineWidth, LineThickness 
+					! EXTRUDE 8, 0, 0, LineThickness, ExtrudeValues,
+					! 	-BoxWidth,                  0,                          1,
+					! 	-BoxWidth,                  BoxHeight,                  1,
+					! 	 BoxWidth,                  BoxHeight,                  1,
+					! 	 BoxWidth,                  0,                          1,
+					! 	 BoxWidth - SideLineWidth,  0,                          1,
+					! 	 BoxWidth - SideLineWidth,  BoxHeight - FrontLineWidth, 1,
+					! 	-BoxWidth + SideLineWidth,  BoxHeight - FrontLineWidth, 1,
+					! 	-BoxWidth + SideLineWidth,  0,                          1
 					DEL 1
 				NEXT i
 			ELSE
@@ -167,34 +168,32 @@ RETURN
 	HOTSPOT   0,	Width + 1,	0, unID, RightRadi, 3 : unID = unID + 1
 RETURN
 
-"ExitHotSpot":
-	HOTSPOT   0,	0,	0, unID, Length, 1 : unID = unID + 1
-	HOTSPOT   0,	0,	0, unID, Length, 2 : unID = unID + 1
-	HOTSPOT  -1,	0,	0, unID, Length, 3 : unID = unID + 1
-RETURN
 
 "ExitAngleHotSpot":
-	HOTSPOT Length + 2,		Width-RightRadi/2,		0, unID, ExitAngle, 518		: unID = unID + 1
-	HOTSPOT Length + 4,		Width-RightRadi/2,		0, unID, ExitAngle, 4 + 128	: unID = unID + 1
-	HOTSPOT Length + 2,		Width-RightRadi/2-2,	0, unID, ExitAngle, 5		: unID = unID + 1
+	HOTSPOT Length,		Width - RightRadi,	0, unID, ExitAngle, 518        : unID = unID + 1
+	HOTSPOT Length + 2,	Width - RightRadi,	0, unID, ExitAngle, 4 + 128    : unID = unID + 1
+	HOTSPOT Length,		Width/2,			0, unID, ExitAngle, 5          : unID = unID + 1
 RETURN
 
 "EntryAngleHotSpot":
-	HOTSPOT -2,		Width-RightRadi/2,		0, unID, EntryAngle, 518		: unID = unID + 1
-	HOTSPOT -4,		Width-RightRadi/2,		0, unID, EntryAngle, 4 + 128	: unID = unID + 1
-	HOTSPOT -2,		Width-RightRadi/2-2,	0, unID, EntryAngle, 5			: unID = unID + 1
+	ADD2 0, Width - RightRadi
+	ROT2 90
+	HOTSPOT  0,	0,				0, unID, EntryAngle, 518		: unID = unID + 1
+	HOTSPOT -2,	0,				0, unID, EntryAngle, 4 + 128	: unID = unID + 1
+	DEL 2
+	HOTSPOT  0,	Width/2,		0, unID, EntryAngle, 5			: unID = unID + 1
 RETURN
 
 "ExitLengthHotSpot":
-	HOTSPOT  ExitLength,	TrackWidth/2,	0, unID, ExitLength, 1 : unID = unID + 1
-	HOTSPOT  ExitLength,	TrackWidth/2,	0, unID, ExitLength, 2 : unID = unID + 1
-	HOTSPOT  ExitLength-1,	TrackWidth/2,	0, unID, ExitLength, 3 : unID = unID + 1
+	HOTSPOT  0,              TrackWidth / 2, 0, unID, ExitLength, 1 : unID = unID + 1
+	HOTSPOT  ExitLength,     TrackWidth / 2, 0, unID, ExitLength, 2 : unID = unID + 1
+	HOTSPOT -1,              TrackWidth / 2, 0, unID, ExitLength, 3 : unID = unID + 1
 RETURN
 
 "EntryLengthHotSpot":
-	HOTSPOT  EntryLength,	-TrackWidth/2,	0, unID, EntryLength, 1 : unID = unID + 1
-	HOTSPOT  EntryLength,	-TrackWidth/2,	0, unID, EntryLength, 2 : unID = unID + 1
-	HOTSPOT  EntryLength-1,	-TrackWidth/2,	0, unID, EntryLength, 3 : unID = unID + 1
+	HOTSPOT  0,             -TrackWidth / 2, 0, unID, EntryLength, 1 : unID = unID + 1
+	HOTSPOT  EntryLength,   -TrackWidth / 2, 0, unID, EntryLength, 2 : unID = unID + 1
+	HOTSPOT -1,             -TrackWidth / 2, 0, unID, EntryLength, 3 : unID = unID + 1
 RETURN
 !-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ]]>
@@ -215,24 +214,24 @@ GOSUB "ExitAngleHotSpot"
 
 !----- Main Area --------------------------------------------------------------------------------------------------
 POLY2_B 17, 1 + 2 + 4,
-    TrackColor, 0,
-    0,                   0,                     1,
-    Length,              0,                     1,
-    Length,              0 + RightRadi,         900,
-    Length + RightRadi,  0 + RightRadi,         3001, 
-    Length + RightRadi,  0 + RightRadi,         1,
-    Length + RightRadi,  Width - RightRadi,     1,
-    Length,              Width - RightRadi,     900,
-    Length,              Width,                 3001,
-    Length,              Width,                 1,
-    0,                   Width,                 1,
-    0,                   Width - RightRadi,     900,
-    -RightRadi,          Width - RightRadi,     3001,
-    -RightRadi,          Width - RightRadi,     1,
-    -RightRadi,          0 + RightRadi,         1,
-    0,                   0 + RightRadi,         900,
-    0,                   0,                     3001,
-    0,                   0,                     1
+	TrackColor, 0,
+	0,                   0,                     1,
+	Length,              0,                     1,
+	Length,              0 + RightRadi,         900,
+	Length + RightRadi,  0 + RightRadi,         3001, 
+	Length + RightRadi,  0 + RightRadi,         1,
+	Length + RightRadi,  Width - RightRadi,     1,
+	Length,              Width - RightRadi,     900,
+	Length,              Width,                 3001,
+	Length,              Width,                 1,
+	0,                   Width,                 1,
+	0,                   Width - RightRadi,     900,
+	-RightRadi,          Width - RightRadi,     3001,
+	-RightRadi,          Width - RightRadi,     1,
+	-RightRadi,          0 + RightRadi,         1,
+	0,                   0 + RightRadi,         900,
+	0,                   0,                     3001,
+	0,                   0,                     1
 !------------------------------------------------------------------------------------------------------------------------------------------------
 
 !------ Entry And Exit --------------------------------------------------------------------------------------------------------------------------
@@ -242,20 +241,21 @@ TrackWidth = RightRadi
 ADD2 Length, Width - TrackWidth
 ROT2 -ExitAngle
 GOSUB "ExitLengthHotSpot"
-POLY2_B 4, 2 + 4,
-    TrackColor, 0,
-    0,           0,          1,
-    ExitLength,  0,          1,
-    ExitLength,  TrackWidth, 1,
-    0,           TrackWidth, 1
+POLY2_B 4, Detail,
+	TrackColor, 0,
+	0,           0,          1,
+	ExitLength,  0,          1,
+	ExitLength,  TrackWidth, 1,
+	0,           TrackWidth, 1
 DEL 2
 
 ! Entry Track
 TrackWidth = RightRadi
+
 ADD2 0, Width - TrackWidth
-ROT2 EntryAngle + 180
+ROT2 (90 - EntryAngle) + 180    ! Equivalent to: ROT2 270 - EntryAngle
 GOSUB "EntryLengthHotSpot"
-POLY2_B 4, 2 + 4,
+POLY2_B 4, Detail,
     TrackColor, 0,
     0,           0,           1,
     EntryLength, 0,           1,
@@ -269,121 +269,125 @@ GOSUB "Pits"
 END 
 
 "Pits":
-    ROT2 -90
-    ADD2 -Width / 2, Length / 2
+	ROT2 -90
+	ADD2 -Width / 2, Length / 2
 
-    ! --- DIMENSIONS ---
-    BoxWidth       = 1.7 / 2     ! 0.85
-    BoxHeight      = 0.70
-    BoxMargin      = 0.40
-    FrontLineWidth = 0.20
-    SideLineWidth  = 0.10
+	! --- DIMENSIONS ---
+	BoxWidth       = 1.7 / 2     ! 0.85
+	BoxHeight      = 0.70
+	BoxMargin      = 0.40
+	FrontLineWidth = 0.20
+	SideLineWidth  = 0.10
 
-    ! --- INSTANT COUNT COMPUTATION ---
-    StepX = BoxWidth * 2 + BoxMargin
-    StepY = BoxHeight * 2 + BoxMargin * 2
+	! --- INSTANT COUNT COMPUTATION ---
+	StepX = BoxWidth * 2 + BoxMargin
+	StepY = BoxHeight * 2 + BoxMargin * 2
 
-    Rows  = MIN(20, MAX(0, INT(Width / (BoxWidth * 2 + BoxMargin * 2))))
-    Lines = MIN(20, MAX(0, INT((Length - 0.2) / (BoxHeight * 2 + BoxMargin * 2))))
+	Rows  = MIN(20, MAX(0, INT(Width / (BoxWidth * 2 + BoxMargin * 2))))
+	Lines = MIN(20, MAX(0, INT((Length - 0.2) / (BoxHeight * 2 + BoxMargin * 2))))
 
-    ! --- ALTERNATING ROWS (COLUMNS ACROSS TRACK) ---
-    IF Lines > 0 AND Rows > 0 THEN
-        StartY = -(StepY * Lines) / 2
-        StartX = -(StepX * Rows) / 2 + (StepX / 2)
+	! --- ALTERNATING ROWS (COLUMNS ACROSS TRACK) ---
+	IF Lines > 0 AND Rows > 0 THEN
+		StartY = -(StepY * Lines) / 2
+		StartX = -(StepX * Rows) / 2 + (StepX / 2)
 
-        FOR j = 1 TO Rows
-            curX = StartX + (j - 1) * StepX
+		FOR j = 1 TO Rows
+			curX = StartX + (j - 1) * StepX
 
-            IF j MOD 2 = 1 THEN
-                ! --- ODD ROWS: VERTICAL COLUMN OF BOXES ALONG LENGTH ---
-                FOR i = 1 TO Lines
-                    curY = StartY + (i - 1) * StepY
-                    ADD2 curX, curY
-                    POLY2_B 8, 1 + 2 + 4,
-                        LineColor, 0,
-                        -BoxWidth,                  0,                          1,
-                        -BoxWidth,                  BoxHeight,                  1,
-                         BoxWidth,                  BoxHeight,                  1,
-                         BoxWidth,                  0,                          1,
-                         BoxWidth - SideLineWidth,  0,                          1,
-                         BoxWidth - SideLineWidth,  BoxHeight - FrontLineWidth, 1,
-                        -BoxWidth + SideLineWidth,  BoxHeight - FrontLineWidth, 1,
-                        -BoxWidth + SideLineWidth,  0,                          1
-                    DEL 1
-                NEXT i
-            ELSE
-                ! --- EVEN ROWS: CATWALK COLUMN (CENTERED ACROSS LENGTH) ---
-                ADD2 curX, -Length / 2
-                GOSUB "CatWalk"
-                DEL 1
-            ENDIF
-        NEXT j
-    ENDIF
+			IF j MOD 2 = NOT(1) THEN
+				! --- ODD ROWS: VERTICAL COLUMN OF BOXES ALONG LENGTH ---
+				FOR i = 1 TO Lines
+					curY = StartY + (i - 1) * StepY + BoxHeight
+					ADD2 curX - BoxWidth, curY
+					RECT2 0, 0, BoxWidth * 2, SideLineWidth
+					! POLY2_B 8, 1 + 2 + 4,
+					! 	LineColor, 0,
+					! 	-BoxWidth,                  0,                          1,
+					! 	-BoxWidth,                  BoxHeight,                  1,
+					! 	 BoxWidth,                  BoxHeight,                  1,
+					! 	 BoxWidth,                  0,                          1,
+					! 	 BoxWidth - SideLineWidth,  0,                          1,
+					! 	 BoxWidth - SideLineWidth,  BoxHeight - FrontLineWidth, 1,
+					! 	-BoxWidth + SideLineWidth,  BoxHeight - FrontLineWidth, 1,
+					! 	-BoxWidth + SideLineWidth,  0,                          1
+					DEL 1
+				NEXT i
+			ELSE
+				! --- EVEN ROWS: CATWALK COLUMN (CENTERED ACROSS LENGTH) ---
+				ADD2 curX, -Length / 2
+				GOSUB "CatWalk"
+				DEL 1
+			ENDIF
+		NEXT j
+	ENDIF
 
-    DEL 2   ! Restores ADD2, ROT2
+	DEL 2   ! Restores ADD2, ROT2
 RETURN
 
 "CatWalk":
-    ROT2 90
-    POLY2_B 17, 1 + 2 + 4,
-        CatWalkColor, 0,
-        0,                                   -CatWalkThickness / 2,                  1,
-        CatWalkLength,                       -CatWalkThickness / 2,                  1,
-        CatWalkLength,                       -CatWalkThickness / 2 + CatWalkRadi,    900,  
-        CatWalkLength + CatWalkRadi,         -CatWalkThickness / 2 + CatWalkRadi,    3001, 
-        CatWalkLength + CatWalkRadi,         -CatWalkThickness / 2 + CatWalkRadi,    1,
-        CatWalkLength + CatWalkRadi,          CatWalkThickness / 2 - CatWalkRadi,    1,
-        CatWalkLength,                        CatWalkThickness / 2 - CatWalkRadi,    900,  
-        CatWalkLength,                        CatWalkThickness / 2,                  3001, 
-        CatWalkLength,                        CatWalkThickness / 2,                  1,
-        0,                                    CatWalkThickness / 2,                  1,
-        0,                                    CatWalkThickness / 2 - CatWalkRadi,    900,  
-        -CatWalkRadi,                         CatWalkThickness / 2 - CatWalkRadi,    3001, 
-        -CatWalkRadi,                         CatWalkThickness / 2 - CatWalkRadi,    1,
-        -CatWalkRadi,                        -CatWalkThickness / 2 + CatWalkRadi,    1,
-        0,                                   -CatWalkThickness / 2 + CatWalkRadi,    900,  
-        0,                                   -CatWalkThickness / 2,                  3001, 
-        0,                                   -CatWalkThickness / 2,                  1
-    DEL 1
+	ROT2 90
+	POLY2_B 17, 1 + 2 + 4,
+		CatWalkColor, 0,
+		0,                                   -CatWalkThickness / 2,                  1,
+		CatWalkLength,                       -CatWalkThickness / 2,                  1,
+		CatWalkLength,                       -CatWalkThickness / 2 + CatWalkRadi,    900,  
+		CatWalkLength + CatWalkRadi,         -CatWalkThickness / 2 + CatWalkRadi,    3001, 
+		CatWalkLength + CatWalkRadi,         -CatWalkThickness / 2 + CatWalkRadi,    1,
+		CatWalkLength + CatWalkRadi,          CatWalkThickness / 2 - CatWalkRadi,    1,
+		CatWalkLength,                        CatWalkThickness / 2 - CatWalkRadi,    900,  
+		CatWalkLength,                        CatWalkThickness / 2,                  3001, 
+		CatWalkLength,                        CatWalkThickness / 2,                  1,
+		0,                                    CatWalkThickness / 2,                  1,
+		0,                                    CatWalkThickness / 2 - CatWalkRadi,    900,  
+		-CatWalkRadi,                         CatWalkThickness / 2 - CatWalkRadi,    3001, 
+		-CatWalkRadi,                         CatWalkThickness / 2 - CatWalkRadi,    1,
+		-CatWalkRadi,                        -CatWalkThickness / 2 + CatWalkRadi,    1,
+		0,                                   -CatWalkThickness / 2 + CatWalkRadi,    900,  
+		0,                                   -CatWalkThickness / 2,                  3001, 
+		0,                                   -CatWalkThickness / 2,                  1
+	DEL 1
 RETURN
 
 !--------- 2D HOT SPOTS -------------------------------------------------------------------------------------------------------------------------
 "SizeAndShapeHotSpots":
-    HOTSPOT2   0,       0, unID, Length, 1 : unID = unID + 1
-    HOTSPOT2   0, 		0, unID, Length, 2 : unID = unID + 1
-    HOTSPOT2  -1,       0, unID, Length, 3 : unID = unID + 1
+	HOTSPOT2	 0,	0, unID, Length, 1 : unID = unID + 1
+	HOTSPOT2	 0,	0, unID, Length, 2 : unID = unID + 1
+	HOTSPOT2	-1,	0, unID, Length, 3 : unID = unID + 1
 
-    HOTSPOT2   0,  0,	unID, Width,  1 : unID = unID + 1
-    HOTSPOT2   0,  0,	unID, Width,  2 : unID = unID + 1
-    HOTSPOT2   0, -1,	unID, Width,  3 : unID = unID + 1
+	HOTSPOT2   0,  0,	unID, Width,  1 : unID = unID + 1
+	HOTSPOT2   0,  0,	unID, Width,  2 : unID = unID + 1
+	HOTSPOT2   0, -1,	unID, Width,  3 : unID = unID + 1
 
-    HOTSPOT2   0,  Width,				unID, RightRadi, 1 : unID = unID + 1
-    HOTSPOT2   0,  Width,				unID, RightRadi, 2 : unID = unID + 1
-    HOTSPOT2   0,  Width + 1,			unID, RightRadi, 3 : unID = unID + 1
+	HOTSPOT2   0,  Width,				unID, RightRadi, 1 : unID = unID + 1
+	HOTSPOT2   0,  Width,				unID, RightRadi, 2 : unID = unID + 1
+	HOTSPOT2   0,  Width + 1,			unID, RightRadi, 3 : unID = unID + 1
 RETURN
-	
+
 "ExitAngleHotSpot":
-    HOTSPOT2 Length + 2, Width - RightRadi / 2,     unID, ExitAngle, 518        : unID = unID + 1
-    HOTSPOT2 Length + 4, Width - RightRadi / 2,     unID, ExitAngle, 4 + 128    : unID = unID + 1
-    HOTSPOT2 Length + 2, Width - RightRadi / 2 - 2, unID, ExitAngle, 5          : unID = unID + 1
+	HOTSPOT2 Length,		Width - RightRadi,	unID, ExitAngle, 518        : unID = unID + 1
+	HOTSPOT2 Length + 2,	Width - RightRadi,	unID, ExitAngle, 4 + 128    : unID = unID + 1
+	HOTSPOT2 Length,		Width/2,			unID, ExitAngle, 5          : unID = unID + 1
 RETURN
 
 "EntryAngleHotSpot":
-    HOTSPOT2 -2, Width - RightRadi / 2,     unID, EntryAngle, 518       : unID = unID + 1
-    HOTSPOT2 -4, Width - RightRadi / 2,     unID, EntryAngle, 4 + 128   : unID = unID + 1
-    HOTSPOT2 -2, Width - RightRadi / 2 - 2, unID, EntryAngle, 5         : unID = unID + 1
+	ADD2 0, Width - RightRadi
+	ROT2 90
+	HOTSPOT2  0,	0,				unID, EntryAngle, 518		: unID = unID + 1
+	HOTSPOT2 -2,	0,				unID, EntryAngle, 4 + 128	: unID = unID + 1
+	DEL 2
+	HOTSPOT2  0,	Width/2,		unID, EntryAngle, 5			: unID = unID + 1
 RETURN
 
 "ExitLengthHotSpot":
-    HOTSPOT2  0,              TrackWidth / 2, unID, ExitLength, 1 : unID = unID + 1
-    HOTSPOT2  ExitLength,     TrackWidth / 2, unID, ExitLength, 2 : unID = unID + 1
-    HOTSPOT2 -1,              TrackWidth / 2, unID, ExitLength, 3 : unID = unID + 1
+	HOTSPOT2  0,              TrackWidth / 2, unID, ExitLength, 1 : unID = unID + 1
+	HOTSPOT2  ExitLength,     TrackWidth / 2, unID, ExitLength, 2 : unID = unID + 1
+	HOTSPOT2 -1,              TrackWidth / 2, unID, ExitLength, 3 : unID = unID + 1
 RETURN
 
 "EntryLengthHotSpot":
-    HOTSPOT2  0,             -TrackWidth / 2, unID, EntryLength, 1 : unID = unID + 1
-    HOTSPOT2  EntryLength,   -TrackWidth / 2, unID, EntryLength, 2 : unID = unID + 1
-    HOTSPOT2 -1,             -TrackWidth / 2, unID, EntryLength, 3 : unID = unID + 1
+	HOTSPOT2  0,             -TrackWidth / 2, unID, EntryLength, 1 : unID = unID + 1
+	HOTSPOT2  EntryLength,   -TrackWidth / 2, unID, EntryLength, 2 : unID = unID + 1
+	HOTSPOT2 -1,             -TrackWidth / 2, unID, EntryLength, 3 : unID = unID + 1
 RETURN
 !--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ]]>
@@ -401,6 +405,15 @@ ExtrudeValues =  1+2+4
 CatWalkThickness = 1
 CatWalkLength = Length
 CatWalkRadi = CatWalkThickness/2
+
+
+!------While Being Edited Show Outline------------------------------------------------------------------------------------------------------------------------------------
+IF GLOB_FEEDBACK_MODE THEN 
+	Detail = 1 + 2 + 4
+ELSE
+	Detail = 2 + 4
+ENDIF
+!------------------------------------------------------------------------------------------------------------------------------------------
 ]]>
 </Script_1D>
 
@@ -423,8 +436,8 @@ CatWalkRadi = CatWalkThickness/2
 VALUES "Length" RANGE [1, )
 VALUES "Width"  RANGE [1, )
 VALUES "RightRadi"  RANGE [1, Width/2)
-VALUES "ExitAngle"  RANGE [0, 90)
-VALUES "EntryAngle"  RANGE [0, 90)
+! VALUES "ExitAngle"  RANGE [0, 90)
+! VALUES "EntryAngle" RANGE [0, 90)
 ]]>
 </Script_VL>
 

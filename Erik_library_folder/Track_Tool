@@ -907,7 +907,7 @@ RETURN
 							ADDX -OuterLightRadius
 							IF TopTubeVisible THEN CALL "GF_TopTube"
 							ROTZ LightAngle
-							IF CurveRadius < 3 THEN LeftLightBool = 1
+							!IF CurveRight[i-1] < 4 THEN LeftLightBool = 1
 							IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 							IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
 								ADDZ TopTubeLightHeight
@@ -951,7 +951,7 @@ RETURN
 						ADDX -OuterLightRadius
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ LightAngle
-						IF CurveRadius < 3 THEN LeftLightBool = 1
+						!IF CurveRight[i-1] < 4 THEN LeftLightBool = 1
 						IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
 							ADDZ TopTubeLightHeight
@@ -997,7 +997,7 @@ RETURN
 							ADDX -InnerLightRadius
 							IF TopTubeVisible THEN CALL "GF_TopTube"
 							ROTZ -LightAngle
-							IF CurveRadius < 3 THEN LeftLightBool = 1
+							IF CurveRight[i-1] < 4 THEN RightLightBool = 1
 							IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 							IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
 								ADDZ TopTubeLightHeight
@@ -1041,7 +1041,7 @@ RETURN
 						ADDX -InnerLightRadius
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ -LightAngle
-						IF CurveRadius < 3 THEN LeftLightBool = 1
+						IF CurveRight[i-1] < 4 THEN RightLightBool = 1
 						IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
 							ADDZ TopTubeLightHeight
@@ -1316,7 +1316,7 @@ RETURN
 						ADDX OuterLightRadius   
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ -LightAngle                 ! Points straight OUT (Right)
-						IF CurveRadius < 3 THEN RightLightBool = 1
+						!IF CurveLeft[i-1] < 3 THEN RightLightBool = 1
 						IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
 							ADDZ TopTubeLightHeight
@@ -1357,7 +1357,7 @@ RETURN
 						ADDX OuterLightRadius  
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ -LightAngle                ! Aligns light pointing straight OUT (Right)
-						IF CurveRadius < 3 THEN RightLightBool = 1
+						!IF CurveLeft[i-1] < 3 THEN RightLightBool = 1
 						IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
 							ADDZ TopTubeLightHeight
@@ -1406,7 +1406,7 @@ RETURN
 						ADDX InnerLightRadius    
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ LightAngle                ! Points straight OUT (Left)
-						IF CurveRadius < 3 THEN RightLightBool = 1
+						IF CurveLeft[i-1] < 4 THEN LeftLightBool = 1
 						IF LeftLightBool AND LightVisible  AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
 							ADDZ TopTubeLightHeight
@@ -1452,7 +1452,7 @@ RETURN
 						ADDX InnerLightRadius  
 						IF TopTubeVisible THEN CALL "GF_TopTube"
 						ROTZ LightAngle               ! Aligns light pointing straight OUT (Left)
-						IF CurveRadius < 3 THEN RightLightBool = 1
+						IF CurveLeft[i-1] < 4 THEN LeftLightBool = 1
 						IF NOT(LeftLightBool) AND CurveLeft[i-1] < 4 AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
@@ -2024,7 +2024,7 @@ ROT2 -Orietation - SYMB_ROTANGLE
 IF Information THEN TEXT2 0, -2, STR(TotalLength_Calc, 10, 3) + " m"
 !-----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-END!---------END------------END------------EMD------------------------------
+END!---------END------------END------------EMD-----------------------------------------------------------------------------------------------------
 
 !------Functions For All Segments Of The Track-----------------------------------------------------------------------------------------------------------------------------------------------------
 "FirstStraight":
@@ -2697,6 +2697,7 @@ RETURN
 
 <Script_1D SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
+!--------Veriables-----------------------------------------------------------------------------------------------------------------------------
 unID = 1
 ESP = 0.000001
 ExtrudeValues = 0
@@ -2735,6 +2736,7 @@ IF Sectors THEN
 ELSE
 	ExtrudeValues =  1+2+4
 ENDIF
+!-------------------------------------------------------------------------------------------------------------------------------------
 
 FOR i = 1 TO 200
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
@@ -2765,7 +2767,7 @@ FOR i = 1 TO 200
 	!-------------------------------------------------------------------------------------------------------------------------------------
 NEXT i
 
-!------Calculate Length----------------------------------------------------------------------------------------------------------------------
+!------Calculates Length----------------------------------------------------------------------------------------------------------------------
 TotalLength_Calc = 0
 IF Information THEN
 	! --- 1. First Straight Evaluation ---
@@ -2921,6 +2923,8 @@ IF Information THEN
 		i = i + 1
 	ENDWHILE
 ENDIF
+!-------------------------------------------------------------------------------------------------------------------------------------
+
 ]]>
 </Script_1D>
 
@@ -3060,22 +3064,18 @@ FOR i = 1 TO 200
 		n = n + 1
 	ENDIF
 NEXT i
+
 VALUES "HomeStraight" vlist
 
 VALUES "LightAngle" RANGE [0, 180]
 
-! Parameter Script
 VALUES{2} "SegmentsResolution",
     15, "Low",
     30, "Medium",
     80, "High"
 
 LOCK "TotalLength"
-
-! Push the pre-calculated value into the parameter table
-IF ABS(TotalLength - TotalLength_Calc) > ESP THEN
-    PARAMETERS TotalLength = TotalLength_Calc
-ENDIF
+PARAMETERS TotalLength = TotalLength_Calc
 
 LOCK "SlimLength"
 PARAMETERS SlimLength = SlimLength
