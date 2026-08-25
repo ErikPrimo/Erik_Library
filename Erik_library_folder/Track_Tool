@@ -41,13 +41,13 @@ GOSUB "LineMarginHotSpot"
 !-------Main Loop Places All Objects------------------------------------------------------------------------------------------------------------------------------
 i = 1
 GOSUB "StraightHotSpot"
-IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
+IF Length[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
 	GOSUB "FirstStraight" 
 	GOSUB "RightHotSpot"
 	GOSUB "LeftHotSpot"
 ENDIF
 WHILE ObjectOrder[i] <> 0 DO
-	IF NextLength[i] > ESP 		 THEN ObjectOrder[i+1] = 2
+	IF Length[i] > ESP 		 THEN ObjectOrder[i+1] = 2
 	IF CurveLeft[i]  > ESP 		 THEN ObjectOrder[i+1] = 3
 	IF CurveRight[i] > ESP 		 THEN ObjectOrder[i+1] = 4
 	IF StraightResizing[i] > ESP THEN ObjectOrder[i+1] = 5
@@ -66,7 +66,7 @@ WHILE ObjectOrder[i] <> 0 DO
 		GOSUB "LeftWidthHotSpot"
 		GOSUB "StraightHotSpot"
 		ObjectOrder[i+1] = 2 
-		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		IF Length[i] <= 0 THEN Length[i] = ESP
 		GOTO "NextIter"
 	ENDIF
 
@@ -76,7 +76,7 @@ WHILE ObjectOrder[i] <> 0 DO
 		GOSUB "RightWidthHotSpot"
 		GOSUB "StraightHotSpot"
 		ObjectOrder[i+1] = 2 
-		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		IF Length[i] <= 0 THEN Length[i] = ESP
 		GOTO "NextIter"
 	ENDIF
 
@@ -86,13 +86,13 @@ WHILE ObjectOrder[i] <> 0 DO
 		GOSUB "LeftNarrowing"
 		GOSUB "StraightHotSpot"
 		ObjectOrder[i+1] = 2 
-		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		IF Length[i] <= 0 THEN Length[i] = ESP
 		GOTO "NextIter"
 	ENDIF
 
 	"NextIter":
 	IF i = HomeStraight AND HomeStraightActive THEN
-		ADDY NextLength[i]/2
+		ADDY Length[i]/2
 		ADDZ TrackThickness
 		GOSUB "HomeBox"
 		DEL 2
@@ -115,13 +115,21 @@ RETURN
 
 !-----Makes The Straight-------------------------------------------------------------------------------------------------------------------------------------------------
 "Straight":
+	BREAKPOINT 1
+	PreviousLength = Length[i-1]
+	SpeedPlusBool = 0
+	IF LeftSpeedPlus[i+1] > 1 AND PreviousLength > Width[i] AND (Length[i+1] > Width[i] OR Length[i+1] < ESP) THEN 
+		SpeedPlusBool = 1
+		PreviousLength = PreviousLength - Width[i]
+		IF Length[i+1] > ESP THEN Length[i+1] = Length[i+1] - Width[i]
+	ENDIF
 	GOSUB "BarrierRemoveHotSpot"
 	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
 		EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
 			-Width[i]/2,	0,				 1,
 			Width[i]/2,		0,				 1,
-			Width[i]/2,		NextLength[i-1], 1,
-			-Width[i]/2,	NextLength[i-1], 1
+			Width[i]/2,		PreviousLength, 1,
+			-Width[i]/2,	PreviousLength, 1
 		!-----Lines------------------------------------------------------------------------------------------------------------------------------------------------------
 		FOR h = 1 TO 2
 			IF h = 1 THEN MATERIAL 19
@@ -130,16 +138,16 @@ RETURN
 			EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
 				-LineWidth,	0,					1,
 				LineWidth,	0,					1,
-				LineWidth,	NextLength[i-1], 	1,
-				-LineWidth,	NextLength[i-1],	1
+				LineWidth,	PreviousLength, 	1,
+				-LineWidth,	PreviousLength,	1
 			DEL 2
 			ADDX Width[i]/2 - LineMargin
 			ADDZ TrackThickness
 			EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
 				-LineWidth,	0,					1,
 				LineWidth,	0,					1,
-				LineWidth,	NextLength[i-1], 	1,
-				-LineWidth,	NextLength[i-1],	1
+				LineWidth,	PreviousLength, 	1,
+				-LineWidth,	PreviousLength,	1
 			DEL 2
 			LineMargin = LineMargin + LineWidth*4
 			MATERIAL 18
@@ -148,22 +156,22 @@ RETURN
 		MATERIAL Asfalt
 		IF NOT(GLOB_FEEDBACK_MODE) THEN
 			!-----Barriers-----------------------------------------------------------------------------------------------------------------------------------
-			IF NextLength[i-1] > ESP AND BarrierVisible THEN
+			IF PreviousLength > ESP AND BarrierVisible THEN
 				ADDZ BarrierHeight
-				ADDX -Width[i]/2 + .05
+				ADDX -Width[i]/2 + BarrierOffset
 				IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
 					PUT 0, -1, 					0, 0, 
 						0,  0, 					0, 0, 
-						0,  NextLength[i-1], 	0, 0, 
-						0,  NextLength[i-1]+1, 	0, 0 
+						0,  PreviousLength, 	0, 0, 
+						0,  PreviousLength+1, 	0, 0 
 					GOSUB "SlimBarrier"
 				ENDIF
-				ADDX Width[i] - .05*2
+				ADDX Width[i] - BarrierOffset*2
 				IF NOT(BarrierRemove[i] > Width[i]/2) THEN
 					PUT 0, -1, 					0, 0,
 						0,  0, 					0, 0,
-						0,  NextLength[i-1], 	0, 0,
-						0,  NextLength[i-1]+1, 	0, 0
+						0,  PreviousLength, 	0, 0,
+						0,  PreviousLength+1, 	0, 0
 					GOSUB "SlimBarrier"
 				ENDIF
 				DEL 3
@@ -179,8 +187,8 @@ RETURN
 				IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
 					PUT 0, -1, 					0, 0, 
 						0,  0, 					0, 0, 
-						0,  NextLength[i-1], 	0, 0, 
-						0,  NextLength[i-1]+1, 	0, 0 
+						0,  PreviousLength, 	0, 0, 
+						0,  PreviousLength+1, 	0, 0 
 					GOSUB "LightTube"
 				ENDIF
 				DEL 1
@@ -188,8 +196,8 @@ RETURN
 				IF NOT(BarrierRemove[i] > Width[i]/2) THEN
 					PUT 0, -1, 					0, 0,
 						0,  0, 					0, 0,
-						0,  NextLength[i-1], 	0, 0,
-						0,  NextLength[i-1]+1, 	0, 0
+						0,  PreviousLength, 	0, 0,
+						0,  PreviousLength+1, 	0, 0
 					GOSUB "LightTube"
 				ENDIF
 				DEL 2
@@ -197,11 +205,11 @@ RETURN
 			!----------------------------------------------------------------------------------------------------------------------------------------
 			! --- Right Edge Lights --------------------------------------------------------------------------------------------------
 			IF NOT(BarrierRemove[i] > Width[i]/2) THEN
-				IF RightLightRemainingDistance <= NextLength[i-1] THEN
-					NumLightsRight = INT((NextLength[i-1] - RightLightRemainingDistance) / LightDistance)
+				IF RightLightRemainingDistance <= PreviousLength THEN
+					NumLightsRight = INT((PreviousLength - RightLightRemainingDistance) / LightDistance)
 					FOR j = 0 TO NumLightsRight
 						CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
-						IF CurrentPosRight <= NextLength[i-1] THEN
+						IF CurrentPosRight <= PreviousLength THEN
 							ADDY CurrentPosRight
 							ADDX Width[i]/2 + LightMargin
 							IF TopTubeVisible THEN CALL "GF_TopTube"
@@ -219,18 +227,18 @@ RETURN
 						ENDIF
 						LastLightPosRight = CurrentPosRight
 					NEXT j
-					RightLightRemainingDistance = LightDistance - (NextLength[i-1] - LastLightPosRight)
+					RightLightRemainingDistance = LightDistance - (PreviousLength - LastLightPosRight)
 				ELSE
-					RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
+					RightLightRemainingDistance = RightLightRemainingDistance - PreviousLength
 				ENDIF
 			ENDIF
 			! --- Left Edge Lights ---------------------------------------------------------------------------------------------------
 			IF NOT(BarrierRemove[i] < -Width[i]/2) THEN
-				IF LeftLightDistance <= NextLength[i-1] THEN
-					NumLightsLeft = INT((NextLength[i-1] - LeftLightDistance) / LightDistance)
+				IF LeftLightDistance <= PreviousLength THEN
+					NumLightsLeft = INT((PreviousLength - LeftLightDistance) / LightDistance)
 					FOR k = 0 TO NumLightsLeft
 						CurrentPosLeft = LeftLightDistance + (LightDistance * k)
-						IF CurrentPosLeft <= NextLength[i-1] THEN
+						IF CurrentPosLeft <= PreviousLength THEN
 							ADDY CurrentPosLeft
 							ADDX -Width[i]/2 - LightMargin
 							IF TopTubeVisible THEN CALL "GF_TopTube"
@@ -248,14 +256,14 @@ RETURN
 						ENDIF
 						LastLightPosLeft = CurrentPosLeft
 					NEXT k
-					LeftLightDistance = LightDistance - (NextLength[i-1] - LastLightPosLeft)
+					LeftLightDistance = LightDistance - (PreviousLength - LastLightPosLeft)
 				ELSE
-					LeftLightDistance = LeftLightDistance - NextLength[i-1]
+					LeftLightDistance = LeftLightDistance - PreviousLength
 				ENDIF
 			ENDIF
 		ENDIF
 	ENDIF
-	ADDY NextLength[i-1]
+	ADDY PreviousLength
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -432,8 +440,8 @@ RETURN
 	IF NOT(GLOB_FEEDBACK_MODE) THEN
 		ADDZ BarrierHeight
 		IF NOT(BarrierRemove[i] < -Width[i]/2) AND BarrierVisible THEN
-			LeftBarrierStartX = -Width[i]/2 + 0.05
-			LeftBarrierEndX   = -Width[i]/2 - LeftNarrowing[i] + 0.05
+			LeftBarrierStartX = -Width[i]/2 + BarrierOffset
+			LeftBarrierEndX   = -Width[i]/2 - LeftNarrowing[i] + BarrierOffset
 			
 			PUT LeftBarrierStartX, -1, 0, 0
 			PUT LeftBarrierStartX,  0, 0, 0
@@ -457,8 +465,8 @@ RETURN
 			ENDIF
 		ENDIF
 		IF NOT(BarrierRemove[i] > Width[i]/2) AND BarrierVisible THEN
-			RightBarrierStartX = Width[i]/2 - 0.05
-			RightBarrierEndX   = Width[i]/2 + RightNarrowing[i] - 0.05
+			RightBarrierStartX = Width[i]/2 - BarrierOffset
+			RightBarrierEndX   = Width[i]/2 + RightNarrowing[i] - BarrierOffset
 			PUT RightBarrierStartX, -1, 0, 0
 			PUT RightBarrierStartX,  0, 0, 0
 			PUT RightBarrierStartX,  CurveStart, 0, 0
@@ -548,8 +556,8 @@ RETURN
 			Width[j] = ChangedWidth
 		ENDIF
 	NEXT j
-	NextLength[i-1] = StraightResizing[i-1]
-	ADDY NextLength[i-1]
+	Length[i-1] = StraightResizing[i-1]
+	ADDY Length[i-1]
 	ADDX RightNarrowing[i]/2 - LeftNarrowing[i]/2
 RETURN
 
@@ -808,8 +816,8 @@ RETURN
 			LineMargin = ConstantLineMargin
 			ADDY Width[i] - Width[i-1]
 		ENDIF
-		IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "RightBarrier"
 		IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "RightTopTube"
+		IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "RightBarrier"
 	ENDIF
 	GOSUB "RightCurveLights"
 	ADDX CurveRadius - rCenter * COS(Angle)
@@ -1130,7 +1138,7 @@ RETURN
 	ADDZ BarrierHeight
 	Reset = 0
 	! --- LEFT SIDE BARRIER (Outer Path) ---
-	OuterRadius = CurveRight[i-1] + Width[i-1] - .05
+	OuterRadius = CurveRight[i-1] + Width[i-1] - BarrierOffset
 	
 	! Only shift outer side if the track WIDENS
 	WidthDifferenceOut = 0
@@ -1153,7 +1161,7 @@ RETURN
 		GOSUB "SlimBarrier"
 	ENDIF
 		! --- RIGHT SIDE BARRIER (Inner Path) ---
-	InnerRadius = CurveRight[i-1] + .05
+	InnerRadius = CurveRight[i-1] + BarrierOffset
 		WidthDifferenceIn = 0
 	IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
 	IF NOT(BarrierRemove[i] > Width[i]/2) THEN
@@ -1181,48 +1189,157 @@ RETURN
 !-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveLeft":
 	GOSUB "CurveBarrierRemoveHotSpot"
+	GOSUB "LeftSpeedPlusHotSpot"
 	Angle = LeftAngle[i]
 	CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
+	BREAKPOINT 1
 	IF ABS(RemovePart[i]) < Width[i]/2 THEN 
 		InnerRadius = CurveLeft[i-1]
 		OuterRadius = CurveLeft[i-1] + Width[i-1]
-		IF Width[i] <= Width[i-1] THEN
-			WidthDifferenceIn = Width[i-1] - Width[i]
-			WidthDifferenceOut = 0
-			GOSUB "LeftTrack"
-			MATERIAL 19
-			ChicaneBool = 0
-			GOSUB "LeftLines"
-			LineMargin = LineMargin + LineWidth*4
-			MATERIAL 18
-			ChicaneBool = 1
-			GOSUB "LeftLines"
-			MATERIAL Asfalt
-			LineMargin = ConstantLineMargin
+		IF SpeedPlusBool THEN
+			GOSUB "LeftSpeedPlus"
+			ADDY Width[i]
 		ELSE
-			WidthDifferenceIn = 0
-			WidthDifferenceOut = Width[i] - Width[i-1]
-			GOSUB "LeftTrack"
-			MATERIAL 19
-			ChicaneBool = 0
-			GOSUB "LeftLines"
-			LineMargin = LineMargin + LineWidth*4
-			MATERIAL 18
-			ChicaneBool = 1
-			GOSUB "LeftLines"
-			MATERIAL Asfalt
-			LineMargin = ConstantLineMargin
-			ADDY Width[i] - Width[i-1]
+			IF Width[i] <= Width[i-1] THEN
+				WidthDifferenceIn = Width[i-1] - Width[i]
+				WidthDifferenceOut = 0
+				GOSUB "LeftTrack"
+				MATERIAL 19
+				ChicaneBool = 0
+				GOSUB "LeftLines"
+				LineMargin = LineMargin + LineWidth*4
+				MATERIAL 18
+				ChicaneBool = 1
+				GOSUB "LeftLines"
+				MATERIAL Asfalt
+				LineMargin = ConstantLineMargin
+			ELSE
+				WidthDifferenceIn = 0
+				WidthDifferenceOut = Width[i] - Width[i-1]
+				GOSUB "LeftTrack"
+				MATERIAL 19
+				ChicaneBool = 0
+				GOSUB "LeftLines"
+				LineMargin = LineMargin + LineWidth*4
+				MATERIAL 18
+				ChicaneBool = 1
+				GOSUB "LeftLines"
+				MATERIAL Asfalt
+				LineMargin = ConstantLineMargin
+				ADDY Width[i] - Width[i-1]
+			ENDIF
+			IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "LeftBarrier"
+			IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "LeftTopTube"
+			GOSUB "LeftCurveLights"
 		ENDIF
-		IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "LeftBarrier"
-		IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "LeftTopTube"
 	ENDIF
-	GOSUB "LeftCurveLights"
-
 	ADDX CurveRadius + rCenter * COS(Angle)
 	ADDY rCenter * SIN(Angle)
 	ROTZ Angle
+	IF SpeedPlusBool THEN ADDY Width[i]
+RETURN
+
+"LeftSpeedPlus":
+	!-----ENTER--------------------------------------------------------------------------
+	TrackWidth   = Width[i]
+	CurveAngle   = Angle
+	NumSegments  = SegmentsResolution
+	InnerHeight = 0.11
+	OuterHeight = 0.26
+	TransitionLength = TrackWidth
+	HeightDifference = OuterHeight - InnerHeight
+	calcAngle = ASN(0.15 / TrackWidth)
+
+	InnerRailHeight = 0.666
+	OuterRailHeight = 0.516
+	RailThickness = 0.1
+
+
+
+
+	ADDY TransitionLength
+	ADDZ OuterHeight - HeightDifference/2
+	ROTY -calcAngle
+	ROTX ATN(OuterHeight / TransitionLength)
+	CUTPLANE 0
+	DEL 4
+	ADDX -Width[1] / 2
+	BLOCK TrackWidth, TransitionLength, OuterHeight
+	CUTEND
+	BLOCK TrackWidth, TransitionLength, TrackThickness
+
+	!-----CURVE--------------------------------------------------------------------------
+	ADDY TransitionLength
+
+	FOR s = -1 TO NumSegments + 1
+		curA = s * (CurveAngle / NumSegments)
+		posX = -CurveLeft[i-1] * (1 - COS(curA))
+		posY =  CurveLeft[i-1] * SIN(curA)
+		posZ = 0
+		PUT posX, posY, posZ, 0
+	NEXT s
+
+	TUBE 4, NSP / 4, ExtrudeValues,
+		0,           InnerHeight, 1,
+		-TrackWidth, OuterHeight, 1,
+		-TrackWidth, 0.00,   1,
+		0,           0.00,   1,
+		GET(NSP)
+	!Inner Rail
+	MATERIAL SlimMaterial
+	ADDX -RailThickness
+	FOR s = -1 TO NumSegments + 1
+		curA = s * (CurveAngle / NumSegments)
+		posX = -(CurveLeft[i-1] - RailThickness) * (1 - COS(curA))
+		posY =  (CurveLeft[i-1] - RailThickness) * SIN(curA)
+		posZ = 0
+		PUT posX, posY, posZ, 0
+	NEXT s
+
+	TUBE 4, NSP / 4, ExtrudeValues,
+		0,				InnerRailHeight,	1,
+		-RailThickness,	InnerRailHeight,	1,
+		-RailThickness,	0.00,				1,
+		0,				0.00,				1,
+		GET(NSP)
+	DEL 1
+	!Outer Rail
+	ADDX TrackWidth
+	FOR s = -1 TO NumSegments + 1
+		curA = s * (CurveAngle / NumSegments)
+		posX = -(CurveLeft[i-1] + TrackWidth) * (1 - COS(curA))
+		posY =  (CurveLeft[i-1] + TrackWidth) * SIN(curA)
+		posZ = 0
+		PUT posX, posY, posZ, 0
+	NEXT s
+
+	TUBE 4, NSP / 4, ExtrudeValues,
+		0,				InnerRailHeight,	1,
+		-RailThickness,	InnerRailHeight,	1,
+		-RailThickness,	0.00,				1,
+		0,				0.00,				1,
+		GET(NSP)
+	DEL 1
+	!-----EXIT--------------------------------------------------------------------------
+	MATERIAL Asfalt
+	exitX = -CurveLeft[i-1] * (1 - COS(CurveAngle))
+	exitY =  CurveLeft[i-1] * SIN(CurveAngle)
+
+	ADDX exitX
+	ADDY exitY
+	ROTZ CurveAngle
+
+	ADDZ OuterHeight - HeightDifference / 2
+	ADDX Width[1] / 2
+	ROTY -calcAngle
+	ROTX -ATN(OuterHeight / TransitionLength)
+	CUTPLANE 0
+	DEL 4
+	BLOCK TrackWidth, TransitionLength, OuterHeight
+	CUTEND
+	BLOCK TrackWidth, TransitionLength, TrackThickness
+	DEL 5
 RETURN
 
 "LeftTopTube":
@@ -1545,7 +1662,7 @@ RETURN
 	ADDZ BarrierHeight
 	Reset = 0
 	! --- RIGHT SIDE BARRIER (Outer Path) ---
-	OuterRadius = CurveLeft[i-1] + Width[i-1] - .05
+	OuterRadius = CurveLeft[i-1] + Width[i-1] - BarrierOffset
 	! Only shift outer side if the track WIDENS
 	WidthDifferenceOut = 0
 	IF Width[i] > Width[i-1] THEN
@@ -1567,7 +1684,7 @@ RETURN
 		GOSUB "SlimBarrier"
 	ENDIF
 	! --- LEFT SIDE BARRIER (Inner Path) ---
-	InnerRadius = CurveLeft[i-1] + .05
+	InnerRadius = CurveLeft[i-1] + BarrierOffset
 	! Only shift inner side if the track NARROWS
 	WidthDifferenceIn = 0
 	IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
@@ -1608,6 +1725,17 @@ RETURN
 	ENDIF
 RETURN
 
+"LeftSpeedPlusHotSpot":
+	IF SpeedPlusBool THEN
+		SpeedPlusOffset = Width[i+1]
+	ELSE
+		SpeedPlusOffset = 0
+	ENDIF
+	HOTSPOT Width[i]/2 + 3,	SpeedPlusOffset,	0, unID, LeftSpeedPlus[i], 1	: unID = unID + 1
+	HOTSPOT Width[i]/2 + 3,	SpeedPlusOffset,	0, unID, LeftSpeedPlus[i], 2	: unID = unID + 1
+	HOTSPOT Width[i]/2 + 3,	-1,					0, unID, LeftSpeedPlus[i], 3	: unID = unID + 1
+RETURN
+
 "LineMarginHotSpot":
 	HOTSPOT  Width[1]/2,            0,    0, unID, LineMargin, 1 : unID = unID + 1
 	HOTSPOT  Width[1]/2-LineMargin, 0,    0, unID, LineMargin, 2 : unID = unID + 1
@@ -1644,10 +1772,15 @@ RETURN
 RETURN
 
 "LeftHotSpot":
+	IF SpeedPlusBool THEN
+		SpeedPlusOffset = Width[i+1]
+	ELSE
+		SpeedPlusOffset = 0
+	ENDIF
 	IF CurveRight[i] < ESP AND StraightResizing[i] < ESP THEN
-		HOTSPOT -Width[i]/2,  0, 0, unID, CurveLeft[i], 1 : unID = unID + 1
-		HOTSPOT -Width[i]/2,  0, 0, unID, CurveLeft[i], 2 : unID = unID + 1
-		HOTSPOT -Width[i]/2, -1, 0, unID, CurveLeft[i], 3 : unID = unID + 1
+		HOTSPOT -Width[i]/2,  SpeedPlusOffset,	0, unID, CurveLeft[i], 1 : unID = unID + 1
+		HOTSPOT -Width[i]/2,  SpeedPlusOffset,	0, unID, CurveLeft[i], 2 : unID = unID + 1
+		HOTSPOT -Width[i]/2, -1, 				0, unID, CurveLeft[i], 3 : unID = unID + 1
 	ENDIF
 RETURN
 
@@ -1674,16 +1807,16 @@ RETURN
 RETURN
 
 "StraightHotSpot":
-	IF NextLength[i] < -ESP THEN NextLength[i] = ESP
-	HOTSPOT 0,  0,				0, unID, NextLength[i], 1 : unID = unID + 1
-	HOTSPOT 0,  NextLength[i], 	0, unID, NextLength[i], 2 : unID = unID + 1
-	HOTSPOT 0, -1,				0, unID, NextLength[i], 3 : unID = unID + 1
+	IF Length[i] < -ESP THEN Length[i] = ESP
+	HOTSPOT 0,  0,				0, unID, Length[i], 1 : unID = unID + 1
+	HOTSPOT 0,  Length[i], 	0, unID, Length[i], 2 : unID = unID + 1
+	HOTSPOT 0, -1,				0, unID, Length[i], 3 : unID = unID + 1
 RETURN
 
 "RemoveHotSpot":
-	HOTSPOT 0,  NextLength[i]-1,	0, unID, RemovePart[i], 1 : unID = unID + 1
-	HOTSPOT 0,  NextLength[i]-1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
-	HOTSPOT -1, NextLength[i]-1,	0, unID, RemovePart[i], 3 : unID = unID + 1
+	HOTSPOT 0,  Length[i]-1,	0, unID, RemovePart[i], 1 : unID = unID + 1
+	HOTSPOT 0,  Length[i]-1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
+	HOTSPOT -1, Length[i]-1,	0, unID, RemovePart[i], 3 : unID = unID + 1
 	GOSUB "MoveSegmentHotSpot"
 	IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
 RETURN
@@ -1711,17 +1844,22 @@ RETURN
 RETURN
 
 "BarrierRemoveHotSpot":
-	IF NextLength[i-1] > ESP THEN
-		HOTSPOT  0,  NextLength[i-1]/2,	0, unID, BarrierRemove[i], 1 : unID = unID + 1
-		HOTSPOT  0,  NextLength[i-1]/2,	0, unID, BarrierRemove[i], 2 : unID = unID + 1
-		HOTSPOT -1,  NextLength[i-1]/2,	0, unID, BarrierRemove[i], 3 : unID = unID + 1
+	IF Length[i-1] > ESP THEN
+		HOTSPOT  0,  Length[i-1]/2,	0, unID, BarrierRemove[i], 1 : unID = unID + 1
+		HOTSPOT  0,  Length[i-1]/2,	0, unID, BarrierRemove[i], 2 : unID = unID + 1
+		HOTSPOT -1,  Length[i-1]/2,	0, unID, BarrierRemove[i], 3 : unID = unID + 1
 	ENDIF
 RETURN
 
 "CurveBarrierRemoveHotSpot":
-	HOTSPOT  0, 2, 0, unID, BarrierRemove[i], 1 : unID = unID + 1
-	HOTSPOT  0, 2, 0, unID, BarrierRemove[i], 2 : unID = unID + 1
-	HOTSPOT -1, 2, 0, unID, BarrierRemove[i], 3 : unID = unID + 1
+	IF SpeedPlusBool THEN
+		SpeedPlusOffset = Width[i+1]
+	ELSE
+		SpeedPlusOffset = 0
+	ENDIF
+	HOTSPOT  0, SpeedPlusOffset + 2, 0, unID, BarrierRemove[i], 1 : unID = unID + 1
+	HOTSPOT  0, SpeedPlusOffset + 2, 0, unID, BarrierRemove[i], 2 : unID = unID + 1
+	HOTSPOT -1, SpeedPlusOffset + 2, 0, unID, BarrierRemove[i], 3 : unID = unID + 1
 RETURN
 
 "StraightResizingHotSpot":
@@ -1856,6 +1994,7 @@ RETURN
 "LightTube":
 	MATERIAL TubeColor
 	tubeRad = 0.03
+	tubeRadCabel = 0.02
 	TUBE 17, NSP/4, 1+2,
 		tubeRad * COS(0),    tubeRad * SIN(0),    1,
 		tubeRad * COS(22.5), tubeRad * SIN(22.5), 1,
@@ -1895,7 +2034,7 @@ RETURN
 		IF Width[i] > (BoxWidth*2 + BoxMargin*2)*j THEN Rows = j
 	NEXT j
 	FOR j = 1 TO 6
-		IF NextLength[i] > (BoxHeight*2 + BoxMargin*2 + .2)*j THEN Lines = j
+		IF Length[i] > (BoxHeight*2 + BoxMargin*2 + .2)*j THEN Lines = j
 	NEXT j
 	ADDX -Width[i]/2 + 1/2
 	ADDY ((BoxHeight*2 + BoxMargin*2)*Lines)/2 
@@ -1965,13 +2104,13 @@ GOSUB "BegginingWidthHotSpot"
 !-------Main Loop Places All Objects------------------------------------------------------------------------------------------------------------------------------
 i = 1
 GOSUB "StraightHotSpot"
-IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
+IF Length[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
 	GOSUB "FirstStraight"
 	GOSUB "RightHotSpot"
 	GOSUB "LeftHotSpot"
 ENDIF
 WHILE ObjectOrder[i] <> 0 DO
-	IF NextLength[i] > ESP			THEN ObjectOrder[i+1] = 2
+	IF Length[i] > ESP			THEN ObjectOrder[i+1] = 2
 	IF CurveLeft[i]  > ESP			THEN ObjectOrder[i+1] = 3
 	IF CurveRight[i] > ESP			THEN ObjectOrder[i+1] = 4
 	IF StraightResizing[i] > ESP	THEN ObjectOrder[i+1] = 5
@@ -1990,7 +2129,7 @@ WHILE ObjectOrder[i] <> 0 DO
 		GOSUB "LeftWidthHotSpot"
 		GOSUB "StraightHotSpot"
 		ObjectOrder[i+1] = 2 
-		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		IF Length[i] <= 0 THEN Length[i] = ESP
 		GOTO "NextIter"
 	ENDIF
 
@@ -2000,7 +2139,7 @@ WHILE ObjectOrder[i] <> 0 DO
 		GOSUB "RightWidthHotSpot"
 		GOSUB "StraightHotSpot"
 		ObjectOrder[i+1] = 2 
-		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		IF Length[i] <= 0 THEN Length[i] = ESP
 		GOTO "NextIter"
 	ENDIF
 
@@ -2010,7 +2149,7 @@ WHILE ObjectOrder[i] <> 0 DO
 		GOSUB "LeftNarrowingHotSpot"
 		GOSUB "StraightHotSpot"
 		ObjectOrder[i+1] = 2 
-		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+		IF Length[i] <= 0 THEN Length[i] = ESP
 		GOTO "NextIter"
 	ENDIF
 
@@ -2044,27 +2183,27 @@ RETURN
 			TrackColor, 0,
 			-Width[i]/2,    0,               1,
 			Width[i]/2,     0,               1,
-			Width[i]/2,     NextLength[i-1], 1,
-			-Width[i]/2,    NextLength[i-1], 1,
+			Width[i]/2,     Length[i-1], 1,
+			-Width[i]/2,    Length[i-1], 1,
 			-Width[i]/2,    0,              -1
-		LINE2 0, 0,		0, NextLength[i-1]
+		LINE2 0, 0,		0, Length[i-1]
 		ADD2 Width[i]/2, 0
 		FOR j = 1 TO 2
 			POLY2_B 5, 1+2+4,
 				TrackMarginColor, 0,
 				0,    			0,               1,
 				TrackMargin,    0,               1,
-				TrackMargin,    NextLength[i-1], 1,
-				0,    			NextLength[i-1], 1,
+				TrackMargin,    Length[i-1], 1,
+				0,    			Length[i-1], 1,
 				0,    			0,              -1
-			IF j = 1 THEN LINE2 TrackMarginLine,				0,	TrackMarginLine,				NextLength[i-1]
-			IF j = 2 THEN LINE2 TrackMargin - TrackMarginLine,	0,	TrackMargin - TrackMarginLine,	NextLength[i-1]
+			IF j = 1 THEN LINE2 TrackMarginLine,				0,	TrackMarginLine,				Length[i-1]
+			IF j = 2 THEN LINE2 TrackMargin - TrackMarginLine,	0,	TrackMargin - TrackMarginLine,	Length[i-1]
 			ADD2 -Width[i]-TrackMargin, 0
 		NEXT j
 		DEL 3
 	ENDIF
-	TotalLength = TotalLength + NextLength[i-1]
-	ADD2 0, NextLength[i-1]
+	TotalLength = TotalLength + Length[i-1]
+	ADD2 0, Length[i-1]
 	ROT2 Orietation
 	ADD2 MoveX[i], MoveY[i]
 	ROT2 -Orietation
@@ -2605,27 +2744,27 @@ RETURN
 RETURN
 
 "StraightHotSpot":
-	IF NextLength[i] < -ESP THEN NextLength[i] = ESP
-	HOTSPOT2 0,  0,				unID, NextLength[i], 1 : unID = unID + 1
-	HOTSPOT2 0,  NextLength[i],	unID, NextLength[i], 2 : unID = unID + 1
-	HOTSPOT2 0, -1,				unID, NextLength[i], 3 : unID = unID + 1
+	IF Length[i] < -ESP THEN Length[i] = ESP
+	HOTSPOT2 0,  0,				unID, Length[i], 1 : unID = unID + 1
+	HOTSPOT2 0,  Length[i],	unID, Length[i], 2 : unID = unID + 1
+	HOTSPOT2 0, -1,				unID, Length[i], 3 : unID = unID + 1
 	IF GLOB_CONTEXT = 22 THEN
-		LINE2  0, 	0, 					 0, NextLength[i]
-		LINE2 -0.3, NextLength[i] - 0.3, 0, NextLength[i]
-		LINE2  0.3, NextLength[i] - 0.3, 0, NextLength[i]
+		LINE2  0, 	0, 					 0, Length[i]
+		LINE2 -0.3, Length[i] - 0.3, 0, Length[i]
+		LINE2  0.3, Length[i] - 0.3, 0, Length[i]
 	ENDIF
 	IF ColorCircles THEN
 		POLY2_B 2, 1+2+4,
 				4, 0,
-				0,			NextLength[i],	900,
+				0,			Length[i],	900,
 				CircleSize,	360, 			4001
 	ENDIF
 RETURN
 
 "RemoveHotSpot":
-	HOTSPOT2  0,  NextLength[i]-1,	unID, RemovePart[i], 1 : unID = unID + 1
-	HOTSPOT2  0,  NextLength[i]-1,	unID, RemovePart[i], 2 : unID = unID + 1
-	HOTSPOT2 -1,  NextLength[i]-1,	unID, RemovePart[i], 3 : unID = unID + 1
+	HOTSPOT2  0,  Length[i]-1,	unID, RemovePart[i], 1 : unID = unID + 1
+	HOTSPOT2  0,  Length[i]-1,	unID, RemovePart[i], 2 : unID = unID + 1
+	HOTSPOT2 -1,  Length[i]-1,	unID, RemovePart[i], 3 : unID = unID + 1
 	GOSUB "MoveSegmentHotSpot"
 	IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
 RETURN
@@ -2731,6 +2870,8 @@ TopTubeLightHeight = 0.8
 SlimLength = 0 
 FlexiLength = 0 
 FlexiPieceCount = 0
+
+BarrierOffset = 0.05
 IF Sectors THEN
 	ExtrudeValues =  1+2+4+16+32
 ELSE
@@ -2771,27 +2912,26 @@ NEXT i
 TotalLength_Calc = 0
 IF Information THEN
 	! --- 1. First Straight Evaluation ---
-	IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
+	IF Length[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
 		TotalLength_Calc = TotalLength_Calc + BeginningDistance
 	ENDIF
 
 	! --- Total Length ---
 	i = 1
 	WHILE ObjectOrder[i] <> 0 DO
-		IF NextLength[i] > ESP			THEN ObjectOrder[i+1] = 2
+		IF Length[i] > ESP			THEN ObjectOrder[i+1] = 2
 		IF CurveLeft[i]  > ESP			THEN ObjectOrder[i+1] = 3
 		IF CurveRight[i] > ESP			THEN ObjectOrder[i+1] = 4
 		IF StraightResizing[i] > ESP	THEN ObjectOrder[i+1] = 5
 
 		IF ObjectOrder[i] = 2 THEN
-			TotalLength_Calc = TotalLength_Calc + NextLength[i-1]
-			SlimLength = SlimLength + NextLength[i-1]
+			TotalLength_Calc = TotalLength_Calc + Length[i-1]
+			SlimLength = SlimLength + Length[i-1]
 
 			GOTO "NextMasterIter"
 		ENDIF
 
 		IF ObjectOrder[i] = 3 THEN
-			BREAKPOINT 1
 			Angle = LeftAngle[i]
 			CurveRadius = Width[i-1]/2 + CurveLeft[i-1]
 			
@@ -2812,7 +2952,7 @@ IF Information THEN
 			ENDIF
 
 			ObjectOrder[i+1] = 2
-			IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+			IF Length[i] <= 0 THEN Length[i] = ESP
 			GOTO "NextMasterIter"
 		ENDIF
 
@@ -2837,7 +2977,7 @@ IF Information THEN
 			ENDIF
 
 			ObjectOrder[i+1] = 2
-			IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+			IF Length[i] <= 0 THEN Length[i] = ESP
 			GOTO "NextMasterIter"
 		ENDIF
 
@@ -2915,7 +3055,7 @@ IF Information THEN
 			ENDIF
 
 			ObjectOrder[i+1] = 2
-			IF NextLength[i] <= 0 THEN NextLength[i] = ESP
+			IF Length[i] <= 0 THEN Length[i] = ESP
 			GOTO "NextMasterIter"
 		ENDIF
 
@@ -3059,7 +3199,7 @@ ENDIF
 DIM vlist[]
 n = 1
 FOR i = 1 TO 200
-	IF NextLength[i] > ESP THEN 
+	IF Length[i] > ESP THEN 
     	vlist[n] = i
 		n = n + 1
 	ENDIF
@@ -3158,7 +3298,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			</Flags>
 			<Value>0</Value>
 		</Length>
-		<Length Name="NextLength">
+		<Length Name="Length">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
 				<AVal Row="1">0.1</AVal>
@@ -6058,7 +6198,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 		</Length>
 		<Boolean Name="LightVisible">
 			<Description><![CDATA[""]]></Description>
-			<Value>0</Value>
+			<Value>1</Value>
 		</Boolean>
 		<Boolean Name="TopTubeVisible">
 			<Description><![CDATA[""]]></Description>
@@ -6112,6 +6252,211 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<Description><![CDATA[""]]></Description>
 			<Value>19</Value>
 		</Material>
+		<Length Name="LeftSpeedPlus">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
 	</Parameters>
 </ParamSection>
 
