@@ -1241,7 +1241,7 @@ RETURN
 RETURN
 
 "LeftSpeedPlus":
-	!-----ENTER--------------------------------------------------------------------------
+	!-----ENTER-----------------------------------------------------------------------------------------------------------------------------------
 	TrackWidth   = Width[i]
 	CurveAngle   = Angle
 	NumSegments  = SegmentsResolution
@@ -1255,9 +1255,6 @@ RETURN
 	OuterRailHeight = 0.516
 	RailThickness = 0.1
 
-
-
-
 	ADDY TransitionLength
 	ADDZ OuterHeight - HeightDifference/2
 	ROTY -calcAngle
@@ -1268,10 +1265,57 @@ RETURN
 	BLOCK TrackWidth, TransitionLength, OuterHeight
 	CUTEND
 	BLOCK TrackWidth, TransitionLength, TrackThickness
-
-	!-----CURVE--------------------------------------------------------------------------
+	ADDX Width[1] / 2
+	FOR h = 1 TO 2
+		IF h = 1 THEN MATERIAL 19
+		ADDX -Width[i]/2 + LineMargin
+		ADDZ TrackThickness
+		EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
+			-LineWidth,	0,					1,
+			LineWidth,	0,					1,
+			LineWidth,	TransitionLength, 	1,
+			-LineWidth,	TransitionLength,	1
+		DEL 2
+		ADDX Width[i]/2 - LineMargin
+		ADDZ TrackThickness
+		EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
+			-LineWidth,	0,					1,
+			LineWidth,	0,					1,
+			LineWidth,	TransitionLength, 	1,
+			-LineWidth,	TransitionLength,	1
+		DEL 2
+		LineMargin = LineMargin + LineWidth*4
+		MATERIAL 18
+	NEXT h
+	LineMargin = ConstantLineMargin
+	DEL 1
 	ADDY TransitionLength
-
+	ADDX Width[1] / 2
+	ADDZ OuterHeight  - HeightDifference/2 + LineThickness
+	ROTY -calcAngle
+	ROTX ATN(OuterHeight / TransitionLength)
+	CUTPLANE 0
+	MATERIAL 19
+	DEL 5
+	ADDX LineMargin - LineWidth
+	BLOCK LineWidth*2, TransitionLength, OuterHeight + LineThickness
+	DEL 1
+	ADDX Width[i] - LineMargin - LineWidth
+	BLOCK LineWidth*2, TransitionLength, OuterHeight + LineThickness
+	DEL 1
+	MATERIAL 18
+	ADDX Width[i] - LineMargin - LineWidth - LineWidth*4
+	BLOCK LineWidth*2, TransitionLength, OuterHeight + LineThickness
+	DEL 1
+	ADDX LineMargin + LineWidth*3
+	BLOCK LineWidth*2, TransitionLength, OuterHeight + LineThickness
+	DEL 1
+	CUTEND
+	DEL 1
+	MATERIAL Asfalt
+	ADDX -Width[1] / 2
+	!-----CURVE-------------------------------------------------------------------------------------------------------------------------------------
+	ADDY TransitionLength
 	FOR s = -1 TO NumSegments + 1
 		curA = s * (CurveAngle / NumSegments)
 		posX = -CurveLeft[i-1] * (1 - COS(curA))
@@ -1281,12 +1325,28 @@ RETURN
 	NEXT s
 
 	TUBE 4, NSP / 4, ExtrudeValues,
-		0,           InnerHeight, 1,
-		-TrackWidth, OuterHeight, 1,
-		-TrackWidth, 0.00,   1,
-		0,           0.00,   1,
+		0,				InnerHeight,	1,
+		-TrackWidth,	OuterHeight,	1,
+		-TrackWidth,	0.00,			1,
+		0,				0.00,			1,
 		GET(NSP)
-	!Inner Rail
+	!----Lines--------------------------------------------
+	FOR s = -1 TO NumSegments + 1
+		curA = s * (CurveAngle / NumSegments)
+		posX = -CurveLeft[i-1] * (1 - COS(curA))
+		posY =  CurveLeft[i-1] * SIN(curA)
+		posZ = 0
+		PUT posX, posY, posZ, 0
+	NEXT s
+
+	TUBE 4, NSP/4, ExtrudeValues,
+		0,				InnerHeight,	1,
+		-LineWidth/2,	OuterHeight,	1,
+		-LineWidth/2,	0.00,			1,
+		0,				0.00,			1,
+		GET(NSP)
+
+	!----Inner Rail-----------------------------------------
 	MATERIAL SlimMaterial
 	ADDX -RailThickness
 	FOR s = -1 TO NumSegments + 1
@@ -1304,7 +1364,7 @@ RETURN
 		0,				0.00,				1,
 		GET(NSP)
 	DEL 1
-	!Outer Rail
+	!----Outer Rail----------------------------------------
 	ADDX TrackWidth
 	FOR s = -1 TO NumSegments + 1
 		curA = s * (CurveAngle / NumSegments)
@@ -1321,7 +1381,7 @@ RETURN
 		0,				0.00,				1,
 		GET(NSP)
 	DEL 1
-	!-----EXIT--------------------------------------------------------------------------
+	!-----EXIT----------------------------------------------------------------------------------------------------------------------------
 	MATERIAL Asfalt
 	exitX = -CurveLeft[i-1] * (1 - COS(CurveAngle))
 	exitY =  CurveLeft[i-1] * SIN(CurveAngle)
