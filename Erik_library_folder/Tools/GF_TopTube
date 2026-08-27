@@ -20,10 +20,16 @@ PolePlateWidth = 0.1
 PolePlateDepth = 0.15
 PolePlateHeigth = 0.004
 MATERIAL 133
-
+BREAKPOINT 1
 IF CenterPosition THEN ADDX PoleWidth/2
+! --- Base Plate ---
+IF PlateBool THEN BLOCK PolePlateWidth, PolePlateDepth, PolePlateHeigth
+
+ADDX PolePlateWidth/2 - PoleWidth/2
+ADDY PolePlateDepth/2 - PoleDepth/2
 ! --- Main Pole ---
 BLOCK PoleWidth, PoleDepth, PoleHeigth - PoleWidth/2
+!DEL 2
 
 ! --- Curved Top ---
 ADDZ PoleHeigth - PoleWidth/2
@@ -33,15 +39,15 @@ ROTX 90
 CYLIND PoleDepth, TubeFi/2
 DEL 4
 
-! --- Base Plate ---
-ADDX - PolePlateWidth/2 + PoleWidth/2
-ADDY PolePlateDepth/2 - PoleDepth
-BLOCK PolePlateWidth, PolePlateDepth, PolePlateHeigth
-DEL 2
-! --- POSITION AND ROTATE THE LIGHT ---
-ADDZ PoleHeigth - PoleWidth/2
-ADDX PoleWidth/2  
-ADDY PoleDepth / 2
+! ! --- Base Plate ---
+! ADDX - PolePlateWidth/2 + PoleWidth/2
+! ADDY PolePlateDepth/2 - PoleDepth
+! BLOCK PolePlateWidth, PolePlateDepth, PolePlateHeigth
+! DEL 2
+! ! --- POSITION AND ROTATE THE LIGHT ---
+! ADDZ PoleHeigth - PoleWidth/2
+! ADDX PoleWidth/2  
+! ADDY PoleDepth / 2
 ]]>
 </Script_3D>
 
@@ -144,6 +150,10 @@ ADDY PoleDepth / 2
 		<Boolean Name="CenterPosition">
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
+		</Boolean>
+		<Boolean Name="PlateBool">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
 		</Boolean>
 	</Parameters>
 </ParamSection>
