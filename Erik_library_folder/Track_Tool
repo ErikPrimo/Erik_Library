@@ -26,6 +26,8 @@
 <![CDATA[
 MATERIAL Asfalt
 RESOL 64
+ROTZ ObjectAngle
+
 !----Beggining Width----------------------------------------------------------------------------------------------------------------------------------------------
 GOSUB "BegginingWidthHotSpot"
 !-----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -47,11 +49,10 @@ IF Length[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
 	GOSUB "LeftHotSpot"
 ENDIF
 WHILE ObjectOrder[i] <> 0 DO
-
-	IF Length[i] > ESP 		 THEN ObjectOrder[i+1] = 2
-	IF CurveLeft[i]  > ESP 		 THEN ObjectOrder[i+1] = 3
-	IF CurveRight[i] > ESP 		 THEN ObjectOrder[i+1] = 4
-	IF StraightResizing[i] > ESP THEN ObjectOrder[i+1] = 5
+	IF Length[i] > ESP				THEN ObjectOrder[i+1] = 2
+	IF CurveLeft[i]  > ESP			THEN ObjectOrder[i+1] = 3
+	IF CurveRight[i] > ESP			THEN ObjectOrder[i+1] = 4
+	IF StraightResizing[i] > ESP	THEN ObjectOrder[i+1] = 5
 	IF ObjectOrder[i] = 2 THEN
 		GOSUB "Straight"
 		GOSUB "StraightResizingHotSpot"
@@ -312,19 +313,19 @@ RETURN
 "StraightResizing":
 	GOSUB "StraightResizingBarrierRemoveHotSpot"
 	GOSUB "StraightResizingBothBarrierRemoveHotSpot"
-		RightNarrowing[i] = RightNarrowing[i] + ESP
-		LeftNarrowing[i]  = LeftNarrowing[i] + ESP
-		StraightTotalLength = StraightResizing[i-1]
-		CurveHeight  = StraightTotalLength * 0.60
-		MiddleLength = StraightTotalLength / 2
-		CurveStart   = MiddleLength - (CurveHeight / 2)
-		CurveEnd     = MiddleLength + (CurveHeight / 2)
-		MaxAllowedNarrowing = StraightTotalLength * 0.30
-		IF RightNarrowing[i] > MaxAllowedNarrowing  THEN RightNarrowing[i] = MaxAllowedNarrowing
-		IF RightNarrowing[i] < -MaxAllowedNarrowing THEN RightNarrowing[i] = -MaxAllowedNarrowing
-		IF LeftNarrowing[i] > MaxAllowedNarrowing  THEN LeftNarrowing[i] = MaxAllowedNarrowing
-		IF LeftNarrowing[i] < -MaxAllowedNarrowing THEN LeftNarrowing[i] = -MaxAllowedNarrowing
-		! MAIN TRACK EXTRUDE
+	RightNarrowing[i] = RightNarrowing[i] + ESP
+	LeftNarrowing[i]  = LeftNarrowing[i] + ESP
+	StraightTotalLength = StraightResizing[i-1]
+	CurveHeight  = StraightTotalLength * 0.60
+	MiddleLength = StraightTotalLength / 2
+	CurveStart   = MiddleLength - (CurveHeight / 2)
+	CurveEnd     = MiddleLength + (CurveHeight / 2)
+	MaxAllowedNarrowing = StraightTotalLength * 0.30
+	IF RightNarrowing[i] > MaxAllowedNarrowing  THEN RightNarrowing[i] = MaxAllowedNarrowing
+	IF RightNarrowing[i] < -MaxAllowedNarrowing THEN RightNarrowing[i] = -MaxAllowedNarrowing
+	IF LeftNarrowing[i] > MaxAllowedNarrowing  THEN LeftNarrowing[i] = MaxAllowedNarrowing
+	IF LeftNarrowing[i] < -MaxAllowedNarrowing THEN LeftNarrowing[i] = -MaxAllowedNarrowing
+	! MAIN TRACK EXTRUDE
 	IF NOT(GLOB_CONTEXT = 2) THEN
 		PUT  Width[i]/2,    0,              1
 		PUT  Width[i]/2,    CurveStart,     1
@@ -590,6 +591,7 @@ RETURN
 			ENDIF
 			DEL 1
 			MATERIAL SiderailColor
+			!-----Side Rail--------------------------------------------------------
 			IF SiderailBool THEN
 				! --- LEFT SIDERAIL ---
 				IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
@@ -667,7 +669,7 @@ RETURN
 		! Calculate transition length for Segment B
 		CurveSegmentLength = CurveEnd - CurveStart
 		YStep = 0.005  ! Finer resolution to prevent distance drift
-
+		BREAKPOINT 1
 		! -----RIGHT EDGE LIGHTS-------------------------------------------------------------------------------------------------------------
 		IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
 			! --- Segment A: Initial Straight (0 to CurveStart) ---
@@ -699,54 +701,57 @@ RETURN
 			ELSE
 				RightLightRemainingDistance = RightLightRemainingDistance - CurveStart
 			ENDIF
-			! --- Segment B: Blended S-Curve Transition (CurveStart to CurveEnd) ---
-			CurrentCurveY = 0
-			WHILE CurrentCurveY <= CurveSegmentLength DO
-				progressRatio = CurrentCurveY / CurveSegmentLength
-				
-				baseWeight = (1 - COS(progressRatio * 180)) / 2
-				sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
-				blendedWeight = (baseWeight + sharpWeight) * 0.5
-				
-				baseDerivative = (PI / 2) * SIN(progressRatio * 180)
-				sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight^2) * (-2 * baseDerivative)
-				blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
-				
-				deltaX = RightNarrowing[i] * blendedDerivative
-				deltaY = CurveSegmentLength
-				
-				headingAngle = ATN(deltaX / deltaY)
+			! --- Segment B: Blended S-Curve Transition (Right Edge) ---
+            CurrentCurveY = 0
+            dY_sample = 0.001
 
-				! Place light post when distance accumulator expires
-				IF RightLightRemainingDistance <= 0.0001 THEN
-					currentX = (Width[i]/2 + RightNarrowing[i] * blendedWeight) + LightMargin * COS(headingAngle)
-					perpendicularY = CurveStart + CurrentCurveY - LightMargin * SIN(headingAngle)
-					
-					ADDX currentX
-					ADDY perpendicularY
-					ROTZ -headingAngle
-					IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
-					ROTZ -LightAngle
-					IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
-					DEL 1
-					IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-						ADDZ TopTubeLightHeight
-						ADDX 0.05
-						ROTZ -LightAngle
-						CALL "FenceLight" PARAMETERS LightStrength = LightStrength
-						DEL 3
-					ENDIF
-					RightLightBool = NOT(RightLightBool)
-					DEL 3
-					
-					RightLightRemainingDistance = LightDistance
-				ENDIF
+            WHILE CurrentCurveY <= CurveSegmentLength DO
+                ! 1. Current Point on the Tube/Fence Path
+                ratio1     = CurrentCurveY / CurveSegmentLength
+                baseW1     = (1 - COS(ratio1 * 180)) / 2
+                sharpW1    = baseW1^2 * (3 - 2 * baseW1)
+                blendW1    = (baseW1 + sharpW1) * 0.5
+                currentX   = Width[i]/2 + LightMargin + RightNarrowing[i] * blendW1
+                currentY   = CurveStart + CurrentCurveY
 
-				PathStep = YStep * SQR(1 + (deltaX / deltaY)^2)
-				CurrentCurveY = CurrentCurveY + YStep
-				RightLightRemainingDistance = RightLightRemainingDistance - PathStep
-			ENDWHILE
+                ! 2. Sample Ahead to get the Tangent Heading Angle
+                ratio2     = (CurrentCurveY + dY_sample) / CurveSegmentLength
+                baseW2     = (1 - COS(ratio2 * 180)) / 2
+                sharpW2    = baseW2^2 * (3 - 2 * baseW2)
+                blendW2    = (baseW2 + sharpW2) * 0.5
+                nextX      = Width[i]/2 + LightMargin + RightNarrowing[i] * blendW2
 
+                dX = nextX - currentX
+                dY = dY_sample
+                headingAngle = ATN(dX / dY)
+
+                ! Place light post directly under the tube center
+                IF RightLightRemainingDistance <= 0.0001 THEN
+                    ADDX currentX
+                    ADDY currentY
+                    ROTZ -headingAngle
+                    IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
+                    ROTZ -LightAngle
+                    IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+                    DEL 1
+                    IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+                        ADDZ TopTubeLightHeight
+                        ADDX 0.05
+                        ROTZ -LightAngle
+                        CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+                        DEL 3
+                    ENDIF
+                    RightLightBool = NOT(RightLightBool)
+                    DEL 3
+                    
+                    RightLightRemainingDistance = LightDistance
+                ENDIF
+
+                PathStep = YStep * SQR(1 + (dX / dY)^2)
+                CurrentCurveY = CurrentCurveY + YStep
+                RightLightRemainingDistance = RightLightRemainingDistance - PathStep
+            ENDWHILE
+			
 			! Clean up remaining offset for Terminal Straight
 			IF RightLightRemainingDistance < 0 THEN RightLightRemainingDistance = ABS(RightLightRemainingDistance)
 
@@ -782,6 +787,7 @@ RETURN
 				RightLightRemainingDistance = RightLightRemainingDistance - TerminalLengthR
 			ENDIF
 		ENDIF
+		
 		! -----LEFT EDGE LIGHTS------------------------------------------------------------------------------------------------------------------------------------------
 		IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
 			LastLightY_Left = -1
@@ -813,51 +819,56 @@ RETURN
 				LeftLightDistance = LeftLightDistance - CurveStart
 			ENDIF
 
-			! --- Blended S-Curve Transition ---
-			CurrentCurveY = 0
+			! --- Segment B: Blended S-Curve Transition (Left Edge) ---
+            CurrentCurveY = 0
+            dY_sample = 0.001
 
-			WHILE CurrentCurveY <= CurveSegmentLength DO
-				progressRatio = CurrentCurveY / CurveSegmentLength
-				
-				baseWeight = (1 - COS(progressRatio * 180)) / 2
-				sharpWeight = baseWeight^2 * (3 - 2 * baseWeight)
-				blendedWeight = (baseWeight + sharpWeight) * 0.5
-				
-				baseDerivative = (PI / 2) * SIN(progressRatio * 180)
-				sharpDerivative = 2 * baseWeight * baseDerivative * (3 - 2 * baseWeight) + (baseWeight^2) * (-2 * baseDerivative)
-				blendedDerivative = (baseDerivative + sharpDerivative) * 0.5
-				
-				deltaX = -LeftNarrowing[i] * blendedDerivative
-				deltaY = CurveSegmentLength
-			
-				headingAngle = ATN(deltaX / deltaY)
-				IF LeftLightDistance <= 0.0001 THEN
-					currentX = (-Width[i]/2 - LeftNarrowing[i] * blendedWeight) - LightMargin * COS(headingAngle)
-					perpendicularY = CurveStart + CurrentCurveY + LightMargin * SIN(headingAngle)
-					ADDX currentX
-					ADDY perpendicularY
-					ROTZ -headingAngle
-					IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
-					ROTZ LightAngle
-					IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
-					DEL 1
-					IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-						ADDZ TopTubeLightHeight
-						ADDX 0.05
-						ROTZ LightAngle
-						CALL "FenceLight" PARAMETERS LightStrength = LightStrength
-						DEL 3
-					ENDIF
-					LeftLightBool = NOT(LeftLightBool)
-					DEL 3
-					
-					LeftLightDistance = LightDistance
-				ENDIF
+            WHILE CurrentCurveY <= CurveSegmentLength DO
+                ! 1. Current Point on the Tube/Fence Path
+                ratio1     = CurrentCurveY / CurveSegmentLength
+                baseW1     = (1 - COS(ratio1 * 180)) / 2
+                sharpW1    = baseW1^2 * (3 - 2 * baseW1)
+                blendW1    = (baseW1 + sharpW1) * 0.5
+                currentX   = -Width[i]/2 - LightMargin - LeftNarrowing[i] * blendW1
+                currentY   = CurveStart + CurrentCurveY
 
-				PathStep = YStep * SQR(1 + (deltaX / deltaY)^2)
-				CurrentCurveY = CurrentCurveY + YStep
-				LeftLightDistance = LeftLightDistance - PathStep
-			ENDWHILE
+                ! 2. Sample Ahead to get the Tangent Heading Angle
+                ratio2     = (CurrentCurveY + dY_sample) / CurveSegmentLength
+                baseW2     = (1 - COS(ratio2 * 180)) / 2
+                sharpW2    = baseW2^2 * (3 - 2 * baseW2)
+                blendW2    = (baseW2 + sharpW2) * 0.5
+                nextX      = -Width[i]/2 - LightMargin - LeftNarrowing[i] * blendW2
+
+                dX = nextX - currentX
+                dY = dY_sample
+                headingAngle = ATN(dX / dY)
+
+                ! Place light post directly under the tube center
+                IF LeftLightDistance <= 0.0001 THEN
+                    ADDX currentX
+                    ADDY currentY
+                    ROTZ -headingAngle
+                    IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
+                    ROTZ LightAngle
+                    IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+                    DEL 1
+                    IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
+                        ADDZ TopTubeLightHeight
+                        ADDX 0.05
+                        ROTZ LightAngle
+                        CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+                        DEL 3
+                    ENDIF
+                    LeftLightBool = NOT(LeftLightBool)
+                    DEL 3
+                    
+                    LeftLightDistance = LightDistance
+                ENDIF
+
+                PathStep = YStep * SQR(1 + (dX / dY)^2)
+                CurrentCurveY = CurrentCurveY + YStep
+                LeftLightDistance = LeftLightDistance - PathStep
+            ENDWHILE
 
 			IF LeftLightDistance < 0 THEN LeftLightDistance = ABS(LeftLightDistance)
 
@@ -2457,6 +2468,12 @@ RETURN
 SET FILL "Solid Fill"
 PEN 1
 
+!------Object Angle-----------------------------------------------------------------------------------------------------------------------------------------------------------
+ROT2 ObjectAngle
+Orietation = Orietation + ObjectAngle
+GOSUB "ObjectAngleHotSpot"
+!-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 !----Light Angle----------------------------------------------------------------------------------------------------------------------------------------------
 GOSUB "LightAngleHotSpot"
 !-----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -3120,7 +3137,7 @@ RETURN
 "StraightHotSpot":
 	IF Length[i] < -ESP THEN Length[i] = ESP
 	HOTSPOT2 0,  0,				unID, Length[i], 1 : unID = unID + 1
-	HOTSPOT2 0,  Length[i],	unID, Length[i], 2 : unID = unID + 1
+	HOTSPOT2 0,  Length[i],		unID, Length[i], 2 : unID = unID + 1
 	HOTSPOT2 0, -1,				unID, Length[i], 3 : unID = unID + 1
 	IF GLOB_CONTEXT = 22 THEN
 		LINE2  0, 	0, 					 0, Length[i]
@@ -3170,6 +3187,18 @@ RETURN
 			77, 0,
 			-Width[i]/2,           -StraightResizing[i-1]/4, 900,
 			CircleSize,            360, 					 4001
+	ENDIF
+RETURN
+
+"ObjectAngleHotSpot":
+	HOTSPOT2 0,				0,		unID, ObjectAngle, 6		: unID = unID + 1
+	HOTSPOT2 -1,			0,		unID, ObjectAngle, 4 + 128	: unID = unID + 1
+	HOTSPOT2 -Width[1]/2,	0,		unID, ObjectAngle, 5		: unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			19, 0,
+			-Width[1]/2,             0, 900,
+			CircleSize,            360, 4001
 	ENDIF
 RETURN
 ]]>
@@ -6450,6 +6479,10 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<Description><![CDATA[""]]></Description>
 			<Value>725</Value>
 		</Material>
+		<Length Name="ObjectAngle">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Length>
 	</Parameters>
 </ParamSection>
 
