@@ -6183,7 +6183,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 		</Integer>
 		<Length Name="LightAngle">
 			<Description><![CDATA[""]]></Description>
-			<Value>45</Value>
+			<Value>135</Value>
 		</Length>
 		<Material Name="Asfalt">
 			<Description><![CDATA[""]]></Description>
@@ -6227,7 +6227,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 		</Material>
 		<Material Name="OuterLine">
 			<Description><![CDATA[""]]></Description>
-			<Value>79</Value>
+			<Value>19</Value>
 		</Material>
 		<Material Name="InnerLine">
 			<Description><![CDATA[""]]></Description>
