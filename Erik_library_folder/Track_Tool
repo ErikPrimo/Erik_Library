@@ -975,12 +975,10 @@ RETURN
 		PUT CurveRadius - OuterTubeRadius, -1, 0, 0
 		PUT CurveRadius - OuterTubeRadius,  0, 0, 0
 		IF WidthDifferenceOut > ESP THEN PUT CurveRadius - OuterTubeRadius, WidthDifferenceOut, 0, 0
-
 		FOR n = 0 TO SegmentsResolution
 			AngleSegment = (n / SegmentsResolution) * RightAngle[i]
 			PUT CurveRadius - OuterTubeRadius * COS(AngleSegment), OuterTubeRadius * SIN(AngleSegment) + WidthDifferenceOut, 0, 0
 		NEXT n
-
 		_xEndOut = CurveRadius - OuterTubeRadius * COS(RightAngle[i]) + SIN(RightAngle[i])
 		_yEndOut = OuterTubeRadius * SIN(RightAngle[i]) + COS(RightAngle[i]) + WidthDifferenceOut
 		PUT _xEndOut, _yEndOut, 0, 0
