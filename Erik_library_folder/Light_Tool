@@ -850,6 +850,12 @@ ELSE
 		UI_PICT     "Fence_Large",   170,  115,  180, 100, 1
 	ENDIF
 ENDIF
+
+! --- HORIZONTAL SEPARATOR ----------------------------------------------------
+UI_SEPARATOR 20, 230, 420, 85
+
+UI_OUTFIELD "Color Circles",        20,   240,  65, 15
+UI_INFIELD  "ColorCircles",         20,   260,  65, 20
 ]]>
 </Script_UI>
 
