@@ -287,14 +287,14 @@ RETURN
 								CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 							ENDIF
 							DEL 1
-							IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+							IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
 								ADDZ TopTubeLightHeight
 								ADDX 0.05						
 								ROTZ LightAngle
 								CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 								DEL 3
 							ENDIF
-							RightLightBool = NOT(RightLightBool)
+							LeftLightBool = NOT(LeftLightBool)
 							DEL 2
 						ENDIF
 						LastLightPosLeft = CurrentPosLeft
@@ -3305,6 +3305,9 @@ SegmentCounter = 0
 
 RailThickness = 0.1
 RailHeight = 0.3
+
+IF NOT(TopTubeVisible) THEN SiderailBool = 0
+
 IF Sectors THEN
 	ExtrudeValues =  1+2+4+16+32
 ELSE
@@ -3625,7 +3628,7 @@ IF LightVisible THEN
 	IF TopTubeVisible THEN
 		UI_PICT     "Fence_Large_Light",   170,  115,  180, 100, 1
 	ELSE
-		UI_PICT     "Light",               170,   115,   100, 120, 1
+		UI_PICT     "Light",               170,   115,   75, 100, 1
 	ENDIF
 ELSE
 	IF TopTubeVisible THEN
@@ -6872,7 +6875,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 		</Boolean>
 		<Boolean Name="TopTubeVisible">
 			<Description><![CDATA[""]]></Description>
-			<Value>1</Value>
+			<Value>0</Value>
 		</Boolean>
 		<Integer Name="SegmentsResolution">
 			<Description><![CDATA[""]]></Description>
