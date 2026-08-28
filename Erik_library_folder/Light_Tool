@@ -438,8 +438,8 @@ WHILE ObjectOrder[i] <> 0 DO
 	"NextIter2D":
 	i = i + 1
 ENDWHILE
-ROT2 Orietation - SYMB_ROTANGLE
-IF ObjectOrder[i+1] = 0 THEN TEXT2 0, -2, STR(TotalLength_Calc, 10, 3) + " m"
+!ROT2 Orietation - SYMB_ROTANGLE
+!IF ObjectOrder[i+1] = 0 THEN TEXT2 0, -2, STR(TotalLength_Calc, 10, 3) + " m"
 
 END
 
