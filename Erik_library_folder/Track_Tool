@@ -126,183 +126,181 @@ RETURN
 	ENDIF
 	GOSUB "BarrierRemoveHotSpot"
 	GOSUB "BothBarrierRemoveHotSpot"
-	IF ABS(RemovePart[i]) < Width[i]/2  THEN 
-		IF NOT(GLOB_CONTEXT = 2) THEN
-			EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
-				-Width[i]/2,	0,				 1,
-				Width[i]/2,		0,				 1,
-				Width[i]/2,		PreviousLength, 1,
-				-Width[i]/2,	PreviousLength, 1
-		ENDIF
-		!-----Lines------------------------------------------------------------------------------------------------------------------------------------------------------
-		FOR h = 1 TO 2
-			IF h = 1 THEN MATERIAL OuterLine
-			ADDX -Width[i]/2 + LineMargin
-			ADDZ TrackThickness
-			EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
-				-LineWidth,	0,					1,
-				LineWidth,	0,					1,
-				LineWidth,	PreviousLength, 	1,
-				-LineWidth,	PreviousLength,	1
-			DEL 2
-			ADDX Width[i]/2 - LineMargin
-			ADDZ TrackThickness
-			EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
-				-LineWidth,	0,					1,
-				LineWidth,	0,					1,
-				LineWidth,	PreviousLength, 	1,
-				-LineWidth,	PreviousLength,	1
-			DEL 2
-			LineMargin = LineMargin + LineWidth*4
-			MATERIAL InnerLine
-		NEXT h
-		LineMargin = ConstantLineMargin
-		MATERIAL Asfalt
-		IF NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN
-			!-----Barriers-----------------------------------------------------------------------------------------------------------------------------------
-			IF PreviousLength > ESP AND BarrierVisible THEN
-				ADDZ BarrierHeight
-				ADDX -Width[i]/2 + BarrierOffset
-				IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
-					PUT 0, -1, 					0, 0, 
-						0,  0, 					0, 0, 
-						0,  PreviousLength, 	0, 0, 
-						0,  PreviousLength+1, 	0, 0 
-					GOSUB "SlimBarrier"
-				ENDIF
-				ADDX Width[i] - BarrierOffset*2
-				IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
-					PUT 0, -1, 					0, 0,
-						0,  0, 					0, 0,
-						0,  PreviousLength, 	0, 0,
-						0,  PreviousLength+1, 	0, 0
-					GOSUB "SlimBarrier"
-				ENDIF
-				DEL 3
-			ENDIF
-			!----------------------------------------------------------------------------------------------------------------------------------------
-
-			!------TopTube----------------------------------------------------------------------------------------------------------------------------------
-			IF TopTubeVisible THEN
-				TubeFi = 0.080
-				PoleHeigth = 1.148-TubeFi/2
-				ADDZ PoleHeigth - TubeFi/4
-				ADDX -Width[i]/2 - LightMargin + TubeFi/4 + (0.1/2 - 0.042/2)
-				IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
-					PUT 0, -1, 					0, 0, 
-						0,  0, 					0, 0, 
-						0,  PreviousLength, 	0, 0, 
-						0,  PreviousLength+1, 	0, 0 
-					GOSUB "LightTube"
-				ENDIF
-				DEL 1
-				ADDX Width[i]/2 + LightMargin + TubeFi/4 + (0.1/2 - 0.042/2)
-				IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
-					PUT 0, -1, 					0, 0,
-						0,  0, 					0, 0,
-						0,  PreviousLength, 	0, 0,
-						0,  PreviousLength+1, 	0, 0
-					GOSUB "LightTube"
-				ENDIF
-				DEL 2
-			ENDIF
-			!-----Siderail-----------------------------------------------------------------------------------------------------------------------------------
-			MATERIAL SiderailColor 
-			IF SiderailBool THEN
-				ADDX -Width[i]/2 - LightMargin
-				IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
-					PUT 0, -1, 					0, 0, 
-						0,  0, 					0, 0, 
-						0,  PreviousLength, 	0, 0, 
-						0,  PreviousLength+1, 	0, 0 
-					TUBE 4, NSP/4, 1+2,
-						0, 				0,				1,
-						-RailThickness,	0,				1,
-						-RailThickness,	RailHeight,		1,
-						0, 				RailHeight,		1,
-						GET(NSP)
-				ENDIF
-				DEL 1
-				ADDX Width[i]/2 + LightMargin
-				IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
-					PUT 0, -1, 					0, 0, 
-						0,  0, 					0, 0, 
-						0,  PreviousLength, 	0, 0, 
-						0,  PreviousLength+1, 	0, 0 
-					TUBE 4, NSP/4, 1+2,
-						0, 				0,				1,
-						-RailThickness,	0,				1,
-						-RailThickness,	RailHeight,		1,
-						0, 				RailHeight,		1,
-						GET(NSP)
-				ENDIF
-				DEL 1
-			ENDIF
-			MATERIAL Asfalt
-			!----------------------------------------------------------------------------------------------------------------------------------------
-			! --- Right Edge Lights --------------------------------------------------------------------------------------------------
-			IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
-				IF RightLightRemainingDistance <= PreviousLength THEN
-					NumLightsRight = INT((PreviousLength - RightLightRemainingDistance) / LightDistance)
-					FOR j = 0 TO NumLightsRight
-						CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
-						IF CurrentPosRight <= PreviousLength THEN
-							ADDY CurrentPosRight
-							ADDX Width[i]/2 + LightMargin
-							IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
-							ROTZ -LightAngle
-							IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
-								CALL "GF_Light" PARAMETERS LightStrength = LightStrength
-							ENDIF
-							DEL 1
-							IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-								ADDZ TopTubeLightHeight
-								ADDX 0.05						
-								ROTZ -LightAngle
-								CALL "FenceLight" PARAMETERS LightStrength = LightStrength
-								DEL 3
-							ENDIF
-							RightLightBool = NOT(RightLightBool)
-							DEL 2
-						ENDIF
-						LastLightPosRight = CurrentPosRight
-					NEXT j
-					RightLightRemainingDistance = LightDistance - (PreviousLength - LastLightPosRight)
-				ELSE
-					RightLightRemainingDistance = RightLightRemainingDistance - PreviousLength
-				ENDIF
-			ENDIF
-			! --- Left Edge Lights ---------------------------------------------------------------------------------------------------
+	IF NOT(GLOB_CONTEXT = 2) THEN
+		EXTRUDE 4, 0, 0, TrackThickness, ExtrudeValues,
+			-Width[i]/2,	0,				 1,
+			Width[i]/2,		0,				 1,
+			Width[i]/2,		PreviousLength, 1,
+			-Width[i]/2,	PreviousLength, 1
+	ENDIF
+	!-----Lines------------------------------------------------------------------------------------------------------------------------------------------------------
+	FOR h = 1 TO 2
+		IF h = 1 THEN MATERIAL OuterLine
+		ADDX -Width[i]/2 + LineMargin
+		ADDZ TrackThickness
+		EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
+			-LineWidth,	0,					1,
+			LineWidth,	0,					1,
+			LineWidth,	PreviousLength, 	1,
+			-LineWidth,	PreviousLength,	1
+		DEL 2
+		ADDX Width[i]/2 - LineMargin
+		ADDZ TrackThickness
+		EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
+			-LineWidth,	0,					1,
+			LineWidth,	0,					1,
+			LineWidth,	PreviousLength, 	1,
+			-LineWidth,	PreviousLength,	1
+		DEL 2
+		LineMargin = LineMargin + LineWidth*4
+		MATERIAL InnerLine
+	NEXT h
+	LineMargin = ConstantLineMargin
+	MATERIAL Asfalt
+	IF NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN
+		!-----Barriers-----------------------------------------------------------------------------------------------------------------------------------
+		IF PreviousLength > ESP AND BarrierVisible THEN
+			ADDZ BarrierHeight
+			ADDX -Width[i]/2 + BarrierOffset
 			IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
-				IF LeftLightDistance <= PreviousLength THEN
-					NumLightsLeft = INT((PreviousLength - LeftLightDistance) / LightDistance)
-					FOR k = 0 TO NumLightsLeft
-						CurrentPosLeft = LeftLightDistance + (LightDistance * k)
-						IF CurrentPosLeft <= PreviousLength THEN
-							ADDY CurrentPosLeft
-							ADDX -Width[i]/2 - LightMargin
-							IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
-							ROTZ LightAngle
-							IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
-								CALL "GF_Light" PARAMETERS LightStrength = LightStrength
-							ENDIF
-							DEL 1
-							IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
-								ADDZ TopTubeLightHeight
-								ADDX 0.05						
-								ROTZ LightAngle
-								CALL "FenceLight" PARAMETERS LightStrength = LightStrength
-								DEL 3
-							ENDIF
-							LeftLightBool = NOT(LeftLightBool)
-							DEL 2
+				PUT 0, -1, 					0, 0, 
+					0,  0, 					0, 0, 
+					0,  PreviousLength, 	0, 0, 
+					0,  PreviousLength+1, 	0, 0 
+				GOSUB "SlimBarrier"
+			ENDIF
+			ADDX Width[i] - BarrierOffset*2
+			IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
+				PUT 0, -1, 					0, 0,
+					0,  0, 					0, 0,
+					0,  PreviousLength, 	0, 0,
+					0,  PreviousLength+1, 	0, 0
+				GOSUB "SlimBarrier"
+			ENDIF
+			DEL 3
+		ENDIF
+		!----------------------------------------------------------------------------------------------------------------------------------------
+
+		!------TopTube----------------------------------------------------------------------------------------------------------------------------------
+		IF TopTubeVisible THEN
+			TubeFi = 0.080
+			PoleHeigth = 1.148-TubeFi/2
+			ADDZ PoleHeigth - TubeFi/4
+			ADDX -Width[i]/2 - LightMargin + TubeFi/4 + (0.1/2 - 0.042/2)
+			IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
+				PUT 0, -1, 					0, 0, 
+					0,  0, 					0, 0, 
+					0,  PreviousLength, 	0, 0, 
+					0,  PreviousLength+1, 	0, 0 
+				GOSUB "LightTube"
+			ENDIF
+			DEL 1
+			ADDX Width[i]/2 + LightMargin + TubeFi/4 + (0.1/2 - 0.042/2)
+			IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
+				PUT 0, -1, 					0, 0,
+					0,  0, 					0, 0,
+					0,  PreviousLength, 	0, 0,
+					0,  PreviousLength+1, 	0, 0
+				GOSUB "LightTube"
+			ENDIF
+			DEL 2
+		ENDIF
+		!-----Siderail-----------------------------------------------------------------------------------------------------------------------------------
+		MATERIAL SiderailColor 
+		IF SiderailBool THEN
+			ADDX -Width[i]/2 - LightMargin
+			IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
+				PUT 0, -1, 					0, 0, 
+					0,  0, 					0, 0, 
+					0,  PreviousLength, 	0, 0, 
+					0,  PreviousLength+1, 	0, 0 
+				TUBE 4, NSP/4, 1+2,
+					0, 				0,				1,
+					-RailThickness,	0,				1,
+					-RailThickness,	RailHeight,		1,
+					0, 				RailHeight,		1,
+					GET(NSP)
+			ENDIF
+			DEL 1
+			ADDX Width[i]/2 + LightMargin
+			IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
+				PUT 0, -1, 					0, 0, 
+					0,  0, 					0, 0, 
+					0,  PreviousLength, 	0, 0, 
+					0,  PreviousLength+1, 	0, 0 
+				TUBE 4, NSP/4, 1+2,
+					0, 				0,				1,
+					-RailThickness,	0,				1,
+					-RailThickness,	RailHeight,		1,
+					0, 				RailHeight,		1,
+					GET(NSP)
+			ENDIF
+			DEL 1
+		ENDIF
+		MATERIAL Asfalt
+		!----------------------------------------------------------------------------------------------------------------------------------------
+		! --- Right Edge Lights --------------------------------------------------------------------------------------------------
+		IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
+			IF RightLightRemainingDistance <= PreviousLength THEN
+				NumLightsRight = INT((PreviousLength - RightLightRemainingDistance) / LightDistance)
+				FOR j = 0 TO NumLightsRight
+					CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
+					IF CurrentPosRight <= PreviousLength THEN
+						ADDY CurrentPosRight
+						ADDX Width[i]/2 + LightMargin
+						IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
+						ROTZ -LightAngle
+						IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+							CALL "GF_Light" PARAMETERS LightStrength = LightStrength
 						ENDIF
-						LastLightPosLeft = CurrentPosLeft
-					NEXT k
-					LeftLightDistance = LightDistance - (PreviousLength - LastLightPosLeft)
-				ELSE
-					LeftLightDistance = LeftLightDistance - PreviousLength
-				ENDIF
+						DEL 1
+						IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+							ADDZ TopTubeLightHeight
+							ADDX 0.05						
+							ROTZ -LightAngle
+							CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+							DEL 3
+						ENDIF
+						RightLightBool = NOT(RightLightBool)
+						DEL 2
+					ENDIF
+					LastLightPosRight = CurrentPosRight
+				NEXT j
+				RightLightRemainingDistance = LightDistance - (PreviousLength - LastLightPosRight)
+			ELSE
+				RightLightRemainingDistance = RightLightRemainingDistance - PreviousLength
+			ENDIF
+		ENDIF
+		! --- Left Edge Lights ---------------------------------------------------------------------------------------------------
+		IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
+			IF LeftLightDistance <= PreviousLength THEN
+				NumLightsLeft = INT((PreviousLength - LeftLightDistance) / LightDistance)
+				FOR k = 0 TO NumLightsLeft
+					CurrentPosLeft = LeftLightDistance + (LightDistance * k)
+					IF CurrentPosLeft <= PreviousLength THEN
+						ADDY CurrentPosLeft
+						ADDX -Width[i]/2 - LightMargin
+						IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
+						ROTZ LightAngle
+						IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+							CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+						ENDIF
+						DEL 1
+						IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
+							ADDZ TopTubeLightHeight
+							ADDX 0.05						
+							ROTZ LightAngle
+							CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+							DEL 3
+						ENDIF
+						LeftLightBool = NOT(LeftLightBool)
+						DEL 2
+					ENDIF
+					LastLightPosLeft = CurrentPosLeft
+				NEXT k
+				LeftLightDistance = LightDistance - (PreviousLength - LastLightPosLeft)
+			ELSE
+				LeftLightDistance = LeftLightDistance - PreviousLength
 			ENDIF
 		ENDIF
 	ENDIF
@@ -905,42 +903,40 @@ RETURN
 	Angle = RightAngle[i]
 	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
-	IF ABS(RemovePart[i]) < Width[i]/2 THEN 
-		InnerRadius = CurveRight[i-1]
-		OuterRadius = CurveRight[i-1] + Width[i-1]
-		IF Width[i] <= Width[i-1] THEN 
-			WidthDifferenceIn = Width[i-1] - Width[i]
-			WidthDifferenceOut = 0
-			GOSUB "RightTrack"
-			MATERIAL OuterLine
-			ChicaneBool = 0
-			GOSUB "RightLines"
-			LineMargin = LineMargin + LineWidth*4
-			MATERIAL InnerLine
-			ChicaneBool = 1
-			GOSUB "RightLines"
-			MATERIAL Asfalt
-			LineMargin = ConstantLineMargin
-		ELSE
-			WidthDifferenceIn = 0
-			WidthDifferenceOut = Width[i] - Width[i-1]
-			GOSUB "RightTrack"
-			WidthDifferenceOut = Width[i] - Width[i-1]
-			MATERIAL OuterLine
-			ChicaneBool = 0
-			GOSUB "RightLines"
-			LineMargin = LineMargin + LineWidth*4
-			MATERIAL InnerLine
-			ChicaneBool = 1
-			GOSUB "RightLines"
-			MATERIAL Asfalt
-			LineMargin = ConstantLineMargin
-			ADDY Width[i] - Width[i-1]
-		ENDIF
-		IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "RightBarrier"
-		IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "RightTopTube"
-		IF SiderailBool   AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "RightRail"
+	InnerRadius = CurveRight[i-1]
+	OuterRadius = CurveRight[i-1] + Width[i-1]
+	IF Width[i] <= Width[i-1] THEN 
+		WidthDifferenceIn = Width[i-1] - Width[i]
+		WidthDifferenceOut = 0
+		GOSUB "RightTrack"
+		MATERIAL OuterLine
+		ChicaneBool = 0
+		GOSUB "RightLines"
+		LineMargin = LineMargin + LineWidth*4
+		MATERIAL InnerLine
+		ChicaneBool = 1
+		GOSUB "RightLines"
+		MATERIAL Asfalt
+		LineMargin = ConstantLineMargin
+	ELSE
+		WidthDifferenceIn = 0
+		WidthDifferenceOut = Width[i] - Width[i-1]
+		GOSUB "RightTrack"
+		WidthDifferenceOut = Width[i] - Width[i-1]
+		MATERIAL OuterLine
+		ChicaneBool = 0
+		GOSUB "RightLines"
+		LineMargin = LineMargin + LineWidth*4
+		MATERIAL InnerLine
+		ChicaneBool = 1
+		GOSUB "RightLines"
+		MATERIAL Asfalt
+		LineMargin = ConstantLineMargin
+		ADDY Width[i] - Width[i-1]
 	ENDIF
+	IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "RightBarrier"
+	IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "RightTopTube"
+	IF SiderailBool   AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "RightRail"
 	GOSUB "RightCurveLights"
 	ADDX CurveRadius - rCenter * COS(Angle)
 	ADDY rCenter * SIN(Angle)
@@ -1394,52 +1390,50 @@ RETURN
 "CurveLeft":
 	GOSUB "CurveBarrierRemoveHotSpot"
 	GOSUB "CurveBothBarrierRemoveHotSpot"
-	GOSUB "LeftSpeedPlusHotSpot"
+	!GOSUB "LeftSpeedPlusHotSpot"
 	Angle = LeftAngle[i]
 	CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	BREAKPOINT 1
-	IF ABS(RemovePart[i]) < Width[i]/2 THEN 
-		InnerRadius = CurveLeft[i-1]
-		OuterRadius = CurveLeft[i-1] + Width[i-1]
-		IF SpeedPlusBool THEN
-			GOSUB "LeftSpeedPlus"
-			ADDY Width[i]
+	InnerRadius = CurveLeft[i-1]
+	OuterRadius = CurveLeft[i-1] + Width[i-1]
+	IF SpeedPlusBool THEN
+		GOSUB "LeftSpeedPlus"
+		ADDY Width[i]
+	ELSE
+		IF Width[i] <= Width[i-1] THEN
+			WidthDifferenceIn = Width[i-1] - Width[i]
+			WidthDifferenceOut = 0
+			GOSUB "LeftTrack"
+			MATERIAL OuterLine
+			ChicaneBool = 0
+			GOSUB "LeftLines"
+			LineMargin = LineMargin + LineWidth*4
+			MATERIAL InnerLine
+			ChicaneBool = 1
+			GOSUB "LeftLines"
+			MATERIAL Asfalt
+			LineMargin = ConstantLineMargin
 		ELSE
-			IF Width[i] <= Width[i-1] THEN
-				WidthDifferenceIn = Width[i-1] - Width[i]
-				WidthDifferenceOut = 0
-				GOSUB "LeftTrack"
-				MATERIAL OuterLine
-				ChicaneBool = 0
-				GOSUB "LeftLines"
-				LineMargin = LineMargin + LineWidth*4
-				MATERIAL InnerLine
-				ChicaneBool = 1
-				GOSUB "LeftLines"
-				MATERIAL Asfalt
-				LineMargin = ConstantLineMargin
-			ELSE
-				WidthDifferenceIn = 0
-				WidthDifferenceOut = Width[i] - Width[i-1]
-				GOSUB "LeftTrack"
-				MATERIAL OuterLine
-				ChicaneBool = 0
-				GOSUB "LeftLines"
-				LineMargin = LineMargin + LineWidth*4
-				MATERIAL InnerLine
-				ChicaneBool = 1
-				GOSUB "LeftLines"
-				MATERIAL Asfalt
-				LineMargin = ConstantLineMargin
-				ADDY Width[i] - Width[i-1]
-			ENDIF
-			IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "LeftBarrier"
-			IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "LeftTopTube"
-			IF SiderailBool   AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "LeftRail"
+			WidthDifferenceIn = 0
+			WidthDifferenceOut = Width[i] - Width[i-1]
+			GOSUB "LeftTrack"
+			MATERIAL OuterLine
+			ChicaneBool = 0
+			GOSUB "LeftLines"
+			LineMargin = LineMargin + LineWidth*4
+			MATERIAL InnerLine
+			ChicaneBool = 1
+			GOSUB "LeftLines"
+			MATERIAL Asfalt
+			LineMargin = ConstantLineMargin
+			ADDY Width[i] - Width[i-1]
 		ENDIF
-		GOSUB "LeftCurveLights"
+		IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "LeftBarrier"
+		IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "LeftTopTube"
+		IF SiderailBool   AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "LeftRail"
 	ENDIF
+	GOSUB "LeftCurveLights"
 	ADDX CurveRadius + rCenter * COS(Angle)
 	ADDY rCenter * SIN(Angle)
 	ROTZ Angle
@@ -2162,36 +2156,6 @@ RETURN
 	HOTSPOT 0, -1,			0, unID, Length[i], 3 : unID = unID + 1
 RETURN
 
-"RemoveHotSpot":
-	HOTSPOT 0,  Length[i]-1,	0, unID, RemovePart[i], 1 : unID = unID + 1
-	HOTSPOT 0,  Length[i]-1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
-	HOTSPOT -1, Length[i]-1,	0, unID, RemovePart[i], 3 : unID = unID + 1
-	GOSUB "MoveSegmentHotSpot"
-	IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
-RETURN
-
-"RemoveCornerHotSpot":
-	HOTSPOT 0,  -1,		0, unID, RemovePart[i], 1 : unID = unID + 1
-	HOTSPOT 0,  -1, 	0, unID, RemovePart[i], 2 : unID = unID + 1
-	HOTSPOT -1, -1,		0, unID, RemovePart[i], 3 : unID = unID + 1
-	GOSUB "MoveSegmentHotSpot"
-	IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
-RETURN
-
-"MoveSegmentHotSpot":
-	IF ABS(RemovePart[i]) > Width[i]/2 THEN
-		ROTZ RightAngle[i]
-		HOTSPOT  0,  0,	0, unID, MoveY[i], 1 : unID = unID + 1
-		HOTSPOT  0,  0, 0, unID, MoveY[i], 2 : unID = unID + 1
-		HOTSPOT -100,0,	0, unID, MoveY[i], 3 : unID = unID + 1
-
-		HOTSPOT 0,  0,		0, unID, MoveX[i], 1 : unID = unID + 1
-		HOTSPOT 0,  0,		0, unID, MoveX[i], 2 : unID = unID + 1
-		HOTSPOT 0,  100,	0, unID, MoveX[i], 3 : unID = unID + 1
-		DEL 3
-	ENDIF
-RETURN
-
 "BarrierRemoveHotSpot":
 	IF Length[i-1] > ESP THEN
 		HOTSPOT  0,  Length[i-1]/2,	TrackThickness, unID, BarrierRemove[i], 1 : unID = unID + 1
@@ -2606,35 +2570,30 @@ END!---------END------------END------------EMD----------------------------------
 RETURN
 
 "Straight":
-	IF ABS(RemovePart[i]) < Width[i]/2 THEN
-		POLY2_B 5, 1+2+4, 
-			TrackColor, 0,
-			-Width[i]/2,    0,               1,
-			Width[i]/2,     0,               1,
-			Width[i]/2,     Length[i-1], 1,
-			-Width[i]/2,    Length[i-1], 1,
-			-Width[i]/2,    0,              -1
-		LINE2 0, 0,		0, Length[i-1]
-		ADD2 Width[i]/2, 0
-		FOR j = 1 TO 2
-			POLY2_B 5, 1+2+4,
-				TrackMarginColor, 0,
-				0,    			0,               1,
-				TrackMargin,    0,               1,
-				TrackMargin,    Length[i-1], 1,
-				0,    			Length[i-1], 1,
-				0,    			0,              -1
-			IF j = 1 THEN LINE2 TrackMarginLine,				0,	TrackMarginLine,				Length[i-1]
-			IF j = 2 THEN LINE2 TrackMargin - TrackMarginLine,	0,	TrackMargin - TrackMarginLine,	Length[i-1]
-			ADD2 -Width[i]-TrackMargin, 0
-		NEXT j
-		DEL 3
-	ENDIF
+	POLY2_B 5, 1+2+4, 
+		TrackColor, 0,
+		-Width[i]/2,    0,               1,
+		Width[i]/2,     0,               1,
+		Width[i]/2,     Length[i-1], 1,
+		-Width[i]/2,    Length[i-1], 1,
+		-Width[i]/2,    0,              -1
+	LINE2 0, 0,		0, Length[i-1]
+	ADD2 Width[i]/2, 0
+	FOR j = 1 TO 2
+		POLY2_B 5, 1+2+4,
+			TrackMarginColor, 0,
+			0,    			0,               1,
+			TrackMargin,    0,               1,
+			TrackMargin,    Length[i-1], 1,
+			0,    			Length[i-1], 1,
+			0,    			0,              -1
+		IF j = 1 THEN LINE2 TrackMarginLine,				0,	TrackMarginLine,				Length[i-1]
+		IF j = 2 THEN LINE2 TrackMargin - TrackMarginLine,	0,	TrackMargin - TrackMarginLine,	Length[i-1]
+		ADD2 -Width[i]-TrackMargin, 0
+	NEXT j
+	DEL 3
 	TotalLength = TotalLength + Length[i-1]
 	ADD2 0, Length[i-1]
-	ROT2 Orietation
-	ADD2 MoveX[i], MoveY[i]
-	ROT2 -Orietation
 RETURN
 
 "StraightResizing":
@@ -2877,43 +2836,35 @@ RETURN
 	DEL 1
 
 	ADD2 0, StraightTotalLength
-	ROT2 Orietation
-	ADD2 MoveX[i], MoveY[i]
-	ROT2 -Orietation
 RETURN
 
 "CurveRight":
 	Angle = RightAngle[i]
 	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
-	IF ABS(RemovePart[i]) < Width[i]/2 THEN
-		IF Width[i] <= Width[i-1] THEN
-			InnerMargin = Width[i-1]-Width[i]
-			OuterMargin = 0
-			GOSUB "RightTrack"
-			GOSUB "RightTrackMargin"
-			LINE2 0, 0,	
-				0, (Width[i-1]-Width[i])/2
-			ARC2 CurveRadius, (Width[i-1]-Width[i])/2,
-				CurveRadius, 180-Angle, 180
-		ELSE
-			InnerMargin = 0
-			OuterMargin = Width[i]-Width[i-1]
-			GOSUB "RightTrack"
-			GOSUB "RightTrackMargin"
-			LINE2 0, 0,
-				0, (Width[i] - Width[i-1])/2
-			ARC2 CurveRadius, (Width[i] - Width[i-1])/2,
-				CurveRadius, Angle, 180
-			ADD2 0, Width[i] - Width[i-1]
-		ENDIF
+	IF Width[i] <= Width[i-1] THEN
+		InnerMargin = Width[i-1]-Width[i]
+		OuterMargin = 0
+		GOSUB "RightTrack"
+		GOSUB "RightTrackMargin"
+		LINE2 0, 0,	
+			0, (Width[i-1]-Width[i])/2
+		ARC2 CurveRadius, (Width[i-1]-Width[i])/2,
+			CurveRadius, 180-Angle, 180
+	ELSE
+		InnerMargin = 0
+		OuterMargin = Width[i]-Width[i-1]
+		GOSUB "RightTrack"
+		GOSUB "RightTrackMargin"
+		LINE2 0, 0,
+			0, (Width[i] - Width[i-1])/2
+		ARC2 CurveRadius, (Width[i] - Width[i-1])/2,
+			CurveRadius, Angle, 180
+		ADD2 0, Width[i] - Width[i-1]
 	ENDIF
 	ADD2 CurveRadius - rCenter * COS(Angle), rCenter * SIN(Angle)
 	ROT2 -Angle
 	Orietation = Orietation - Angle
-	ROT2 Orietation
-	ADD2 MoveX[i], MoveY[i]
-	ROT2 -Orietation
 RETURN
 
 "RightTrack":
@@ -2969,36 +2920,31 @@ RETURN
 	Angle = LeftAngle[i]
 	CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
-	IF ABS(RemovePart[i]) < Width[i]/2 THEN
-		IF Width[i] <= Width[i-1] THEN
-			InnerMargin = Width[i-1]-Width[i]
-			OuterMargin = 0
-			GOSUB "LeftTrack"
-			GOSUB "LeftTrackMargin"
-			LINE2 0, 0,
-				0, (Width[i-1] - Width[i])/2
-			ARC2 CurveRadius, (Width[i-1] - Width[i])/2,
-				-CurveRadius, 0, Angle
+	IF Width[i] <= Width[i-1] THEN
+		InnerMargin = Width[i-1]-Width[i]
+		OuterMargin = 0
+		GOSUB "LeftTrack"
+		GOSUB "LeftTrackMargin"
+		LINE2 0, 0,
+			0, (Width[i-1] - Width[i])/2
+		ARC2 CurveRadius, (Width[i-1] - Width[i])/2,
+			-CurveRadius, 0, Angle
 
-		ELSE
-			InnerMargin = 0
-			OuterMargin = Width[i]-Width[i-1]
-			GOSUB "LeftTrack"
-			GOSUB "LeftTrackMargin"
-			LINE2 0, 0,	
-				0, (Width[i] - Width[i-1])/2
-			ARC2 CurveRadius, (Width[i] - Width[i-1])/2,
-				-CurveRadius, 0, Angle
+	ELSE
+		InnerMargin = 0
+		OuterMargin = Width[i]-Width[i-1]
+		GOSUB "LeftTrack"
+		GOSUB "LeftTrackMargin"
+		LINE2 0, 0,	
+			0, (Width[i] - Width[i-1])/2
+		ARC2 CurveRadius, (Width[i] - Width[i-1])/2,
+			-CurveRadius, 0, Angle
 
-			ADD2 0, Width[i] - Width[i-1]
-		ENDIF
+		ADD2 0, Width[i] - Width[i-1]
 	ENDIF
 	ADD2 CurveRadius + rCenter * COS(Angle), rCenter * SIN(Angle)
 	ROT2 Angle
 	Orietation = Orietation + Angle
-	ROT2 Orietation
-	ADD2 MoveX[i], MoveY[i]
-	ROT2 -Orietation
 RETURN
 
 "LeftTrack":
@@ -3186,37 +3132,6 @@ RETURN
 				4, 0,
 				0,			Length[i],	900,
 				CircleSize,	360, 			4001
-	ENDIF
-RETURN
-
-"RemoveHotSpot":
-	HOTSPOT2  0,  Length[i]-1,	unID, RemovePart[i], 1 : unID = unID + 1
-	HOTSPOT2  0,  Length[i]-1,	unID, RemovePart[i], 2 : unID = unID + 1
-	HOTSPOT2 -1,  Length[i]-1,	unID, RemovePart[i], 3 : unID = unID + 1
-	GOSUB "MoveSegmentHotSpot"
-	IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
-RETURN
-
-"RemoveCornerHotSpot":
-	HOTSPOT2  0, -1,	unID, RemovePart[i], 1 : unID = unID + 1
-	HOTSPOT2  0, -1,	unID, RemovePart[i], 2 : unID = unID + 1
-	HOTSPOT2 -1, -1,	unID, RemovePart[i], 3 : unID = unID + 1
-	GOSUB "MoveSegmentHotSpot"
-	IF ABS(RemovePart[i]) > Width[i]/2 THEN GOTO "NextIter"
-RETURN
-
-"MoveSegmentHotSpot":
-	IF ABS(RemovePart[i]) > Width[i]/2 THEN
-		ROT2 RightAngle[i]
-		ROT2 Orietation
-		HOTSPOT2  0,    0,	unID, MoveY[i], 1 : unID = unID + 1
-		HOTSPOT2  0,    0,	unID, MoveY[i], 2 : unID = unID + 1
-		HOTSPOT2 -100,  0,	unID, MoveY[i], 3 : unID = unID + 1
-		HOTSPOT2  0,    0,	unID, MoveX[i], 1 : unID = unID + 1
-		HOTSPOT2  0,    0,	unID, MoveX[i], 2 : unID = unID + 1
-		HOTSPOT2  0,  100,	unID, MoveX[i], 3 : unID = unID + 1
-		ROT2 -Orietation
-		DEL 3
 	ENDIF
 RETURN
 
@@ -5193,621 +5108,6 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 				<AVal Row="200">0</AVal>
 			</ArrayValues>
 		</Integer>
-		<Length Name="RemovePart">
-			<Description><![CDATA[""]]></Description>
-			<ArrayValues FirstDimension="200" SecondDimension="0">
-				<AVal Row="1">0</AVal>
-				<AVal Row="2">0</AVal>
-				<AVal Row="3">0</AVal>
-				<AVal Row="4">0</AVal>
-				<AVal Row="5">0</AVal>
-				<AVal Row="6">0</AVal>
-				<AVal Row="7">0</AVal>
-				<AVal Row="8">0</AVal>
-				<AVal Row="9">0</AVal>
-				<AVal Row="10">0</AVal>
-				<AVal Row="11">0</AVal>
-				<AVal Row="12">0</AVal>
-				<AVal Row="13">0</AVal>
-				<AVal Row="14">0</AVal>
-				<AVal Row="15">0</AVal>
-				<AVal Row="16">0</AVal>
-				<AVal Row="17">0</AVal>
-				<AVal Row="18">0</AVal>
-				<AVal Row="19">0</AVal>
-				<AVal Row="20">0</AVal>
-				<AVal Row="21">0</AVal>
-				<AVal Row="22">0</AVal>
-				<AVal Row="23">0</AVal>
-				<AVal Row="24">0</AVal>
-				<AVal Row="25">0</AVal>
-				<AVal Row="26">0</AVal>
-				<AVal Row="27">0</AVal>
-				<AVal Row="28">0</AVal>
-				<AVal Row="29">0</AVal>
-				<AVal Row="30">0</AVal>
-				<AVal Row="31">0</AVal>
-				<AVal Row="32">0</AVal>
-				<AVal Row="33">0</AVal>
-				<AVal Row="34">0</AVal>
-				<AVal Row="35">0</AVal>
-				<AVal Row="36">0</AVal>
-				<AVal Row="37">0</AVal>
-				<AVal Row="38">0</AVal>
-				<AVal Row="39">0</AVal>
-				<AVal Row="40">0</AVal>
-				<AVal Row="41">0</AVal>
-				<AVal Row="42">0</AVal>
-				<AVal Row="43">0</AVal>
-				<AVal Row="44">0</AVal>
-				<AVal Row="45">0</AVal>
-				<AVal Row="46">0</AVal>
-				<AVal Row="47">0</AVal>
-				<AVal Row="48">0</AVal>
-				<AVal Row="49">0</AVal>
-				<AVal Row="50">0</AVal>
-				<AVal Row="51">0</AVal>
-				<AVal Row="52">0</AVal>
-				<AVal Row="53">0</AVal>
-				<AVal Row="54">0</AVal>
-				<AVal Row="55">0</AVal>
-				<AVal Row="56">0</AVal>
-				<AVal Row="57">0</AVal>
-				<AVal Row="58">0</AVal>
-				<AVal Row="59">0</AVal>
-				<AVal Row="60">0</AVal>
-				<AVal Row="61">0</AVal>
-				<AVal Row="62">0</AVal>
-				<AVal Row="63">0</AVal>
-				<AVal Row="64">0</AVal>
-				<AVal Row="65">0</AVal>
-				<AVal Row="66">0</AVal>
-				<AVal Row="67">0</AVal>
-				<AVal Row="68">0</AVal>
-				<AVal Row="69">0</AVal>
-				<AVal Row="70">0</AVal>
-				<AVal Row="71">0</AVal>
-				<AVal Row="72">0</AVal>
-				<AVal Row="73">0</AVal>
-				<AVal Row="74">0</AVal>
-				<AVal Row="75">0</AVal>
-				<AVal Row="76">0</AVal>
-				<AVal Row="77">0</AVal>
-				<AVal Row="78">0</AVal>
-				<AVal Row="79">0</AVal>
-				<AVal Row="80">0</AVal>
-				<AVal Row="81">0</AVal>
-				<AVal Row="82">0</AVal>
-				<AVal Row="83">0</AVal>
-				<AVal Row="84">0</AVal>
-				<AVal Row="85">0</AVal>
-				<AVal Row="86">0</AVal>
-				<AVal Row="87">0</AVal>
-				<AVal Row="88">0</AVal>
-				<AVal Row="89">0</AVal>
-				<AVal Row="90">0</AVal>
-				<AVal Row="91">0</AVal>
-				<AVal Row="92">0</AVal>
-				<AVal Row="93">0</AVal>
-				<AVal Row="94">0</AVal>
-				<AVal Row="95">0</AVal>
-				<AVal Row="96">0</AVal>
-				<AVal Row="97">0</AVal>
-				<AVal Row="98">0</AVal>
-				<AVal Row="99">0</AVal>
-				<AVal Row="100">0</AVal>
-				<AVal Row="101">0</AVal>
-				<AVal Row="102">0</AVal>
-				<AVal Row="103">0</AVal>
-				<AVal Row="104">0</AVal>
-				<AVal Row="105">0</AVal>
-				<AVal Row="106">0</AVal>
-				<AVal Row="107">0</AVal>
-				<AVal Row="108">0</AVal>
-				<AVal Row="109">0</AVal>
-				<AVal Row="110">0</AVal>
-				<AVal Row="111">0</AVal>
-				<AVal Row="112">0</AVal>
-				<AVal Row="113">0</AVal>
-				<AVal Row="114">0</AVal>
-				<AVal Row="115">0</AVal>
-				<AVal Row="116">0</AVal>
-				<AVal Row="117">0</AVal>
-				<AVal Row="118">0</AVal>
-				<AVal Row="119">0</AVal>
-				<AVal Row="120">0</AVal>
-				<AVal Row="121">0</AVal>
-				<AVal Row="122">0</AVal>
-				<AVal Row="123">0</AVal>
-				<AVal Row="124">0</AVal>
-				<AVal Row="125">0</AVal>
-				<AVal Row="126">0</AVal>
-				<AVal Row="127">0</AVal>
-				<AVal Row="128">0</AVal>
-				<AVal Row="129">0</AVal>
-				<AVal Row="130">0</AVal>
-				<AVal Row="131">0</AVal>
-				<AVal Row="132">0</AVal>
-				<AVal Row="133">0</AVal>
-				<AVal Row="134">0</AVal>
-				<AVal Row="135">0</AVal>
-				<AVal Row="136">0</AVal>
-				<AVal Row="137">0</AVal>
-				<AVal Row="138">0</AVal>
-				<AVal Row="139">0</AVal>
-				<AVal Row="140">0</AVal>
-				<AVal Row="141">0</AVal>
-				<AVal Row="142">0</AVal>
-				<AVal Row="143">0</AVal>
-				<AVal Row="144">0</AVal>
-				<AVal Row="145">0</AVal>
-				<AVal Row="146">0</AVal>
-				<AVal Row="147">0</AVal>
-				<AVal Row="148">0</AVal>
-				<AVal Row="149">0</AVal>
-				<AVal Row="150">0</AVal>
-				<AVal Row="151">0</AVal>
-				<AVal Row="152">0</AVal>
-				<AVal Row="153">0</AVal>
-				<AVal Row="154">0</AVal>
-				<AVal Row="155">0</AVal>
-				<AVal Row="156">0</AVal>
-				<AVal Row="157">0</AVal>
-				<AVal Row="158">0</AVal>
-				<AVal Row="159">0</AVal>
-				<AVal Row="160">0</AVal>
-				<AVal Row="161">0</AVal>
-				<AVal Row="162">0</AVal>
-				<AVal Row="163">0</AVal>
-				<AVal Row="164">0</AVal>
-				<AVal Row="165">0</AVal>
-				<AVal Row="166">0</AVal>
-				<AVal Row="167">0</AVal>
-				<AVal Row="168">0</AVal>
-				<AVal Row="169">0</AVal>
-				<AVal Row="170">0</AVal>
-				<AVal Row="171">0</AVal>
-				<AVal Row="172">0</AVal>
-				<AVal Row="173">0</AVal>
-				<AVal Row="174">0</AVal>
-				<AVal Row="175">0</AVal>
-				<AVal Row="176">0</AVal>
-				<AVal Row="177">0</AVal>
-				<AVal Row="178">0</AVal>
-				<AVal Row="179">0</AVal>
-				<AVal Row="180">0</AVal>
-				<AVal Row="181">0</AVal>
-				<AVal Row="182">0</AVal>
-				<AVal Row="183">0</AVal>
-				<AVal Row="184">0</AVal>
-				<AVal Row="185">0</AVal>
-				<AVal Row="186">0</AVal>
-				<AVal Row="187">0</AVal>
-				<AVal Row="188">0</AVal>
-				<AVal Row="189">0</AVal>
-				<AVal Row="190">0</AVal>
-				<AVal Row="191">0</AVal>
-				<AVal Row="192">0</AVal>
-				<AVal Row="193">0</AVal>
-				<AVal Row="194">0</AVal>
-				<AVal Row="195">0</AVal>
-				<AVal Row="196">0</AVal>
-				<AVal Row="197">0</AVal>
-				<AVal Row="198">0</AVal>
-				<AVal Row="199">0</AVal>
-				<AVal Row="200">0</AVal>
-			</ArrayValues>
-		</Length>
-		<Length Name="MoveX">
-			<Description><![CDATA[""]]></Description>
-			<ArrayValues FirstDimension="200" SecondDimension="0">
-				<AVal Row="1">0</AVal>
-				<AVal Row="2">0</AVal>
-				<AVal Row="3">0</AVal>
-				<AVal Row="4">0</AVal>
-				<AVal Row="5">0</AVal>
-				<AVal Row="6">0</AVal>
-				<AVal Row="7">0</AVal>
-				<AVal Row="8">0</AVal>
-				<AVal Row="9">0</AVal>
-				<AVal Row="10">0</AVal>
-				<AVal Row="11">0</AVal>
-				<AVal Row="12">0</AVal>
-				<AVal Row="13">0</AVal>
-				<AVal Row="14">0</AVal>
-				<AVal Row="15">0</AVal>
-				<AVal Row="16">0</AVal>
-				<AVal Row="17">0</AVal>
-				<AVal Row="18">0</AVal>
-				<AVal Row="19">0</AVal>
-				<AVal Row="20">0</AVal>
-				<AVal Row="21">0</AVal>
-				<AVal Row="22">0</AVal>
-				<AVal Row="23">0</AVal>
-				<AVal Row="24">0</AVal>
-				<AVal Row="25">0</AVal>
-				<AVal Row="26">0</AVal>
-				<AVal Row="27">0</AVal>
-				<AVal Row="28">0</AVal>
-				<AVal Row="29">0</AVal>
-				<AVal Row="30">0</AVal>
-				<AVal Row="31">0</AVal>
-				<AVal Row="32">0</AVal>
-				<AVal Row="33">0</AVal>
-				<AVal Row="34">0</AVal>
-				<AVal Row="35">0</AVal>
-				<AVal Row="36">0</AVal>
-				<AVal Row="37">0</AVal>
-				<AVal Row="38">0</AVal>
-				<AVal Row="39">0</AVal>
-				<AVal Row="40">0</AVal>
-				<AVal Row="41">0</AVal>
-				<AVal Row="42">0</AVal>
-				<AVal Row="43">0</AVal>
-				<AVal Row="44">0</AVal>
-				<AVal Row="45">0</AVal>
-				<AVal Row="46">0</AVal>
-				<AVal Row="47">0</AVal>
-				<AVal Row="48">0</AVal>
-				<AVal Row="49">0</AVal>
-				<AVal Row="50">0</AVal>
-				<AVal Row="51">0</AVal>
-				<AVal Row="52">0</AVal>
-				<AVal Row="53">0</AVal>
-				<AVal Row="54">0</AVal>
-				<AVal Row="55">0</AVal>
-				<AVal Row="56">0</AVal>
-				<AVal Row="57">0</AVal>
-				<AVal Row="58">0</AVal>
-				<AVal Row="59">0</AVal>
-				<AVal Row="60">0</AVal>
-				<AVal Row="61">0</AVal>
-				<AVal Row="62">0</AVal>
-				<AVal Row="63">0</AVal>
-				<AVal Row="64">0</AVal>
-				<AVal Row="65">0</AVal>
-				<AVal Row="66">0</AVal>
-				<AVal Row="67">0</AVal>
-				<AVal Row="68">0</AVal>
-				<AVal Row="69">0</AVal>
-				<AVal Row="70">0</AVal>
-				<AVal Row="71">0</AVal>
-				<AVal Row="72">0</AVal>
-				<AVal Row="73">0</AVal>
-				<AVal Row="74">0</AVal>
-				<AVal Row="75">0</AVal>
-				<AVal Row="76">0</AVal>
-				<AVal Row="77">0</AVal>
-				<AVal Row="78">0</AVal>
-				<AVal Row="79">0</AVal>
-				<AVal Row="80">0</AVal>
-				<AVal Row="81">0</AVal>
-				<AVal Row="82">0</AVal>
-				<AVal Row="83">0</AVal>
-				<AVal Row="84">0</AVal>
-				<AVal Row="85">0</AVal>
-				<AVal Row="86">0</AVal>
-				<AVal Row="87">0</AVal>
-				<AVal Row="88">0</AVal>
-				<AVal Row="89">0</AVal>
-				<AVal Row="90">0</AVal>
-				<AVal Row="91">0</AVal>
-				<AVal Row="92">0</AVal>
-				<AVal Row="93">0</AVal>
-				<AVal Row="94">0</AVal>
-				<AVal Row="95">0</AVal>
-				<AVal Row="96">0</AVal>
-				<AVal Row="97">0</AVal>
-				<AVal Row="98">0</AVal>
-				<AVal Row="99">0</AVal>
-				<AVal Row="100">0</AVal>
-				<AVal Row="101">0</AVal>
-				<AVal Row="102">0</AVal>
-				<AVal Row="103">0</AVal>
-				<AVal Row="104">0</AVal>
-				<AVal Row="105">0</AVal>
-				<AVal Row="106">0</AVal>
-				<AVal Row="107">0</AVal>
-				<AVal Row="108">0</AVal>
-				<AVal Row="109">0</AVal>
-				<AVal Row="110">0</AVal>
-				<AVal Row="111">0</AVal>
-				<AVal Row="112">0</AVal>
-				<AVal Row="113">0</AVal>
-				<AVal Row="114">0</AVal>
-				<AVal Row="115">0</AVal>
-				<AVal Row="116">0</AVal>
-				<AVal Row="117">0</AVal>
-				<AVal Row="118">0</AVal>
-				<AVal Row="119">0</AVal>
-				<AVal Row="120">0</AVal>
-				<AVal Row="121">0</AVal>
-				<AVal Row="122">0</AVal>
-				<AVal Row="123">0</AVal>
-				<AVal Row="124">0</AVal>
-				<AVal Row="125">0</AVal>
-				<AVal Row="126">0</AVal>
-				<AVal Row="127">0</AVal>
-				<AVal Row="128">0</AVal>
-				<AVal Row="129">0</AVal>
-				<AVal Row="130">0</AVal>
-				<AVal Row="131">0</AVal>
-				<AVal Row="132">0</AVal>
-				<AVal Row="133">0</AVal>
-				<AVal Row="134">0</AVal>
-				<AVal Row="135">0</AVal>
-				<AVal Row="136">0</AVal>
-				<AVal Row="137">0</AVal>
-				<AVal Row="138">0</AVal>
-				<AVal Row="139">0</AVal>
-				<AVal Row="140">0</AVal>
-				<AVal Row="141">0</AVal>
-				<AVal Row="142">0</AVal>
-				<AVal Row="143">0</AVal>
-				<AVal Row="144">0</AVal>
-				<AVal Row="145">0</AVal>
-				<AVal Row="146">0</AVal>
-				<AVal Row="147">0</AVal>
-				<AVal Row="148">0</AVal>
-				<AVal Row="149">0</AVal>
-				<AVal Row="150">0</AVal>
-				<AVal Row="151">0</AVal>
-				<AVal Row="152">0</AVal>
-				<AVal Row="153">0</AVal>
-				<AVal Row="154">0</AVal>
-				<AVal Row="155">0</AVal>
-				<AVal Row="156">0</AVal>
-				<AVal Row="157">0</AVal>
-				<AVal Row="158">0</AVal>
-				<AVal Row="159">0</AVal>
-				<AVal Row="160">0</AVal>
-				<AVal Row="161">0</AVal>
-				<AVal Row="162">0</AVal>
-				<AVal Row="163">0</AVal>
-				<AVal Row="164">0</AVal>
-				<AVal Row="165">0</AVal>
-				<AVal Row="166">0</AVal>
-				<AVal Row="167">0</AVal>
-				<AVal Row="168">0</AVal>
-				<AVal Row="169">0</AVal>
-				<AVal Row="170">0</AVal>
-				<AVal Row="171">0</AVal>
-				<AVal Row="172">0</AVal>
-				<AVal Row="173">0</AVal>
-				<AVal Row="174">0</AVal>
-				<AVal Row="175">0</AVal>
-				<AVal Row="176">0</AVal>
-				<AVal Row="177">0</AVal>
-				<AVal Row="178">0</AVal>
-				<AVal Row="179">0</AVal>
-				<AVal Row="180">0</AVal>
-				<AVal Row="181">0</AVal>
-				<AVal Row="182">0</AVal>
-				<AVal Row="183">0</AVal>
-				<AVal Row="184">0</AVal>
-				<AVal Row="185">0</AVal>
-				<AVal Row="186">0</AVal>
-				<AVal Row="187">0</AVal>
-				<AVal Row="188">0</AVal>
-				<AVal Row="189">0</AVal>
-				<AVal Row="190">0</AVal>
-				<AVal Row="191">0</AVal>
-				<AVal Row="192">0</AVal>
-				<AVal Row="193">0</AVal>
-				<AVal Row="194">0</AVal>
-				<AVal Row="195">0</AVal>
-				<AVal Row="196">0</AVal>
-				<AVal Row="197">0</AVal>
-				<AVal Row="198">0</AVal>
-				<AVal Row="199">0</AVal>
-				<AVal Row="200">0</AVal>
-			</ArrayValues>
-		</Length>
-		<Length Name="MoveY">
-			<Description><![CDATA[""]]></Description>
-			<ArrayValues FirstDimension="200" SecondDimension="0">
-				<AVal Row="1">0</AVal>
-				<AVal Row="2">0</AVal>
-				<AVal Row="3">0</AVal>
-				<AVal Row="4">0</AVal>
-				<AVal Row="5">0</AVal>
-				<AVal Row="6">0</AVal>
-				<AVal Row="7">0</AVal>
-				<AVal Row="8">0</AVal>
-				<AVal Row="9">0</AVal>
-				<AVal Row="10">0</AVal>
-				<AVal Row="11">0</AVal>
-				<AVal Row="12">0</AVal>
-				<AVal Row="13">0</AVal>
-				<AVal Row="14">0</AVal>
-				<AVal Row="15">0</AVal>
-				<AVal Row="16">0</AVal>
-				<AVal Row="17">0</AVal>
-				<AVal Row="18">0</AVal>
-				<AVal Row="19">0</AVal>
-				<AVal Row="20">0</AVal>
-				<AVal Row="21">0</AVal>
-				<AVal Row="22">0</AVal>
-				<AVal Row="23">0</AVal>
-				<AVal Row="24">0</AVal>
-				<AVal Row="25">0</AVal>
-				<AVal Row="26">0</AVal>
-				<AVal Row="27">0</AVal>
-				<AVal Row="28">0</AVal>
-				<AVal Row="29">0</AVal>
-				<AVal Row="30">0</AVal>
-				<AVal Row="31">0</AVal>
-				<AVal Row="32">0</AVal>
-				<AVal Row="33">0</AVal>
-				<AVal Row="34">0</AVal>
-				<AVal Row="35">0</AVal>
-				<AVal Row="36">0</AVal>
-				<AVal Row="37">0</AVal>
-				<AVal Row="38">0</AVal>
-				<AVal Row="39">0</AVal>
-				<AVal Row="40">0</AVal>
-				<AVal Row="41">0</AVal>
-				<AVal Row="42">0</AVal>
-				<AVal Row="43">0</AVal>
-				<AVal Row="44">0</AVal>
-				<AVal Row="45">0</AVal>
-				<AVal Row="46">0</AVal>
-				<AVal Row="47">0</AVal>
-				<AVal Row="48">0</AVal>
-				<AVal Row="49">0</AVal>
-				<AVal Row="50">0</AVal>
-				<AVal Row="51">0</AVal>
-				<AVal Row="52">0</AVal>
-				<AVal Row="53">0</AVal>
-				<AVal Row="54">0</AVal>
-				<AVal Row="55">0</AVal>
-				<AVal Row="56">0</AVal>
-				<AVal Row="57">0</AVal>
-				<AVal Row="58">0</AVal>
-				<AVal Row="59">0</AVal>
-				<AVal Row="60">0</AVal>
-				<AVal Row="61">0</AVal>
-				<AVal Row="62">0</AVal>
-				<AVal Row="63">0</AVal>
-				<AVal Row="64">0</AVal>
-				<AVal Row="65">0</AVal>
-				<AVal Row="66">0</AVal>
-				<AVal Row="67">0</AVal>
-				<AVal Row="68">0</AVal>
-				<AVal Row="69">0</AVal>
-				<AVal Row="70">0</AVal>
-				<AVal Row="71">0</AVal>
-				<AVal Row="72">0</AVal>
-				<AVal Row="73">0</AVal>
-				<AVal Row="74">0</AVal>
-				<AVal Row="75">0</AVal>
-				<AVal Row="76">0</AVal>
-				<AVal Row="77">0</AVal>
-				<AVal Row="78">0</AVal>
-				<AVal Row="79">0</AVal>
-				<AVal Row="80">0</AVal>
-				<AVal Row="81">0</AVal>
-				<AVal Row="82">0</AVal>
-				<AVal Row="83">0</AVal>
-				<AVal Row="84">0</AVal>
-				<AVal Row="85">0</AVal>
-				<AVal Row="86">0</AVal>
-				<AVal Row="87">0</AVal>
-				<AVal Row="88">0</AVal>
-				<AVal Row="89">0</AVal>
-				<AVal Row="90">0</AVal>
-				<AVal Row="91">0</AVal>
-				<AVal Row="92">0</AVal>
-				<AVal Row="93">0</AVal>
-				<AVal Row="94">0</AVal>
-				<AVal Row="95">0</AVal>
-				<AVal Row="96">0</AVal>
-				<AVal Row="97">0</AVal>
-				<AVal Row="98">0</AVal>
-				<AVal Row="99">0</AVal>
-				<AVal Row="100">0</AVal>
-				<AVal Row="101">0</AVal>
-				<AVal Row="102">0</AVal>
-				<AVal Row="103">0</AVal>
-				<AVal Row="104">0</AVal>
-				<AVal Row="105">0</AVal>
-				<AVal Row="106">0</AVal>
-				<AVal Row="107">0</AVal>
-				<AVal Row="108">0</AVal>
-				<AVal Row="109">0</AVal>
-				<AVal Row="110">0</AVal>
-				<AVal Row="111">0</AVal>
-				<AVal Row="112">0</AVal>
-				<AVal Row="113">0</AVal>
-				<AVal Row="114">0</AVal>
-				<AVal Row="115">0</AVal>
-				<AVal Row="116">0</AVal>
-				<AVal Row="117">0</AVal>
-				<AVal Row="118">0</AVal>
-				<AVal Row="119">0</AVal>
-				<AVal Row="120">0</AVal>
-				<AVal Row="121">0</AVal>
-				<AVal Row="122">0</AVal>
-				<AVal Row="123">0</AVal>
-				<AVal Row="124">0</AVal>
-				<AVal Row="125">0</AVal>
-				<AVal Row="126">0</AVal>
-				<AVal Row="127">0</AVal>
-				<AVal Row="128">0</AVal>
-				<AVal Row="129">0</AVal>
-				<AVal Row="130">0</AVal>
-				<AVal Row="131">0</AVal>
-				<AVal Row="132">0</AVal>
-				<AVal Row="133">0</AVal>
-				<AVal Row="134">0</AVal>
-				<AVal Row="135">0</AVal>
-				<AVal Row="136">0</AVal>
-				<AVal Row="137">0</AVal>
-				<AVal Row="138">0</AVal>
-				<AVal Row="139">0</AVal>
-				<AVal Row="140">0</AVal>
-				<AVal Row="141">0</AVal>
-				<AVal Row="142">0</AVal>
-				<AVal Row="143">0</AVal>
-				<AVal Row="144">0</AVal>
-				<AVal Row="145">0</AVal>
-				<AVal Row="146">0</AVal>
-				<AVal Row="147">0</AVal>
-				<AVal Row="148">0</AVal>
-				<AVal Row="149">0</AVal>
-				<AVal Row="150">0</AVal>
-				<AVal Row="151">0</AVal>
-				<AVal Row="152">0</AVal>
-				<AVal Row="153">0</AVal>
-				<AVal Row="154">0</AVal>
-				<AVal Row="155">0</AVal>
-				<AVal Row="156">0</AVal>
-				<AVal Row="157">0</AVal>
-				<AVal Row="158">0</AVal>
-				<AVal Row="159">0</AVal>
-				<AVal Row="160">0</AVal>
-				<AVal Row="161">0</AVal>
-				<AVal Row="162">0</AVal>
-				<AVal Row="163">0</AVal>
-				<AVal Row="164">0</AVal>
-				<AVal Row="165">0</AVal>
-				<AVal Row="166">0</AVal>
-				<AVal Row="167">0</AVal>
-				<AVal Row="168">0</AVal>
-				<AVal Row="169">0</AVal>
-				<AVal Row="170">0</AVal>
-				<AVal Row="171">0</AVal>
-				<AVal Row="172">0</AVal>
-				<AVal Row="173">0</AVal>
-				<AVal Row="174">0</AVal>
-				<AVal Row="175">0</AVal>
-				<AVal Row="176">0</AVal>
-				<AVal Row="177">0</AVal>
-				<AVal Row="178">0</AVal>
-				<AVal Row="179">0</AVal>
-				<AVal Row="180">0</AVal>
-				<AVal Row="181">0</AVal>
-				<AVal Row="182">0</AVal>
-				<AVal Row="183">0</AVal>
-				<AVal Row="184">0</AVal>
-				<AVal Row="185">0</AVal>
-				<AVal Row="186">0</AVal>
-				<AVal Row="187">0</AVal>
-				<AVal Row="188">0</AVal>
-				<AVal Row="189">0</AVal>
-				<AVal Row="190">0</AVal>
-				<AVal Row="191">0</AVal>
-				<AVal Row="192">0</AVal>
-				<AVal Row="193">0</AVal>
-				<AVal Row="194">0</AVal>
-				<AVal Row="195">0</AVal>
-				<AVal Row="196">0</AVal>
-				<AVal Row="197">0</AVal>
-				<AVal Row="198">0</AVal>
-				<AVal Row="199">0</AVal>
-				<AVal Row="200">0</AVal>
-			</ArrayValues>
-		</Length>
 		<Length Name="TotalLength">
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
@@ -6875,7 +6175,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 		</Boolean>
 		<Boolean Name="TopTubeVisible">
 			<Description><![CDATA[""]]></Description>
-			<Value>0</Value>
+			<Value>1</Value>
 		</Boolean>
 		<Integer Name="SegmentsResolution">
 			<Description><![CDATA[""]]></Description>
