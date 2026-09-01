@@ -117,7 +117,6 @@ RETURN
 
 !-----Makes The Straight-------------------------------------------------------------------------------------------------------------------------------------------------
 "Straight":
-	BREAKPOINT 1
 	PreviousLength = Length[i-1]
 	SpeedPlusBool = 0
 	IF LeftSpeedPlus[i+1] > 1 AND PreviousLength > Width[i] AND (Length[i+1] > Width[i] OR Length[i+1] < ESP) THEN 
@@ -1399,7 +1398,7 @@ RETURN
 "CurveLeft":
 	GOSUB "CurveBarrierRemoveHotSpot"
 	GOSUB "CurveBothBarrierRemoveHotSpot"
-	!GOSUB "LeftSpeedPlusHotSpot"
+	GOSUB "LeftSpeedPlusHotSpot"
 	Angle = LeftAngle[i]
 	CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
@@ -1460,9 +1459,8 @@ RETURN
 	HeightDifference = OuterHeight - InnerHeight
 	calcAngle = ASN(0.15 / TrackWidth)
 
-	InnerRailHeight = 0.666
-	OuterRailHeight = 0.516
-
+	InnerRailHeight = 0.516
+	OuterRailHeight = 0.666
 
 	ADDY TransitionLength
 	ADDZ OuterHeight - HeightDifference/2
@@ -1521,42 +1519,128 @@ RETURN
 	DEL 1
 	CUTEND
 	DEL 1
+	!-----Transition Rail-----------------------------------
+	!-----Inner------------
+	MATERIAL SiderailColor
+	ADDX -Width[i]/2
+	ADDY TransitionLength
+	ROTZ 180 + 90
+	ROTX 90
+	EXTRUDE 5, 0, 0, RailThickness, 1+2+4+16+32,
+			0,					0,					1,
+			TransitionLength,	0,					1,
+			TransitionLength,	RailHeight,			1,
+			TransitionLength/2,	RailHeight,			1,
+			0,					InnerRailHeight,	1
+	ADDZ -Width[i] - RailThickness
+	!-----Outer------------
+	EXTRUDE 4, 0, 0, RailThickness, 1+2+4+16+32,
+			0,					0,					1,
+			TransitionLength,	0,					1,
+			TransitionLength,	RailHeight,			1,
+			0,					OuterRailHeight,	1
+	DEL 5
 	MATERIAL Asfalt
+
 	ADDX -Width[1] / 2
 	!-----CURVE-------------------------------------------------------------------------------------------------------------------------------------
 	ADDY TransitionLength
-	FOR s = -1 TO NumSegments + 1
-		curA = s * (CurveAngle / NumSegments)
-		posX = -CurveLeft[i-1] * (1 - COS(curA))
-		posY =  CurveLeft[i-1] * SIN(curA)
-		posZ = 0
-		PUT posX, posY, posZ, 0
-	NEXT s
 
-	TUBE 4, NSP / 4, ExtrudeValues,
-		0,				InnerHeight,	1,
-		-TrackWidth,	OuterHeight,	1,
-		-TrackWidth,	0.00,			1,
-		0,				0.00,			1,
-		GET(NSP)
-	!----Lines--------------------------------------------
-	FOR s = -1 TO NumSegments + 1
-		curA = s * (CurveAngle / NumSegments)
-		posX = -CurveLeft[i-1] * (1 - COS(curA))
-		posY =  CurveLeft[i-1] * SIN(curA)
-		posZ = 0
-		PUT posX, posY, posZ, 0
-	NEXT s
+    FOR segmentIndex = -1 TO NumSegments + 1
+        segmentAngle = segmentIndex * (CurveAngle / NumSegments)
+        
+        pathPointX = -CurveLeft[i-1] * (1 - COS(segmentAngle))
+        pathPointY =  CurveLeft[i-1] * SIN(segmentAngle)
+        pathPointZ = 0
+        
+        PUT pathPointX, pathPointY, pathPointZ, 0
+    NEXT segmentIndex
 
-	TUBE 4, NSP/4, ExtrudeValues,
-		0,				InnerHeight,	1,
-		-LineWidth/2,	OuterHeight,	1,
-		-LineWidth/2,	0.00,			1,
-		0,				0.00,			1,
-		GET(NSP)
+    ! Linear cross-slope gradient of the banked track
+    crossSlopeGradient = (OuterHeight - InnerHeight) / TrackWidth
+
+    MATERIAL Asfalt
+    TUBE 4, NSP / 4, ExtrudeValues,
+         0,           InnerHeight, 1,
+        -TrackWidth,  OuterHeight, 1,
+        -TrackWidth,  0.00,        1,
+         0,           0.00,        1,
+        USE(NSP)
+
+    ! ==============================================================================
+    ! 3. INNER ROAD EDGE - OUTER STRIPE (MATERIAL: OuterLine)
+    ! ==============================================================================
+    edgeLeft_InOuter      = ConstantLineMargin - LineWidth
+    edgeRight_InOuter     = ConstantLineMargin + LineWidth
+
+    heightLeft_InOuter    = InnerHeight + edgeLeft_InOuter  * crossSlopeGradient
+    heightRight_InOuter   = InnerHeight + edgeRight_InOuter * crossSlopeGradient
+
+    MATERIAL OuterLine
+    TUBE 4, NSP / 4, ExtrudeValues,
+        -edgeLeft_InOuter,   heightLeft_InOuter  + LineThickness, 1,
+        -edgeRight_InOuter,  heightRight_InOuter + LineThickness, 1,
+        -edgeRight_InOuter,  heightRight_InOuter,                 1,
+        -edgeLeft_InOuter,   heightLeft_InOuter,                  1,
+        USE(NSP)
+
+    ! ==============================================================================
+    ! 4. INNER ROAD EDGE - INNER STRIPE (MATERIAL: InnerLine)
+    ! ==============================================================================
+    stripeDist_InnerInner = ConstantLineMargin + LineWidth * 4
+    edgeLeft_InInner      = stripeDist_InnerInner - LineWidth
+    edgeRight_InInner     = stripeDist_InnerInner + LineWidth
+
+    heightLeft_InInner    = InnerHeight + edgeLeft_InInner  * crossSlopeGradient
+    heightRight_InInner   = InnerHeight + edgeRight_InInner * crossSlopeGradient
+
+    MATERIAL InnerLine
+    TUBE 4, NSP / 4, ExtrudeValues,
+        -edgeLeft_InInner,   heightLeft_InInner  + LineThickness, 1,
+        -edgeRight_InInner,  heightRight_InInner + LineThickness, 1,
+        -edgeRight_InInner,  heightRight_InInner,                 1,
+        -edgeLeft_InInner,   heightLeft_InInner,                  1,
+        USE(NSP)
+
+    ! ==============================================================================
+    ! 5. OUTER ROAD EDGE - INNER STRIPE (MATERIAL: InnerLine)
+    ! ==============================================================================
+    stripeDist_OuterInner = TrackWidth - ConstantLineMargin - LineWidth * 4
+    edgeLeft_OutInner     = stripeDist_OuterInner - LineWidth
+    edgeRight_OutInner    = stripeDist_OuterInner + LineWidth
+
+    heightLeft_OutInner   = InnerHeight + edgeLeft_OutInner  * crossSlopeGradient
+    heightRight_OutInner  = InnerHeight + edgeRight_OutInner * crossSlopeGradient
+
+    MATERIAL InnerLine
+    TUBE 4, NSP / 4, ExtrudeValues,
+        -edgeLeft_OutInner,   heightLeft_OutInner  + LineThickness, 1,
+        -edgeRight_OutInner,  heightRight_OutInner + LineThickness, 1,
+        -edgeRight_OutInner,  heightRight_OutInner,                 1,
+        -edgeLeft_OutInner,   heightLeft_OutInner,                  1,
+        USE(NSP)
+
+    ! ==============================================================================
+    ! 6. OUTER ROAD EDGE - OUTER STRIPE (MATERIAL: OuterLine)
+    ! ==============================================================================
+    stripeDist_OuterOuter = TrackWidth - ConstantLineMargin
+    edgeLeft_OutOuter     = stripeDist_OuterOuter - LineWidth
+    edgeRight_OutOuter    = stripeDist_OuterOuter + LineWidth
+
+    heightLeft_OutOuter   = InnerHeight + edgeLeft_OutOuter  * crossSlopeGradient
+    heightRight_OutOuter  = InnerHeight + edgeRight_OutOuter * crossSlopeGradient
+
+    MATERIAL OuterLine
+    TUBE 4, NSP / 4, ExtrudeValues,
+        -edgeLeft_OutOuter,   heightLeft_OutOuter  + LineThickness, 1,
+        -edgeRight_OutOuter,  heightRight_OutOuter + LineThickness, 1,
+        -edgeRight_OutOuter,  heightRight_OutOuter,                 1,
+        -edgeLeft_OutOuter,   heightLeft_OutOuter,                  1,
+        GET(NSP)  ! Clear stack
+
+	MATERIAL SiderailColor
 
 	!----Inner Rail-----------------------------------------
-	MATERIAL SlimMaterial
 	ADDX -RailThickness
 	FOR s = -1 TO NumSegments + 1
 		curA = s * (CurveAngle / NumSegments)
@@ -1584,31 +1668,110 @@ RETURN
 	NEXT s
 
 	TUBE 4, NSP / 4, ExtrudeValues,
-		0,				InnerRailHeight,	1,
-		-RailThickness,	InnerRailHeight,	1,
+		0,				OuterRailHeight,	1,
+		-RailThickness,	OuterRailHeight,	1,
 		-RailThickness,	0.00,				1,
 		0,				0.00,				1,
 		GET(NSP)
 	DEL 1
 	!-----EXIT----------------------------------------------------------------------------------------------------------------------------
 	MATERIAL Asfalt
-	exitX = -CurveLeft[i-1] * (1 - COS(CurveAngle))
-	exitY =  CurveLeft[i-1] * SIN(CurveAngle)
-
-	ADDX exitX
-	ADDY exitY
-	ROTZ CurveAngle
-
+    ! 1. Arc Exit Endpoint (Pure Centerline Arc)
+    ADDX -CurveLeft[i-1] * (1 - COS(CurveAngle))
+    ADDY  CurveLeft[i-1] * SIN(CurveAngle)
+    ROTZ  CurveAngle
+	!-----Transition Rail-----------------------------------
+	!-----Inner------------
+	MATERIAL SiderailColor
+	ADDY TransitionLength
+	ROTZ 180 + 90
+	ROTX 90
+	EXTRUDE 5, 0, 0, RailThickness, 1+2+4+16+32,
+			0,					0,					1,
+			TransitionLength,	0,					1,
+			TransitionLength,	InnerRailHeight,	1,
+			TransitionLength/2,	RailHeight,			1,
+			0,					RailHeight,			1
+	ADDZ -Width[i] - RailThickness
+	!-----Outer------------
+	EXTRUDE 4, 0, 0, RailThickness, 1+2+4+16+32,
+			0,					0,					1,
+			TransitionLength,	0,					1,
+			TransitionLength,	OuterRailHeight,	1,
+			0,					RailHeight,			1
+	DEL 4
+	MATERIAL Asfalt
+    ! 2. Local Alignment Offset (Now works identically for ANY CurveAngle)
+    ADDX Width[1] / 2
+	! 2. Sloped Section Cutting Plane
+	! Inverts the longitudinal slope (-ROTX) while carrying the bank angle (-ROTY)
 	ADDZ OuterHeight - HeightDifference / 2
-	ADDX Width[1] / 2
+	!ADDX Width[1] / 2
 	ROTY -calcAngle
 	ROTX -ATN(OuterHeight / TransitionLength)
 	CUTPLANE 0
-	DEL 4
+	DEL 3
+	! --- Main Sloped Track Surface ---
+	MATERIAL Asfalt
+	ADDX -Width[1] / 2
 	BLOCK TrackWidth, TransitionLength, OuterHeight
+	DEL 1
 	CUTEND
+
+	ADDZ OuterHeight - HeightDifference / 2 + LineThickness
+	!ADDX Width[1] / 2
+	ROTY -calcAngle
+	ROTX -ATN(OuterHeight / TransitionLength)
+	CUTPLANE 0
+	DEL 3
+	! --- Banked Sloped Stripes ---
+	! Left Outer & Inner Stripes
+	MATERIAL OuterLine
+	ADDX -Width[1] / 2 + ConstantLineMargin - LineWidth
+	BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+	DEL 1
+	MATERIAL InnerLine
+	ADDX -Width[1] / 2 + ConstantLineMargin + LineWidth * 3
+	BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+	DEL 1
+	! Right Outer & Inner Stripes
+	MATERIAL OuterLine
+	ADDX Width[1] / 2 - ConstantLineMargin - LineWidth
+	BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+	DEL 1
+	MATERIAL InnerLine
+	ADDX Width[1] / 2 - ConstantLineMargin - LineWidth * 5
+	BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+	DEL 1 
+	CUTEND
+
+	! Flat Track Slab
+	MATERIAL Asfalt
+	ADDX -Width[1] / 2
 	BLOCK TrackWidth, TransitionLength, TrackThickness
-	DEL 5
+	DEL 1
+	! Flat Bottom Stripes
+	ADDZ TrackThickness
+	! Left Flat Stripes
+	MATERIAL OuterLine
+	ADDX -Width[1] / 2 + ConstantLineMargin - LineWidth
+	BLOCK LineWidth * 2, TransitionLength, LineThickness
+	DEL 1
+	MATERIAL InnerLine
+	ADDX -Width[1] / 2 + ConstantLineMargin + LineWidth * 3
+	BLOCK LineWidth * 2, TransitionLength, LineThickness
+	DEL 1
+	! Right Flat Stripes
+	MATERIAL OuterLine
+	ADDX Width[1] / 2 - ConstantLineMargin - LineWidth
+	BLOCK LineWidth * 2, TransitionLength, LineThickness
+	DEL 1
+	MATERIAL InnerLine
+	ADDX Width[1] / 2 - ConstantLineMargin - LineWidth * 5
+	BLOCK LineWidth * 2, TransitionLength, LineThickness
+	DEL 2
+	DEL 6
+	MATERIAL Asfalt
 RETURN
 
 "LeftTopTube":
@@ -2539,7 +2702,9 @@ WHILE ObjectOrder[i] <> 0 DO
 		IF Length[i] <= 0 THEN Length[i] = ESP
 		GOTO "NextIter"
 	ENDIF
+
 	"NextIter":
+	
 	IF SegmentNumberBool THEN
 		IF NOT(ObjectOrder[i] = 2) THEN 
 			ADD2 0, -1
@@ -3703,7 +3868,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 		<Length Name="Length">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
-				<AVal Row="1">0.1</AVal>
+				<AVal Row="1">10</AVal>
 				<AVal Row="2">0</AVal>
 				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
@@ -4114,7 +4279,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
 				<AVal Row="1">0</AVal>
-				<AVal Row="2">0</AVal>
+				<AVal Row="2">5</AVal>
 				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
 				<AVal Row="5">0</AVal>
@@ -6265,7 +6430,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<ArrayValues FirstDimension="200" SecondDimension="0">
 				<AVal Row="1">0</AVal>
 				<AVal Row="2">0</AVal>
-				<AVal Row="3">0</AVal>
+				<AVal Row="3">5</AVal>
 				<AVal Row="4">0</AVal>
 				<AVal Row="5">0</AVal>
 				<AVal Row="6">0</AVal>
