@@ -20,7 +20,6 @@ PolePlateWidth = 0.1
 PolePlateDepth = 0.15
 PolePlateHeigth = 0.004
 MATERIAL 133
-BREAKPOINT 1
 IF CenterPosition THEN ADDX PoleWidth/2
 ! --- Base Plate ---
 IF PlateBool THEN BLOCK PolePlateWidth, PolePlateDepth, PolePlateHeigth
