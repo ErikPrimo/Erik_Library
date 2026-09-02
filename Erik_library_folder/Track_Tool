@@ -119,7 +119,7 @@ RETURN
 "Straight":
 	PreviousLength = Length[i-1]
 	SpeedPlusBool = 0
-	IF LeftSpeedPlus[i+1] > 1 AND PreviousLength > Width[i] AND (Length[i+1] > Width[i] OR Length[i+1] < ESP) THEN 
+	IF ((LeftSpeedPlus[i+1] > 1 OR RightSpeedPlus[i+1] > 1) AND PreviousLength > Width[i] AND (Length[i+1] > Width[i] OR Length[i+1] < ESP)) AND (CurveRight[i] > ESP OR CurveLeft[i] > ESP) THEN 
 		SpeedPlusBool = 1
 		PreviousLength = PreviousLength - Width[i]
 		IF Length[i+1] > ESP THEN Length[i+1] = Length[i+1] - Width[i]
@@ -908,49 +908,642 @@ RETURN
 
 !-----Makes The Right Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveRight":
+	BREAKPOINT 1
 	GOSUB "CurveBarrierRemoveHotSpot"
 	GOSUB "CurveBothBarrierRemoveHotSpot"
+	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "RightSpeedPlusHotSpot"
+	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] THEN GOSUB "RightSpeedPlusHotSpot"
 	Angle = RightAngle[i]
 	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	InnerRadius = CurveRight[i-1]
 	OuterRadius = CurveRight[i-1] + Width[i-1]
-	IF Width[i] <= Width[i-1] THEN 
-		WidthDifferenceIn = Width[i-1] - Width[i]
-		WidthDifferenceOut = 0
-		GOSUB "RightTrack"
-		MATERIAL OuterLine
-		ChicaneBool = 0
-		GOSUB "RightLines"
-		LineMargin = LineMargin + LineWidth*4
-		MATERIAL InnerLine
-		ChicaneBool = 1
-		GOSUB "RightLines"
-		MATERIAL Asfalt
-		LineMargin = ConstantLineMargin
+	IF SpeedPlusBool THEN
+		GOSUB "RightSpeedPlus"
+		IF Length[i] > ESP THEN ADDY Width[i]
 	ELSE
-		WidthDifferenceIn = 0
-		WidthDifferenceOut = Width[i] - Width[i-1]
-		GOSUB "RightTrack"
-		WidthDifferenceOut = Width[i] - Width[i-1]
-		MATERIAL OuterLine
-		ChicaneBool = 0
-		GOSUB "RightLines"
-		LineMargin = LineMargin + LineWidth*4
-		MATERIAL InnerLine
-		ChicaneBool = 1
-		GOSUB "RightLines"
-		MATERIAL Asfalt
-		LineMargin = ConstantLineMargin
-		ADDY Width[i] - Width[i-1]
+		IF Width[i] <= Width[i-1] THEN 
+			WidthDifferenceIn = Width[i-1] - Width[i]
+			WidthDifferenceOut = 0
+			GOSUB "RightTrack"
+			MATERIAL OuterLine
+			ChicaneBool = 0
+			GOSUB "RightLines"
+			LineMargin = LineMargin + LineWidth*4
+			MATERIAL InnerLine
+			ChicaneBool = 1
+			GOSUB "RightLines"
+			MATERIAL Asfalt
+			LineMargin = ConstantLineMargin
+		ELSE
+			WidthDifferenceIn = 0
+			WidthDifferenceOut = Width[i] - Width[i-1]
+			GOSUB "RightTrack"
+			WidthDifferenceOut = Width[i] - Width[i-1]
+			MATERIAL OuterLine
+			ChicaneBool = 0
+			GOSUB "RightLines"
+			LineMargin = LineMargin + LineWidth*4
+			MATERIAL InnerLine
+			ChicaneBool = 1
+			GOSUB "RightLines"
+			MATERIAL Asfalt
+			LineMargin = ConstantLineMargin
+			ADDY Width[i] - Width[i-1]
+		ENDIF
 	ENDIF
 	IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "RightBarrier"
 	IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "RightTopTube"
-	IF SiderailBool   AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "RightRail"
-	GOSUB "RightCurveLights"
+	IF SiderailBool   AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) AND NOT(SpeedPlusBool) THEN GOSUB "RightRail"
+	IF NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "RightCurveLights"
 	ADDX CurveRadius - rCenter * COS(Angle)
 	ADDY rCenter * SIN(Angle)
 	ROTZ -Angle
+	IF SpeedPlusBool AND Length[i] > ESP AND NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "RightEndTransitionLightPostsSpeedPlus"
+	IF SpeedPlusBool AND Length[i] > ESP THEN ADDY Width[i]
+RETURN
+
+"RightSpeedPlus":
+    TrackWidth   = Width[i]
+    CurveAngle   = Angle
+    NumSegments  = SegmentsResolution
+    InnerHeight = 0.11
+    OuterHeight = 0.26
+    TransitionLength = TrackWidth
+    HeightDifference = OuterHeight - InnerHeight
+    calcAngle = ASN(0.15 / TrackWidth)
+
+    InnerRailHeight = 0.516
+    OuterRailHeight = 0.666
+
+    OuterAngle = ATN(OuterHeight / TransitionLength)
+	BREAKPOINT 1
+	!----Entrance-------------------------------------------------------------
+    ADDY TransitionLength
+    ADDZ OuterHeight - HeightDifference/2
+    ROTY calcAngle
+    ROTX OuterAngle
+    CUTPLANE 0
+    DEL 4
+    ADDX -Width[i] / 2
+    BLOCK TrackWidth, TransitionLength, OuterHeight
+    CUTEND
+    IF NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN BLOCK TrackWidth, TransitionLength, TrackThickness
+    ADDX Width[i] / 2
+    FOR h = 1 TO 2
+        IF h = 1 THEN MATERIAL OuterLine
+        ADDX -Width[i]/2 + LineMargin
+        ADDZ TrackThickness
+        EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
+            -LineWidth, 0,                   1,
+            LineWidth,  0,                   1,
+            LineWidth,  TransitionLength,   1,
+            -LineWidth, TransitionLength,   1
+        DEL 2
+        ADDX Width[i]/2 - LineMargin
+        ADDZ TrackThickness
+        EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
+            -LineWidth, 0,                   1,
+            LineWidth,  0,                   1,
+            LineWidth,  TransitionLength,   1,
+            -LineWidth, TransitionLength,   1
+        DEL 2
+        LineMargin = LineMargin + LineWidth*4
+        MATERIAL InnerLine
+    NEXT h
+    LineMargin = ConstantLineMargin
+    DEL 1
+    ADDY TransitionLength
+    ADDX Width[i] / 2
+    ADDZ OuterHeight  - HeightDifference/2 + LineThickness
+    ROTY calcAngle
+    ROTX OuterAngle
+    CUTPLANE 0
+    MATERIAL OuterLine
+    DEL 5
+    ADDX LineMargin - LineWidth
+    BLOCK LineWidth*2, TransitionLength, OuterHeight + LineThickness
+    DEL 1
+    ADDX Width[i] - LineMargin - LineWidth
+    BLOCK LineWidth*2, TransitionLength, OuterHeight + LineThickness
+    DEL 1
+    MATERIAL InnerLine
+    ADDX Width[i] - LineMargin - LineWidth - LineWidth*4
+    BLOCK LineWidth*2, TransitionLength, OuterHeight + LineThickness
+    DEL 1
+    ADDX LineMargin + LineWidth*3
+    BLOCK LineWidth*2, TransitionLength, OuterHeight + LineThickness
+    DEL 1
+    CUTEND
+    DEL 1
+    IF NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN
+        MATERIAL SiderailColor
+        ADDX Width[i]/2 + RailThickness
+        ADDY TransitionLength
+        ROTZ 180 + 90
+        ROTX 90
+        EXTRUDE 5, 0, 0, RailThickness, 1+2+4+16+32,
+                0,                  0,                  1,
+                TransitionLength,   0,                  1,
+                TransitionLength,   RailHeight,         1,
+                TransitionLength/2, RailHeight,         1,
+                0,                  InnerRailHeight,    1
+        ADDZ Width[i] + RailThickness
+        EXTRUDE 4, 0, 0, RailThickness, 1+2+4+16+32,
+                0,                  0,                  1,
+                TransitionLength,   0,                  1,
+                TransitionLength,   RailHeight,         1,
+                0,                  OuterRailHeight,    1
+        DEL 5
+        MATERIAL Asfalt
+
+        IF BarrierVisible THEN
+            ADDZ BarrierHeight
+            ADDX -Width[i]/2 + BarrierOffset
+            PUT 0,  -2, 0, 0,
+                0,  0,  0, 0,
+                0,  TransitionLength,   OuterHeight, 0,
+                0,  TransitionLength+2, OuterHeight, 0
+            GOSUB "FlexiBarrier"
+            DEL 1
+            ADDX Width[i]/2 - BarrierOffset
+            PUT 0,  -2, 0, 0,
+                0,  0,  0, 0,
+                0,  TransitionLength/1.8,   0, 0,
+                0,  TransitionLength,   InnerHeight, 0,
+                0,  TransitionLength+2, InnerHeight, 0
+            GOSUB "FlexiBarrier"
+            DEL 2
+        ENDIF
+
+        IF TopTubeVisible THEN
+            ADDZ PoleHeigth - TubeFi/4
+            ADDX -Width[i]/2 - LightMargin - TubeFi/4 - (0.1/2 - 0.042/2) + RailThickness
+            PUT 0,  -2, 0, 0,
+                0,  0,  0, 0,
+                0,  TransitionLength,   OuterHeight, 0,
+                0,  TransitionLength+2, OuterHeight, 0
+            GOSUB "LightTube"
+            DEL 1
+            ADDX Width[i]/2 + LightMargin - TubeFi/4 - (0.1/2 - 0.042/2)
+            PUT 0,  -2, 0, 0,
+                0,  0,  0, 0,
+                0,  TransitionLength/1.8,   0, 0,
+                0,  TransitionLength,   InnerHeight, 0,
+                0,  TransitionLength+2, InnerHeight, 0
+            GOSUB "LightTube"
+            DEL 2
+        ENDIF
+
+        IF LeftLightDistance <= TransitionLength THEN
+            NumLightsLeft = INT((TransitionLength - LeftLightDistance) / LightDistance)
+            FOR j = 0 TO NumLightsLeft
+                CurrentPosLeft = LeftLightDistance + (LightDistance * j)
+                IF CurrentPosLeft <= TransitionLength THEN
+                    ADDZ CurrentPosLeft * TAN(OuterAngle)
+                    ADDY CurrentPosLeft
+                    ADDX -Width[i]/2 - LightMargin 
+                    ROTX OuterAngle
+                    IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = 0
+                    ROTZ LightAngle
+                    IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+                        CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+                    ENDIF
+                    DEL 1
+                    IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
+                        ADDZ TopTubeLightHeight
+                        ADDX 0.05
+                        ROTZ LightAngle
+                        CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+                        DEL 3
+                    ENDIF
+                    LeftLightBool = NOT(LeftLightBool)
+                    DEL 4
+                ENDIF
+                LastLightPosLeft = CurrentPosLeft
+            NEXT j
+            LeftLightDistance = LightDistance - (TransitionLength - LastLightPosLeft)
+        ELSE
+            LeftLightDistance = LeftLightDistance - TransitionLength
+        ENDIF
+
+        IF RightLightRemainingDistance <= TransitionLength/2 THEN
+            NumLightsRight = INT((TransitionLength/2 - RightLightRemainingDistance) / LightDistance)
+            FOR k = 0 TO NumLightsRight
+                CurrentPosRight = RightLightRemainingDistance + (LightDistance * k)
+                IF CurrentPosRight <= TransitionLength/2 THEN
+                    ADDY CurrentPosRight
+                    ADDX Width[i]/2 + LightMargin - RailThickness
+                    IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = 0
+                    ROTZ -LightAngle
+                    IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+                        CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+                    ENDIF
+                    DEL 1
+                    IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+                        ADDZ TopTubeLightHeight
+                        ADDX 0.05
+                        ROTZ -LightAngle
+                        CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+                        DEL 3
+                    ENDIF
+                    RightLightBool = NOT(RightLightBool)
+                    DEL 2
+                ENDIF
+                LastLightPosRight = CurrentPosRight
+            NEXT k
+            RightLightRemainingDistance = LightDistance - (TransitionLength/2 - LastLightPosRight)
+        ELSE
+            RightLightRemainingDistance = RightLightRemainingDistance - TransitionLength/2
+        ENDIF
+        ADDY TransitionLength/2
+        IF RightLightRemainingDistance <= TransitionLength/2 THEN
+            NumLightsRight = INT((TransitionLength/2 - RightLightRemainingDistance) / LightDistance)
+            FOR k = 0 TO NumLightsRight
+                CurrentPosRight = RightLightRemainingDistance + (LightDistance * k)
+                IF CurrentPosRight <= TransitionLength/2 THEN
+                    ADDZ CurrentPosRight * TAN(ATN(InnerHeight / (TransitionLength/2)))
+                    ADDY CurrentPosRight
+                    ADDX Width[i]/2 + LightMargin - RailThickness
+                    ROTX OuterAngle
+                    IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = 0
+                    ROTZ -LightAngle
+                    IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+                        CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+                    ENDIF
+                    DEL 1
+                    IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+                        ADDZ TopTubeLightHeight
+                        ADDX 0.05
+                        ROTZ -LightAngle
+                        CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+                        DEL 3
+                    ENDIF
+                    RightLightBool = NOT(RightLightBool)
+                    DEL 4
+                ENDIF
+                LastLightPosRight = CurrentPosRight
+            NEXT k
+            RightLightRemainingDistance = LightDistance - (TransitionLength/2 - LastLightPosRight)
+        ELSE
+            RightLightRemainingDistance = RightLightRemainingDistance - TransitionLength/2
+        ENDIF
+        DEL 1
+    ENDIF
+	!----Curve-----------------------------------------------------------------------------------------------
+
+    ADDX Width[i] / 2
+    ADDY TransitionLength
+
+    FOR segmentIndex = -1 TO NumSegments + 1
+        segmentAngle = segmentIndex * (CurveAngle / NumSegments)
+        pathPointX = CurveRight[i-1] * (1 - COS(segmentAngle))
+        pathPointY = CurveRight[i-1] * SIN(segmentAngle)
+        pathPointZ = 0
+        PUT pathPointX, pathPointY, pathPointZ, 0
+    NEXT segmentIndex
+
+    crossSlopeGradient = (OuterHeight - InnerHeight) / TrackWidth
+
+    MATERIAL Asfalt
+    TUBE 4, NSP / 4, ExtrudeValues,
+        0,           InnerHeight, 1,
+        TrackWidth,  OuterHeight, 1,
+        TrackWidth,  0.00,        1,
+        0,           0.00,        1,
+        USE(NSP)
+
+    edgeLeft_InOuter      = ConstantLineMargin - LineWidth
+    edgeRight_InOuter     = ConstantLineMargin + LineWidth
+    heightLeft_InOuter    = InnerHeight + edgeLeft_InOuter * crossSlopeGradient
+    heightRight_InOuter   = InnerHeight + edgeRight_InOuter * crossSlopeGradient
+
+    MATERIAL OuterLine
+    TUBE 4, NSP / 4, ExtrudeValues,
+        edgeLeft_InOuter,   heightLeft_InOuter  + LineThickness, 1,
+        edgeRight_InOuter,  heightRight_InOuter + LineThickness, 1,
+        edgeRight_InOuter,  heightRight_InOuter,                 1,
+        edgeLeft_InOuter,   heightLeft_InOuter,                  1,
+        USE(NSP)
+
+    stripeDist_InnerInner = ConstantLineMargin + LineWidth * 4
+    edgeLeft_InInner      = stripeDist_InnerInner - LineWidth
+    edgeRight_InInner     = stripeDist_InnerInner + LineWidth
+    heightLeft_InInner    = InnerHeight + edgeLeft_InInner * crossSlopeGradient
+    heightRight_InInner   = InnerHeight + edgeRight_InInner * crossSlopeGradient
+
+    MATERIAL InnerLine
+    TUBE 4, NSP / 4, ExtrudeValues,
+        edgeLeft_InInner,   heightLeft_InInner  + LineThickness, 1,
+        edgeRight_InInner,  heightRight_InInner + LineThickness, 1,
+        edgeRight_InInner,  heightRight_InInner,                 1,
+        edgeLeft_InInner,   heightLeft_InInner,                  1,
+        USE(NSP)
+
+    stripeDist_OuterInner = TrackWidth - ConstantLineMargin - LineWidth * 4
+    edgeLeft_OutInner     = stripeDist_OuterInner - LineWidth
+    edgeRight_OutInner    = stripeDist_OuterInner + LineWidth
+    heightLeft_OutInner   = InnerHeight + edgeLeft_OutInner * crossSlopeGradient
+    heightRight_OutInner  = InnerHeight + edgeRight_OutInner * crossSlopeGradient
+
+    MATERIAL InnerLine
+    TUBE 4, NSP / 4, ExtrudeValues,
+        edgeLeft_OutInner,   heightLeft_OutInner  + LineThickness, 1,
+        edgeRight_OutInner,  heightRight_OutInner + LineThickness, 1,
+        edgeRight_OutInner,  heightRight_OutInner,                 1,
+        edgeLeft_OutInner,   heightLeft_OutInner,                  1,
+        USE(NSP)
+
+    stripeDist_OuterOuter = TrackWidth - ConstantLineMargin
+    edgeLeft_OutOuter     = stripeDist_OuterOuter - LineWidth
+    edgeRight_OutOuter    = stripeDist_OuterOuter + LineWidth
+    heightLeft_OutOuter   = InnerHeight + edgeLeft_OutOuter * crossSlopeGradient
+    heightRight_OutOuter  = InnerHeight + edgeRight_OutOuter * crossSlopeGradient
+
+    MATERIAL OuterLine
+    TUBE 4, NSP / 4, ExtrudeValues,
+        edgeLeft_OutOuter,   heightLeft_OutOuter  + LineThickness, 1,
+        edgeRight_OutOuter,  heightRight_OutOuter + LineThickness, 1,
+        edgeRight_OutOuter,  heightRight_OutOuter,                 1,
+        edgeLeft_OutOuter,   heightLeft_OutOuter,                  1,
+        GET(NSP)
+
+    MATERIAL SiderailColor
+    IF NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN
+        ADDX RailThickness
+        FOR s = -1 TO NumSegments + 1
+            curA = s * (CurveAngle / NumSegments)
+            posX = (CurveRight[i-1] - RailThickness) * (1 - COS(curA))
+            posY = (CurveRight[i-1] - RailThickness) * SIN(curA)
+            posZ = 0
+            PUT posX, posY, posZ, 0
+        NEXT s
+
+        TUBE 4, NSP / 4, ExtrudeValues,
+            0,              InnerRailHeight,    1,
+            RailThickness,  InnerRailHeight,    1,
+            RailThickness,  0.00,               1,
+            0,              0.00,               1,
+            GET(NSP)
+        DEL 1
+
+        ADDX -TrackWidth
+        FOR s = -1 TO NumSegments + 1
+            curA = s * (CurveAngle / NumSegments)
+            posX = (CurveRight[i-1] + TrackWidth) * (1 - COS(curA))
+            posY = (CurveRight[i-1] + TrackWidth) * SIN(curA)
+            posZ = 0
+            PUT posX, posY, posZ, 0
+        NEXT s
+
+        TUBE 4, NSP / 4, ExtrudeValues,
+            0,              OuterRailHeight,    1,
+            RailThickness,  OuterRailHeight,    1,
+            RailThickness,  0.00,               1,
+            0,              0.00,               1,
+            GET(NSP)
+        DEL 1
+    ENDIF
+
+    MATERIAL Asfalt
+	!----Exit-----------------------------------------------------------------------------------------------
+	IF Length[i] > ESP THEN
+		ADDX CurveRight[i-1] * (1 - COS(CurveAngle))
+		ADDY CurveRight[i-1] * SIN(CurveAngle)
+		ROTZ -CurveAngle
+		ADDX -Width[i]/2
+		BREAKPOINT 1
+		IF BarrierVisible AND NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN
+			ADDZ BarrierHeight
+			ADDX -Width[i]/2 + BarrierOffset
+			PUT 0,  -1, OuterHeight,    0,
+				0,  0,  OuterHeight,    0,
+				0,  TransitionLength,   0,  0,
+				0,  TransitionLength+1, 0,  0
+			GOSUB "FlexiBarrier"
+			DEL 1
+			ADDX Width[i]/2 - BarrierOffset
+			PUT 0,  -1, InnerHeight,    0,
+				0,  0,  InnerHeight,    0,
+				0,  TransitionLength/2.2,   0,  0,
+				0,  TransitionLength,       0,  0,
+				0,  TransitionLength+1,     0,  0
+			GOSUB "FlexiBarrier"
+			DEL 2
+		ENDIF
+
+		IF TopTubeVisible AND NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN
+			ADDZ PoleHeigth - TubeFi/4
+			ADDX -Width[i]/2 - LightMargin - TubeFi/4 - (0.1/2 - 0.042/2) + RailThickness
+			PUT 0,  -2, OuterHeight,    0,
+				0,  0,  OuterHeight,    0,
+				0,  TransitionLength,   0,  0,
+				0,  TransitionLength+2, 0,  0
+			GOSUB "LightTube"
+			DEL 1
+			ADDX Width[i]/2 + LightMargin - TubeFi/4 - (0.1/2 - 0.042/2)
+			PUT 0,  -2, InnerHeight, 0,
+				0,  0,  InnerHeight, 0,
+				0,  TransitionLength/2.2,   0, 0,
+				0,  TransitionLength,   0, 0,
+				0,  TransitionLength+2, 0, 0
+			GOSUB "LightTube"
+			DEL 2
+		ENDIF
+
+		DEL 1
+		BREAKPOINT 1
+
+		MATERIAL SiderailColor
+		ADDY TransitionLength
+		ADDX RailThickness
+		ROTZ 180 + 90
+		ROTX 90
+		IF NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN
+			EXTRUDE 5, 0, 0, RailThickness, 1+2+4+16+32,
+					0,                  0,                  1,
+					TransitionLength,   0,                  1,
+					TransitionLength,   InnerRailHeight,    1,
+					TransitionLength/2, RailHeight,         1,
+					0,                  RailHeight,         1
+			ADDZ Width[i] + RailThickness
+			EXTRUDE 4, 0, 0, RailThickness, 1+2+4+16+32,
+					0,                  0,                  1,
+					TransitionLength,   0,                  1,
+					TransitionLength,   OuterRailHeight,    1,
+					0,                  RailHeight,         1
+			DEL 1
+		ENDIF
+		DEL 4
+		MATERIAL Asfalt
+
+		ADDX -Width[i] / 2
+		ADDZ OuterHeight - HeightDifference / 2
+		ROTY calcAngle
+		ROTX -OuterAngle
+		CUTPLANE 0
+		DEL 3
+
+		MATERIAL Asfalt
+		ADDX -Width[i] / 2
+		BLOCK TrackWidth, TransitionLength, OuterHeight
+		DEL 1
+		CUTEND
+
+		ADDZ OuterHeight - HeightDifference / 2 + LineThickness
+		ROTY calcAngle
+		ROTX -OuterAngle
+		CUTPLANE 0
+		DEL 3
+
+		MATERIAL OuterLine
+		ADDX -Width[i]/2 + ConstantLineMargin - LineWidth
+		BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+		DEL 1
+		MATERIAL InnerLine
+		ADDX -Width[i]/2 + ConstantLineMargin + LineWidth * 3
+		BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+		DEL 1
+		MATERIAL OuterLine
+		ADDX Width[i]/2 - ConstantLineMargin - LineWidth
+		BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+		DEL 1
+		MATERIAL InnerLine
+		ADDX Width[i]/2 - ConstantLineMargin - LineWidth * 5
+		BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+		DEL 1 
+		CUTEND
+
+		MATERIAL Asfalt
+		ADDX -Width[i] / 2
+		IF NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN BLOCK TrackWidth, TransitionLength, TrackThickness
+		DEL 1
+
+		ADDZ TrackThickness
+
+		MATERIAL OuterLine
+		ADDX -Width[i]/2 + ConstantLineMargin - LineWidth
+		BLOCK LineWidth * 2, TransitionLength, LineThickness
+		DEL 1
+		MATERIAL InnerLine
+		ADDX -Width[i]/2 + ConstantLineMargin + LineWidth * 3
+		BLOCK LineWidth * 2, TransitionLength, LineThickness
+		DEL 1
+		MATERIAL OuterLine
+		ADDX Width[i]/2 - ConstantLineMargin - LineWidth
+		BLOCK LineWidth * 2, TransitionLength, LineThickness
+		DEL 1
+		MATERIAL InnerLine
+		ADDX Width[i]/2 - ConstantLineMargin - LineWidth * 5
+		BLOCK LineWidth * 2, TransitionLength, LineThickness
+		DEL 2
+		DEL 6
+		MATERIAL Asfalt
+	ELSE 
+		ADDX -Width[i]/2
+	ENDIF
+
+RETURN
+
+"RightEndTransitionLightPostsSpeedPlus":
+    IF LeftLightDistance <= TransitionLength THEN
+        NumLightsLeft = INT((TransitionLength - LeftLightDistance) / LightDistance)
+        ADDZ OuterHeight
+        FOR j = 0 TO NumLightsLeft
+            CurrentPosLeft = LeftLightDistance + (LightDistance * j)
+            IF CurrentPosLeft <= TransitionLength THEN
+                ADDZ -CurrentPosLeft * TAN(OuterAngle)
+                ADDY CurrentPosLeft
+                ADDX -Width[i]/2 - LightMargin 
+                ROTX -OuterAngle
+                IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = 0
+                ROTZ LightAngle
+                IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+                    CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+                ENDIF
+                DEL 1
+                IF LeftLightBool AND LightVisible AND TopTubeVisible THEN 
+                    ADDZ TopTubeLightHeight
+                    ADDX 0.05
+                    ROTZ LightAngle
+                    CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+                    DEL 3
+                ENDIF
+                LeftLightBool = NOT(LeftLightBool)
+                DEL 4
+            ENDIF
+            LastLightPosLeft = CurrentPosLeft
+        NEXT j
+        DEL 1
+        LeftLightDistance = LightDistance - (TransitionLength - LastLightPosLeft)
+    ELSE
+        LeftLightDistance = LeftLightDistance - TransitionLength
+    ENDIF
+
+    IF RightLightRemainingDistance <= TransitionLength/2 THEN
+        NumLightsRight = INT((TransitionLength/2 - RightLightRemainingDistance) / LightDistance)
+        ADDZ InnerHeight
+        FOR k = 0 TO NumLightsRight
+            CurrentPosRight = RightLightRemainingDistance + (LightDistance * k)
+            IF CurrentPosRight <= TransitionLength/2 THEN
+                ADDZ -CurrentPosRight * TAN(ATN(InnerHeight / (TransitionLength/2)))
+                ADDY CurrentPosRight
+                ADDX Width[i]/2 + LightMargin - RailThickness
+                ROTX -OuterAngle
+                IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = 0
+                ROTZ -LightAngle
+                IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+                    CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+                ENDIF
+                DEL 1
+                IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+                    ADDZ TopTubeLightHeight
+                    ADDX 0.05
+                    ROTZ -LightAngle
+                    CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+                    DEL 3
+                ENDIF
+                RightLightBool = NOT(RightLightBool)
+                DEL 4
+            ENDIF
+            LastLightPosRight = CurrentPosRight
+        NEXT k
+        DEL 1
+        RightLightRemainingDistance = LightDistance - (TransitionLength/2 - LastLightPosRight)
+    ELSE
+        RightLightRemainingDistance = RightLightRemainingDistance - TransitionLength/2
+    ENDIF
+    ADDY TransitionLength/2
+    IF RightLightRemainingDistance <= TransitionLength/2 THEN
+        NumLightsRight = INT((TransitionLength/2 - RightLightRemainingDistance) / LightDistance)
+        FOR k = 0 TO NumLightsRight
+            CurrentPosRight = RightLightRemainingDistance + (LightDistance * k)
+            IF CurrentPosRight <= TransitionLength/2 THEN
+                ADDY CurrentPosRight
+                ADDX Width[i]/2 + LightMargin - RailThickness
+                IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = 0
+                ROTZ -LightAngle
+                IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+                    CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+                ENDIF
+                DEL 1
+                IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+                    ADDZ TopTubeLightHeight
+                    ADDX 0.05
+                    ROTZ -LightAngle
+                    CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+                    DEL 3
+                ENDIF
+                RightLightBool = NOT(RightLightBool)
+                DEL 2
+            ENDIF
+            LastLightPosRight = CurrentPosRight
+        NEXT k
+        RightLightRemainingDistance = LightDistance - (TransitionLength/2 - LastLightPosRight)
+    ELSE
+        RightLightRemainingDistance = RightLightRemainingDistance - TransitionLength/2
+    ENDIF
+    DEL 1
 RETURN
 
 "RightTopTube":
@@ -969,7 +1562,7 @@ RETURN
 		ADDY Width[i-1] - Width[i]
 		ResetTube = 1
 	ENDIF
-
+	IF SpeedPlusBool THEN ADDZ OuterHeight
 	IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
 		PUT CurveRadius - OuterTubeRadius, -1, 0, 0
 		PUT CurveRadius - OuterTubeRadius,  0, 0, 0
@@ -983,7 +1576,7 @@ RETURN
 		PUT _xEndOut, _yEndOut, 0, 0
 		GOSUB "LightTube"
 	ENDIF
-
+	IF SpeedPlusBool THEN DEL 1
 	IF ResetTube THEN 
 		DEL 1
 		ResetTube = 0
@@ -994,6 +1587,7 @@ RETURN
 	WidthDifferenceIn = 0
 	IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
 	IF Width[i] > Width[i-1] THEN ADDY Width[i-1] - Width[i]
+	IF SpeedPlusBool THEN ADDZ InnerHeight
 	IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
 		PUT CurveRadius - InnerTubeRadius, -1, 0, 0
 		PUT CurveRadius - InnerTubeRadius,  0, 0, 0
@@ -1009,6 +1603,7 @@ RETURN
 		PUT _xEndIn, _yEndIn, 0, 0
 		GOSUB "LightTube"
 	ENDIF
+	IF SpeedPlusBool THEN DEL 1
 	IF Width[i] > Width[i-1] THEN DEL 1
 	DEL 1
 RETURN
@@ -1093,6 +1688,7 @@ RETURN
 			HasPlacedStraightLightsOut = 0
 
 			! SECTION A: Widening Straight (LEFT SIDE)
+			IF SpeedPlusBool THEN ADDZ OuterHeight
 			IF WideningLength > 0.0001 THEN
 				IF LeftLightDistance <= WideningLength THEN
 					NumLightsOut = INT((WideningLength - LeftLightDistance) / LightDistance)
@@ -1101,7 +1697,7 @@ RETURN
 						IF CurrentPosLeft <= WideningLength THEN
 							ADDY CurrentPosLeft
 							ADDX -OuterLightRadius
-							IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
+							IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = (NOT(SiderailBool) AND NOT(SpeedPlusBool))
 							ROTZ LightAngle
 							!IF CurveRight[i-1] < 4 THEN LeftLightBool = 1
 							IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
@@ -1122,7 +1718,7 @@ RETURN
 					NEXT j
 				ENDIF
 			ENDIF
-
+			IF SpeedPlusBool THEN DEL 1
 			! SECTION B: Outer Arc Curve (LEFT SIDE)
 			ADDY WideningLength
 			OuterCurveArcLength = OuterLightRadius * (Angle * PI / 180)
@@ -1141,7 +1737,7 @@ RETURN
 
 			OuterStartAngleOffset = (LeftoverDistanceForCurveOut / OuterLightRadius) * (180 / PI)
 			RemainingCurveLengthOut = OuterCurveArcLength - LeftoverDistanceForCurveOut
-
+			IF SpeedPlusBool THEN ADDZ OuterHeight
 			IF RemainingCurveLengthOut >= 0 THEN
 				OuterTotalSteps = INT(RemainingCurveLengthOut / LightDistance)
 				FOR j = 0 TO OuterTotalSteps
@@ -1149,7 +1745,7 @@ RETURN
 					IF CurrentAngle <= Angle THEN
 						ROTZ -CurrentAngle
 						ADDX -OuterLightRadius
-						IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
+						IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = (NOT(SiderailBool) AND NOT(SpeedPlusBool))
 						ROTZ LightAngle
 						!IF CurveRight[i-1] < 4 THEN LeftLightBool = 1
 						IF LeftLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
@@ -1176,6 +1772,7 @@ RETURN
 			ELSE
 				LeftLightDistance = LeftLightDistance - OuterCurveArcLength
 			ENDIF
+			IF SpeedPlusBool THEN DEL 1
 			DEL 3
 		ENDIF
 		! --- LINE 2: INNER (RIGHT) EDGE LIGHT LINES (Handles Narrowing Transition + Inner Arc) --------------
@@ -1191,6 +1788,7 @@ RETURN
 			HasPlacedStraightLightsIn = 0
 
 			! SECTION A: Narrowing Straight (RIGHT SIDE)
+			IF SpeedPlusBool THEN ADDZ InnerHeight
 			IF NarrowingLength > 0.0001 THEN
 				IF RightLightRemainingDistance <= NarrowingLength THEN
 					NumLightsIn = INT((NarrowingLength - RightLightRemainingDistance) / LightDistance)
@@ -1199,7 +1797,7 @@ RETURN
 						IF CurrentPosRight <= NarrowingLength THEN
 							ADDY CurrentPosRight
 							ADDX -InnerLightRadius
-							IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
+							IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = (NOT(SiderailBool) AND NOT(SpeedPlusBool))
 							ROTZ -LightAngle
 							IF CurveRight[i-1] < 4 THEN RightLightBool = 1
 							IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
@@ -1220,7 +1818,7 @@ RETURN
 					NEXT k
 				ENDIF
 			ENDIF
-
+			IF SpeedPlusBool THEN DEL 1
 			! SECTION B: Inner Arc Curve (RIGHT SIDE)
 			ADDY NarrowingLength
 			InnerCurveArcLength = InnerLightRadius * (Angle * PI / 180)
@@ -1239,7 +1837,7 @@ RETURN
 
 			InnerStartAngleOffset = (LeftoverDistanceForCurveIn / InnerLightRadius) * (180 / PI)
 			RemainingCurveLengthIn = InnerCurveArcLength - LeftoverDistanceForCurveIn
-
+			IF SpeedPlusBool THEN ADDZ InnerHeight
 			IF RemainingCurveLengthIn >= 0 THEN
 				InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
 				FOR k = 0 TO InnerTotalSteps
@@ -1247,7 +1845,7 @@ RETURN
 					IF CurrentAngle <= Angle THEN
 						ROTZ -CurrentAngle
 						ADDX -InnerLightRadius
-						IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = NOT(SiderailBool)
+						IF TopTubeVisible THEN CALL "GF_TopTube" PARAMETERS PlateBool = (NOT(SiderailBool) AND NOT(SpeedPlusBool))
 						ROTZ -LightAngle
 						IF CurveRight[i-1] < 4 THEN RightLightBool = 1
 						IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN CALL "GF_Light" PARAMETERS LightStrength = LightStrength
@@ -1274,7 +1872,7 @@ RETURN
 			ELSE
 				RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
 			ENDIF
-
+			IF SpeedPlusBool THEN DEL 1
 			DEL 2 ! Clears ADDX CurveRadius and ADDY NarrowingLength
 			IF AdjustYForWidening THEN DEL 1
 		ENDIF
@@ -1355,6 +1953,7 @@ RETURN
 		ADDY Width[i-1] - Width[i]
 		Reset = 1
 	ENDIF
+	IF SpeedPlusBool THEN ADDZ OuterHeight
 	IF NOT(BarrierRemove[i] < -Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
 		PUT CurveRadius - OuterRadius, -1, 0, 0
 		PUT CurveRadius - OuterRadius, 0, 0, 0
@@ -1368,10 +1967,12 @@ RETURN
 		PUT _xEndOut, _yEndOut, 0, 0
 		GOSUB "SlimBarrier"
 	ENDIF
+	IF SpeedPlusBool THEN DEL 1
 		! --- RIGHT SIDE BARRIER (Inner Path) ---
 	InnerRadius = CurveRight[i-1] + BarrierOffset
 	WidthDifferenceIn = 0
 	IF Width[i] < Width[i-1] THEN WidthDifferenceIn = Width[i-1] - Width[i]
+	IF SpeedPlusBool THEN ADDZ InnerHeight
 	IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
 		PUT CurveRadius - InnerRadius, -1, 0, 0
 		PUT CurveRadius - InnerRadius, 0, 0, 0
@@ -1389,6 +1990,7 @@ RETURN
 			GOSUB "SlimBarrier"
 		ENDIF
 	ENDIF
+	IF SpeedPlusBool THEN DEL 1
 	IF Reset THEN DEL 1
 	DEL 1
 RETURN
@@ -1398,15 +2000,18 @@ RETURN
 "CurveLeft":
 	GOSUB "CurveBarrierRemoveHotSpot"
 	GOSUB "CurveBothBarrierRemoveHotSpot"
-	GOSUB "LeftSpeedPlusHotSpot"
+	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "LeftSpeedPlusHotSpot"
+	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] THEN GOSUB "LeftSpeedPlusHotSpot"
 	Angle = LeftAngle[i]
 	CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
 	InnerRadius = CurveLeft[i-1]
 	OuterRadius = CurveLeft[i-1] + Width[i-1]
 	IF SpeedPlusBool THEN
+		BREAKPOINT 1
 		GOSUB "LeftSpeedPlus"
-		ADDY Width[i]
+		BREAKPOINT 1
+		IF Length[i] > ESP THEN ADDY Width[i]
 	ELSE
 		IF Width[i] <= Width[i-1] THEN
 			WidthDifferenceIn = Width[i-1] - Width[i]
@@ -1440,13 +2045,12 @@ RETURN
 	IF BarrierVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "LeftBarrier"
 	IF TopTubeVisible AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "LeftTopTube"
 	IF SiderailBool   AND NOT(GLOB_FEEDBACK_MODE) AND NOT(GLOB_CONTEXT = 2) AND NOT(SpeedPlusBool) THEN GOSUB "LeftRail"
-	GOSUB "LeftCurveLights"
-	!-------------------------------------------------
+	IF NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "LeftCurveLights"
 	ADDX CurveRadius + rCenter * COS(Angle)
 	ADDY rCenter * SIN(Angle)
 	ROTZ Angle
-	IF SpeedPlusBool AND NOT(GLOB_CONTEXT = 2) THEN GOSUB "EndTransitionLightPosts"
-	IF SpeedPlusBool THEN ADDY Width[i]
+	IF SpeedPlusBool AND Length[i] > ESP AND NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN GOSUB "LeftEndTransitionLightPostsSpeedPlus"
+	IF SpeedPlusBool AND Length[i] > ESP THEN ADDY Width[i]
 RETURN
 
 "LeftSpeedPlus":
@@ -1463,17 +2067,18 @@ RETURN
 	OuterRailHeight = 0.666
 
 	OuterAngle = ATN(OuterHeight / TransitionLength)
+	!ROTX OuterAngle
 	ADDY TransitionLength
 	ADDZ OuterHeight - HeightDifference/2
 	ROTY -calcAngle
 	ROTX OuterAngle
 	CUTPLANE 0
 	DEL 4
-	ADDX -Width[1] / 2
+	ADDX -Width[i] / 2
 	BLOCK TrackWidth, TransitionLength, OuterHeight
 	CUTEND
-	IF NOT(GLOB_CONTEXT = 2) THEN BLOCK TrackWidth, TransitionLength, TrackThickness
-	ADDX Width[1] / 2
+	IF NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN BLOCK TrackWidth, TransitionLength, TrackThickness
+	ADDX Width[i] / 2
 	FOR h = 1 TO 2
 		IF h = 1 THEN MATERIAL OuterLine
 		ADDX -Width[i]/2 + LineMargin
@@ -1498,7 +2103,7 @@ RETURN
 	LineMargin = ConstantLineMargin
 	DEL 1
 	ADDY TransitionLength
-	ADDX Width[1] / 2
+	ADDX Width[i] / 2
 	ADDZ OuterHeight  - HeightDifference/2 + LineThickness
 	ROTY -calcAngle
 	ROTX OuterAngle
@@ -1522,7 +2127,7 @@ RETURN
 	DEL 1
 	!-----Transition Rail-----------------------------------
 	!-----Inner------------
-	IF NOT(GLOB_CONTEXT = 2) THEN
+	IF NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN
 		MATERIAL SiderailColor
 		ADDX -Width[i]/2
 		ADDY TransitionLength
@@ -1689,7 +2294,7 @@ RETURN
 		!ENDIF
 		!-------------------------------------------------
 	ENDIF
-	ADDX -Width[1] / 2
+	ADDX -Width[i] / 2
 	!-----CURVE-------------------------------------------------------------------------------------------------------------------------------------
 	ADDY TransitionLength
 
@@ -1788,7 +2393,7 @@ RETURN
 
 	MATERIAL SiderailColor
 	
-	IF NOT(GLOB_CONTEXT = 2) THEN
+	IF NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN
 		!----Inner Rail-----------------------------------------
 		ADDX -RailThickness
 		FOR s = -1 TO NumSegments + 1
@@ -1825,154 +2430,158 @@ RETURN
 		DEL 1
 	ENDIF
 	!-----EXIT----------------------------------------------------------------------------------------------------------------------------
-	MATERIAL Asfalt
-    ! 1. Arc Exit Endpoint (Pure Centerline Arc)
-    ADDX -CurveLeft[i-1] * (1 - COS(CurveAngle))
-    ADDY  CurveLeft[i-1] * SIN(CurveAngle)
-    ROTZ  CurveAngle
-	ADDX Width[i]/2
-	!-----Barrier-----------------------------------
-	IF BarrierVisible AND  NOT(GLOB_CONTEXT = 2) THEN
-		ADDZ BarrierHeight
-		ADDX Width[i]/2 - BarrierOffset
-		PUT	0,	-1,					OuterHeight,	0,
-			0,	0,					OuterHeight,	0,
-			0,	TransitionLength,	0, 				0,
-			0,	TransitionLength+1,	0, 				0
-		GOSUB "FlexiBarrier"
+	IF Length[i] > ESP THEN
+		MATERIAL Asfalt
+		! 1. Arc Exit Endpoint (Pure Centerline Arc)
+		ADDX -CurveLeft[i-1] * (1 - COS(CurveAngle))
+		ADDY  CurveLeft[i-1] * SIN(CurveAngle)
+		ROTZ  CurveAngle!primoo
+		ADDX Width[i]/2
+		!-----Barrier-----------------------------------
+		IF BarrierVisible AND  NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN
+			ADDZ BarrierHeight
+			ADDX Width[i]/2 - BarrierOffset
+			PUT	0,	-1,					OuterHeight,	0,
+				0,	0,					OuterHeight,	0,
+				0,	TransitionLength,	0, 				0,
+				0,	TransitionLength+1,	0, 				0
+			GOSUB "FlexiBarrier"
+			DEL 1
+			ADDX -Width[i]/2 + BarrierOffset
+			PUT	0,	-1,						InnerHeight, 	0,
+				0,	0,						InnerHeight, 	0,
+				0,	TransitionLength/2.2,	0, 				0,
+				0,	TransitionLength,		0, 				0,
+				0,	TransitionLength+1,		0, 				0
+			GOSUB "FlexiBarrier"
+			DEL 2
+		ENDIF
+		!--------------------------------------------
+
+		!-----Top Tube-----------------------------------
+		IF TopTubeVisible AND NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN
+			ADDZ PoleHeigth - TubeFi/4
+			ADDX Width[i]/2 + LightMargin + TubeFi/4 + (0.1/2 - 0.042/2) - RailThickness
+			PUT 0,	-2,					OuterHeight,	0,
+				0,	0,					OuterHeight,	0,
+				0,	TransitionLength,	0,				0,
+				0,	TransitionLength+2,	0,				0
+			GOSUB "LightTube"
+			DEL 1
+			ADDX -Width[i]/2 - LightMargin + TubeFi/4 + (0.1/2 - 0.042/2)
+			PUT 0,	-2,	InnerHeight, 0,
+				0,	0,	InnerHeight, 0,
+				0,	TransitionLength/2.2,	0, 0,
+				0,	TransitionLength,	0, 0,
+				0,	TransitionLength+2,	0, 0
+			GOSUB "LightTube"
+			DEL 2
+		ENDIF
+		!-------------------------------------------------
+
 		DEL 1
-		ADDX -Width[i]/2 + BarrierOffset
-		PUT	0,	-1,						InnerHeight, 	0,
-			0,	0,						InnerHeight, 	0,
-			0,	TransitionLength/2.2,	0, 				0,
-			0,	TransitionLength,		0, 				0,
-			0,	TransitionLength+1,		0, 				0
-		GOSUB "FlexiBarrier"
+		BREAKPOINT 1
+		!-----Transition Rail-----------------------------------
+		!-----Inner------------
+		MATERIAL SiderailColor
+		ADDY TransitionLength
+		ROTZ 180 + 90
+		ROTX 90
+		IF NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN
+			EXTRUDE 5, 0, 0, RailThickness, 1+2+4+16+32,
+					0,					0,					1,
+					TransitionLength,	0,					1,
+					TransitionLength,	InnerRailHeight,	1,
+					TransitionLength/2,	RailHeight,			1,
+					0,					RailHeight,			1
+			ADDZ -Width[i] - RailThickness
+			!-----Outer------------
+			EXTRUDE 4, 0, 0, RailThickness, 1+2+4+16+32,
+					0,					0,					1,
+					TransitionLength,	0,					1,
+					TransitionLength,	OuterRailHeight,	1,
+					0,					RailHeight,			1
+			DEL 1
+		ENDIF
+		DEL 3
+		MATERIAL Asfalt
+		! 2. Local Alignment Offset (Now works identically for ANY CurveAngle)
+		ADDX Width[i] / 2
+		! 2. Sloped Section Cutting Plane
+		! Inverts the longitudinal slope (-ROTX) while carrying the bank angle (-ROTY)
+		ADDZ OuterHeight - HeightDifference / 2
+		!ADDX Width[i] / 2
+		ROTY -calcAngle
+		ROTX -OuterAngle
+		CUTPLANE 0
+		DEL 3
+		! --- Main Sloped Track Surface ---
+		MATERIAL Asfalt
+		ADDX -Width[i] / 2
+		BLOCK TrackWidth, TransitionLength, OuterHeight
+		DEL 1
+		CUTEND
+
+		ADDZ OuterHeight - HeightDifference / 2 + LineThickness
+		!ADDX Width[i] / 2
+		ROTY -calcAngle
+		ROTX -OuterAngle
+		CUTPLANE 0
+		DEL 3
+		! --- Banked Sloped Stripes ---
+		! Left Outer & Inner Stripes
+		MATERIAL OuterLine
+		ADDX -Width[i] / 2 + ConstantLineMargin - LineWidth
+		BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+		DEL 1
+		MATERIAL InnerLine
+		ADDX -Width[i] / 2 + ConstantLineMargin + LineWidth * 3
+		BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+		DEL 1
+		! Right Outer & Inner Stripes
+		MATERIAL OuterLine
+		ADDX Width[i] / 2 - ConstantLineMargin - LineWidth
+		BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+		DEL 1
+		MATERIAL InnerLine
+		ADDX Width[i] / 2 - ConstantLineMargin - LineWidth * 5
+		BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
+		DEL 1 
+		CUTEND
+
+		! Flat Track Slab
+		MATERIAL Asfalt
+		ADDX -Width[i] / 2
+		IF NOT(GLOB_CONTEXT = 2) AND NOT(GLOB_FEEDBACK_MODE) THEN BLOCK TrackWidth, TransitionLength, TrackThickness
+		DEL 1
+		! Flat Bottom Stripes
+		ADDZ TrackThickness
+		! Left Flat Stripes
+		MATERIAL OuterLine
+		ADDX -Width[i] / 2 + ConstantLineMargin - LineWidth
+		BLOCK LineWidth * 2, TransitionLength, LineThickness
+		DEL 1
+		MATERIAL InnerLine
+		ADDX -Width[i] / 2 + ConstantLineMargin + LineWidth * 3
+		BLOCK LineWidth * 2, TransitionLength, LineThickness
+		DEL 1
+		! Right Flat Stripes
+		MATERIAL OuterLine
+		ADDX Width[i] / 2 - ConstantLineMargin - LineWidth
+		BLOCK LineWidth * 2, TransitionLength, LineThickness
+		DEL 1
+		MATERIAL InnerLine
+		ADDX Width[i] / 2 - ConstantLineMargin - LineWidth * 5
+		BLOCK LineWidth * 2, TransitionLength, LineThickness
 		DEL 2
+		DEL 6
+		MATERIAL Asfalt
+	ELSE
+		ADDX Width[i]/2
 	ENDIF
-	!--------------------------------------------
-
-	!-----Top Tube-----------------------------------
-	IF TopTubeVisible AND NOT(GLOB_CONTEXT = 2) THEN
-		ADDZ PoleHeigth - TubeFi/4
-		ADDX Width[i]/2 + LightMargin + TubeFi/4 + (0.1/2 - 0.042/2) - RailThickness
-		PUT 0,	-2,					OuterHeight,	0,
-			0,	0,					OuterHeight,	0,
-			0,	TransitionLength,	0,				0,
-			0,	TransitionLength+2,	0,				0
-		GOSUB "LightTube"
-		DEL 1
-		ADDX -Width[i]/2 - LightMargin + TubeFi/4 + (0.1/2 - 0.042/2)
-		PUT 0,	-2,	InnerHeight, 0,
-			0,	0,	InnerHeight, 0,
-			0,	TransitionLength/2.2,	0, 0,
-			0,	TransitionLength,	0, 0,
-			0,	TransitionLength+2,	0, 0
-		GOSUB "LightTube"
-		DEL 2
-	ENDIF
-	!-------------------------------------------------
-
-	DEL 1
-	BREAKPOINT 1
-	!-----Transition Rail-----------------------------------
-	!-----Inner------------
-	MATERIAL SiderailColor
-	ADDY TransitionLength
-	ROTZ 180 + 90
-	ROTX 90
-	IF NOT(GLOB_CONTEXT = 2) THEN
-		EXTRUDE 5, 0, 0, RailThickness, 1+2+4+16+32,
-				0,					0,					1,
-				TransitionLength,	0,					1,
-				TransitionLength,	InnerRailHeight,	1,
-				TransitionLength/2,	RailHeight,			1,
-				0,					RailHeight,			1
-		ADDZ -Width[i] - RailThickness
-		!-----Outer------------
-		EXTRUDE 4, 0, 0, RailThickness, 1+2+4+16+32,
-				0,					0,					1,
-				TransitionLength,	0,					1,
-				TransitionLength,	OuterRailHeight,	1,
-				0,					RailHeight,			1
-		DEL 1
-	ENDIF
-	DEL 3
-	MATERIAL Asfalt
-    ! 2. Local Alignment Offset (Now works identically for ANY CurveAngle)
-    ADDX Width[1] / 2
-	! 2. Sloped Section Cutting Plane
-	! Inverts the longitudinal slope (-ROTX) while carrying the bank angle (-ROTY)
-	ADDZ OuterHeight - HeightDifference / 2
-	!ADDX Width[1] / 2
-	ROTY -calcAngle
-	ROTX -OuterAngle
-	CUTPLANE 0
-	DEL 3
-	! --- Main Sloped Track Surface ---
-	MATERIAL Asfalt
-	ADDX -Width[1] / 2
-	BLOCK TrackWidth, TransitionLength, OuterHeight
-	DEL 1
-	CUTEND
-
-	ADDZ OuterHeight - HeightDifference / 2 + LineThickness
-	!ADDX Width[1] / 2
-	ROTY -calcAngle
-	ROTX -OuterAngle
-	CUTPLANE 0
-	DEL 3
-	! --- Banked Sloped Stripes ---
-	! Left Outer & Inner Stripes
-	MATERIAL OuterLine
-	ADDX -Width[1] / 2 + ConstantLineMargin - LineWidth
-	BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
-	DEL 1
-	MATERIAL InnerLine
-	ADDX -Width[1] / 2 + ConstantLineMargin + LineWidth * 3
-	BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
-	DEL 1
-	! Right Outer & Inner Stripes
-	MATERIAL OuterLine
-	ADDX Width[1] / 2 - ConstantLineMargin - LineWidth
-	BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
-	DEL 1
-	MATERIAL InnerLine
-	ADDX Width[1] / 2 - ConstantLineMargin - LineWidth * 5
-	BLOCK LineWidth * 2, TransitionLength, OuterHeight + LineThickness
-	DEL 1 
-	CUTEND
-
-	! Flat Track Slab
-	MATERIAL Asfalt
-	ADDX -Width[1] / 2
-	IF NOT(GLOB_CONTEXT = 2) THEN BLOCK TrackWidth, TransitionLength, TrackThickness
-	DEL 1
-	! Flat Bottom Stripes
-	ADDZ TrackThickness
-	! Left Flat Stripes
-	MATERIAL OuterLine
-	ADDX -Width[1] / 2 + ConstantLineMargin - LineWidth
-	BLOCK LineWidth * 2, TransitionLength, LineThickness
-	DEL 1
-	MATERIAL InnerLine
-	ADDX -Width[1] / 2 + ConstantLineMargin + LineWidth * 3
-	BLOCK LineWidth * 2, TransitionLength, LineThickness
-	DEL 1
-	! Right Flat Stripes
-	MATERIAL OuterLine
-	ADDX Width[1] / 2 - ConstantLineMargin - LineWidth
-	BLOCK LineWidth * 2, TransitionLength, LineThickness
-	DEL 1
-	MATERIAL InnerLine
-	ADDX Width[1] / 2 - ConstantLineMargin - LineWidth * 5
-	BLOCK LineWidth * 2, TransitionLength, LineThickness
-	DEL 2
-	DEL 6
-	MATERIAL Asfalt
 RETURN
 
-"EndTransitionLightPosts":
+"LeftEndTransitionLightPostsSpeedPlus":
 	!----Right(Right)Light Posts---------------------------------------------
 	!IF NOT(BarrierRemove[i] > Width[i]/2) AND NOT(BothBarrierRemove[i] > 2) THEN
 		IF RightLightRemainingDistance <= TransitionLength THEN
@@ -2563,9 +3172,9 @@ RETURN
 	ELSE
 		SpeedPlusOffset = 0
 	ENDIF
-	HOTSPOT Width[i]/2 + 3,	SpeedPlusOffset,	0, unID, LeftSpeedPlus[i], 1	: unID = unID + 1
-	HOTSPOT Width[i]/2 + 3,	SpeedPlusOffset,	0, unID, LeftSpeedPlus[i], 2	: unID = unID + 1
-	HOTSPOT Width[i]/2 + 3,	-1,					0, unID, LeftSpeedPlus[i], 3	: unID = unID + 1
+	HOTSPOT Width[i]/2 + 1,	SpeedPlusOffset,	0, unID, LeftSpeedPlus[i], 1	: unID = unID + 1
+	HOTSPOT Width[i]/2 + 1,	SpeedPlusOffset,	0, unID, LeftSpeedPlus[i], 2	: unID = unID + 1
+	HOTSPOT Width[i]/2 + 1,	-1,					0, unID, LeftSpeedPlus[i], 3	: unID = unID + 1
 RETURN
 
 "RightSpeedPlusHotSpot":
@@ -2574,9 +3183,9 @@ RETURN
 	ELSE
 		SpeedPlusOffset = 0
 	ENDIF
-	HOTSPOT Width[i]/2 + 3,	SpeedPlusOffset,	0, unID, RightSpeedPlus[i], 1	: unID = unID + 1
-	HOTSPOT Width[i]/2 + 3,	SpeedPlusOffset,	0, unID, RightSpeedPlus[i], 2	: unID = unID + 1
-	HOTSPOT Width[i]/2 + 3,	-1,					0, unID, RightSpeedPlus[i], 3	: unID = unID + 1
+	HOTSPOT -Width[i]/2 - 1,	SpeedPlusOffset,	0, unID, RightSpeedPlus[i], 1	: unID = unID + 1
+	HOTSPOT -Width[i]/2 - 1,	SpeedPlusOffset,	0, unID, RightSpeedPlus[i], 2	: unID = unID + 1
+	HOTSPOT -Width[i]/2 - 1,	-1,					0, unID, RightSpeedPlus[i], 3	: unID = unID + 1
 RETURN
 
 "LineMarginHotSpot":
@@ -2594,6 +3203,7 @@ RETURN
 RETURN
 
 "RightAngleHotSpot":
+	IF SpeedPlusBool AND Length[i] THEN ADDY -Width[i]
 	IF CurveRight[i] < ESP AND Width[i] = Width[i-1] THEN 
 		centerX = Width[i] / 2 + CurveRight[i-1]
 		centerY = 0
@@ -2604,10 +3214,12 @@ RETURN
 		HOTSPOT refX,    refY,     0, unID, RightAngle[i], 4 + 128  : unID = unID + 1
 		HOTSPOT Width[i]/2 + 1, 0, 0, unID, RightAngle[i], 5   		: unID = unID + 1
 	ENDIF
+	IF SpeedPlusBool AND Length[i] THEN DEL 1
 RETURN
 
 "RightWidthHotSpot":
-	IF CurveRight[i] < ESP AND RightAngle[i] = 90 THEN 
+	BREAKPOINT 1
+	IF CurveRight[i] < ESP AND RightAngle[i] = 90 AND NOT(SpeedPlusBool) THEN 
 		HOTSPOT -1-Width[i]/2,  0, 0, unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT -1-Width[i]/2,  0, 0, unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT -1-Width[i]/2-1,0, 0, unID, Width[i], 3 : unID = unID + 1
@@ -2628,6 +3240,7 @@ RETURN
 RETURN
 
 "LeftAngleHotSpot":
+	IF SpeedPlusBool AND Length[i] THEN ADDY -Width[i]
 	IF CurveLeft[i] < ESP AND Width[i] = Width[i-1] THEN 
 		centerX = - Width[i] / 2 - CurveLeft[i-1]
 		centerY = 0
@@ -2639,10 +3252,11 @@ RETURN
 		HOTSPOT refX,    			refY,		0, unID,	LeftAngle[i], 4 + 128	: unID = unID + 1
 		HOTSPOT -Width[i]/2 - 1,	0,			0, unID,	LeftAngle[i], 5 		: unID = unID + 1
 	ENDIF
+	IF SpeedPlusBool AND Length[i] THEN DEL 1
 RETURN
 
 "LeftWidthHotSpot":
-	IF CurveLeft[i] < ESP AND LeftAngle[i] = 90 THEN 
+	IF CurveLeft[i] < ESP AND LeftAngle[i] = 90 AND NOT(SpeedPlusBool) THEN 
 		HOTSPOT 1+Width[i]/2,  0,	0, unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT 1+Width[i]/2,  0,	0, unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT 1+Width[i]/2+1,0,	0, unID, Width[i], 3 : unID = unID + 1
@@ -3077,6 +3691,7 @@ END!---------END------------END------------EMD----------------------------------
 RETURN
 
 "Straight":
+
 	POLY2_B 5, 1+2+4, 
 		TrackColor, 0,
 		-Width[i]/2,    0,               1,
@@ -3346,6 +3961,9 @@ RETURN
 RETURN
 
 "CurveRight":
+	BREAKPOINT 1
+	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "RightSpeedPlusHotSpot"
+	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "RightSpeedPlusHotSpot"
 	Angle = RightAngle[i]
 	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
@@ -3424,7 +4042,8 @@ RETURN
 RETURN
 
 "CurveLeft":
-	GOSUB "LeftSpeedPlusHotSpot"
+	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "LeftSpeedPlusHotSpot"
+	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "LeftSpeedPlusHotSpot"
 	Angle = LeftAngle[i]
 	CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
@@ -3480,7 +4099,7 @@ RETURN
 		CurveRadius + CurveLeft[i-1] * COS(Angle),                	CurveLeft[i-1] * SIN(Angle) + InnerMargin, 						1,
 		-Width[i-1]/2,                                              InnerMargin,                                					3001
 
-POLY2_B 8, 1+2+4,
+	POLY2_B 8, 1+2+4,
 		TrackMarginColor, 0,
 		Width[i-1]/2,                                                              0,                                                                     	1,
 		Width[i-1]/2 + TrackMargin,                                                0,                                                                     	1,
@@ -3523,9 +4142,92 @@ RETURN
 	ELSE
 		SpeedPlusOffset = 0
 	ENDIF
-	HOTSPOT2 Width[i]/2 + 3,	SpeedPlusOffset, unID, LeftSpeedPlus[i], 1	: unID = unID + 1
-	HOTSPOT2 Width[i]/2 + 3,	SpeedPlusOffset, unID, LeftSpeedPlus[i], 2	: unID = unID + 1
-	HOTSPOT2 Width[i]/2 + 3,	-1,				 unID, LeftSpeedPlus[i], 3	: unID = unID + 1
+	HOTSPOT2 Width[i]/2 + 1,	SpeedPlusOffset, unID, LeftSpeedPlus[i], 1	: unID = unID + 1
+	HOTSPOT2 Width[i]/2 + 1,	SpeedPlusOffset, unID, LeftSpeedPlus[i], 2	: unID = unID + 1
+	HOTSPOT2 Width[i]/2 + 1,	-1,				 unID, LeftSpeedPlus[i], 3	: unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			11, 0,
+			Width[i]/2 + 1, 0, 	900,
+			CircleSize,   360, 4001
+		ADD2 Width[i]/2 + 1 - 0.5/2, 0.5
+		IF LeftSpeedPlus[i] < 1 THEN
+			POLY2_B 2, 1+2+4,
+				18, 0,
+				0.5/2, 0.2/2, 	900,
+				0.4,   360, 4001
+		ENDIF
+		POLY2_B 5, 1+2+4,
+			TrackColor, 0,
+			0,			0,			1,
+			0.5,		0,			1,
+			0.5,		0.2,		1,
+			0,			0.2,		1,
+			0,			0,			-1
+		
+		ADD2 0, 1
+		IF LeftSpeedPlus[i] > 1 THEN
+			POLY2_B 2, 1+2+4,
+				18, 0,
+				0.5/2, 0.2/2, 	900,
+				0.4,   360, 4001
+		ENDIF
+		POLY2_B 5, 1+2+4,
+			TrackColor, 0,
+			0,			0,			1,
+			0.5,		0,			1,
+			0.5,		0.2,		1,
+			0,			0.1,		1,
+			0,			0,			-1
+		DEL 2
+	ENDIF
+RETURN
+
+"RightSpeedPlusHotSpot":
+	IF SpeedPlusBool THEN
+		SpeedPlusOffset = Width[i+1]
+	ELSE
+		SpeedPlusOffset = 0
+	ENDIF
+	HOTSPOT2 -Width[i]/2 - 1,	SpeedPlusOffset, unID, RightSpeedPlus[i], 1	: unID = unID + 1
+	HOTSPOT2 -Width[i]/2 - 1,	SpeedPlusOffset, unID, RightSpeedPlus[i], 2	: unID = unID + 1
+	HOTSPOT2 -Width[i]/2 - 1,	-1,				 unID, RightSpeedPlus[i], 3	: unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			11, 0,
+			-Width[i]/2 - 1, 0, 	900,
+			CircleSize,   360, 4001
+		ADD2 -Width[i]/2 - 1 - 0.5/2, 0.5
+		IF RightSpeedPlus[i] < 1 THEN
+			POLY2_B 2, 1+2+4,
+				18, 0,
+				0.5/2, 0.2/2, 	900,
+				0.4,   360, 4001
+		ENDIF
+		POLY2_B 5, 1+2+4,
+			TrackColor, 0,
+			0,			0,			1,
+			0.5,		0,			1,
+			0.5,		0.2,		1,
+			0,			0.2,		1,
+			0,			0,			-1
+		
+		ADD2 0, 1
+		IF RightSpeedPlus[i] > 1 THEN
+			POLY2_B 2, 1+2+4,
+				18, 0,
+				0.5/2, 0.2/2, 	900,
+				0.4,   360, 4001
+		ENDIF
+		POLY2_B 5, 1+2+4,
+			TrackColor, 0,
+			0,			0,			1,
+			0.5,		0,			1,
+			0.5,		0.1,		1,
+			0,			0.2,		1,
+			0,			0,			-1
+		DEL 2
+	ENDIF
 RETURN
 
 "LightAngleHotSpot":
@@ -3576,7 +4278,7 @@ RETURN
 RETURN
 
 "RightWidthHotSpot":
-	IF CurveRight[i] < ESP AND RightAngle[i] = 90 THEN
+	IF CurveRight[i] < ESP AND RightAngle[i] = 90 AND NOT(RightSpeedPlus[i] > 1) THEN
 		HOTSPOT2 -1-Width[i]/2,   0,	unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT2 -1-Width[i]/2,   0,	unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT2 -1-Width[i]/2-1, 0,	unID, Width[i], 3 : unID = unID + 1
@@ -3623,7 +4325,7 @@ RETURN
 RETURN
 
 "LeftWidthHotSpot":
-	IF CurveLeft[i] < ESP AND LeftAngle[i] = 90 THEN
+	IF CurveLeft[i] < ESP AND LeftAngle[i] = 90 AND NOT(LeftSpeedPlus[i] > 1)THEN
 		HOTSPOT2  1+Width[i]/2,   0,	unID, Width[i], 1 : unID = unID + 1
 		HOTSPOT2  1+Width[i]/2,   0,	unID, Width[i], 2 : unID = unID + 1
 		HOTSPOT2  1+Width[i]/2+1, 0,	unID, Width[i], 3 : unID = unID + 1
@@ -3789,6 +4491,15 @@ FOR i = 1 TO 200
 	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
 	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
 	!-------------------------------------------------------------------------------------------------------------------------------------
+	! IF NOT(i = 1) THEN
+	! 	IF NOT(LeftSpeedPlus[i] = 0) AND NOT(Width[i-1] = Width[i]) THEN
+	! 		LeftSpeedPlus[i] = 0
+	! 	ENDIF
+	! 	IF NOT(RightSpeedPlus[i] = 0) AND NOT(Width[i-1] = Width[i]) THEN
+	! 		RightSpeedPlus[i] = 0
+	! 	ENDIF
+	! ENDIF
+	
 NEXT i
 
 !------Calculates Length----------------------------------------------------------------------------------------------------------------------
@@ -4210,7 +4921,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<ArrayValues FirstDimension="200" SecondDimension="0">
 				<AVal Row="1">10</AVal>
 				<AVal Row="2">0</AVal>
-				<AVal Row="3">0</AVal>
+				<AVal Row="3">15</AVal>
 				<AVal Row="4">0</AVal>
 				<AVal Row="5">0</AVal>
 				<AVal Row="6">0</AVal>
@@ -4414,9 +5125,9 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
 				<AVal Row="1">0</AVal>
-				<AVal Row="2">0</AVal>
+				<AVal Row="2">5</AVal>
 				<AVal Row="3">0</AVal>
-				<AVal Row="4">0</AVal>
+				<AVal Row="4">5</AVal>
 				<AVal Row="5">0</AVal>
 				<AVal Row="6">0</AVal>
 				<AVal Row="7">0</AVal>
@@ -4619,7 +5330,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
 				<AVal Row="1">0</AVal>
-				<AVal Row="2">5</AVal>
+				<AVal Row="2">0</AVal>
 				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
 				<AVal Row="5">0</AVal>
@@ -4824,7 +5535,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
 				<AVal Row="1">0</AVal>
-				<AVal Row="2">0</AVal>
+				<AVal Row="2">5</AVal>
 				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
 				<AVal Row="5">0</AVal>
@@ -5237,7 +5948,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 				<AVal Row="2">0</AVal>
 				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
-				<AVal Row="5">0</AVal>
+				<AVal Row="5">9</AVal>
 				<AVal Row="6">0</AVal>
 				<AVal Row="7">0</AVal>
 				<AVal Row="8">0</AVal>
@@ -6770,7 +7481,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<ArrayValues FirstDimension="200" SecondDimension="0">
 				<AVal Row="1">0</AVal>
 				<AVal Row="2">0</AVal>
-				<AVal Row="3">5</AVal>
+				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
 				<AVal Row="5">0</AVal>
 				<AVal Row="6">0</AVal>
@@ -7191,6 +7902,10 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
 		</Length>
+		<Material Name="Track_Tool_A">
+			<Description><![CDATA[""]]></Description>
+			<Value>714</Value>
+		</Material>
 	</Parameters>
 </ParamSection>
 
