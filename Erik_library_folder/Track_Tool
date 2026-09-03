@@ -912,7 +912,11 @@ RETURN
 	GOSUB "CurveBarrierRemoveHotSpot"
 	GOSUB "CurveBothBarrierRemoveHotSpot"
 	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "RightSpeedPlusHotSpot"
-	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] THEN GOSUB "RightSpeedPlusHotSpot"
+	IF RightSpeedPlus[i-2] > 1 OR LeftSpeedPlus[i-2] > 1 THEN
+		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "RightSpeedPlusHotSpot"
+	ELSE
+		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] THEN GOSUB "RightSpeedPlusHotSpot"
+	ENDIF
 	Angle = RightAngle[i]
 	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
@@ -2001,7 +2005,11 @@ RETURN
 	GOSUB "CurveBarrierRemoveHotSpot"
 	GOSUB "CurveBothBarrierRemoveHotSpot"
 	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "LeftSpeedPlusHotSpot"
-	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] THEN GOSUB "LeftSpeedPlusHotSpot"
+	IF RightSpeedPlus[i-2] > 1 OR LeftSpeedPlus[i-2] > 1 THEN
+		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "LeftSpeedPlusHotSpot"
+	ELSE
+		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] THEN GOSUB "LeftSpeedPlusHotSpot"
+	ENDIF
 	Angle = LeftAngle[i]
 	CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
@@ -3309,7 +3317,7 @@ RETURN
 RETURN
 
 "StraightResizingHotSpot":
-	IF CurveLeft[i] < ESP AND CurveRight[i] < ESP THEN
+	IF CurveLeft[i] < ESP AND CurveRight[i] < ESP AND ((RightSpeedPlus[i-1] < 1 AND LeftSpeedPlus[i-1] < 1 ) OR Length[i-1] > Width[i]) THEN
 		HOTSPOT  Width[i]/4,  0,	0, unID, StraightResizing[i], 1 : unID = unID + 1
 		HOTSPOT  Width[i]/4,  0,	0, unID, StraightResizing[i], 2 : unID = unID + 1
 		HOTSPOT  Width[i]/4, -1,	0, unID, StraightResizing[i], 3 : unID = unID + 1
@@ -3963,7 +3971,11 @@ RETURN
 "CurveRight":
 	BREAKPOINT 1
 	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "RightSpeedPlusHotSpot"
-	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "RightSpeedPlusHotSpot"
+	IF RightSpeedPlus[i-2] > 1 OR LeftSpeedPlus[i-2] > 1 THEN
+		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "RightSpeedPlusHotSpot"
+	ELSE
+		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] THEN GOSUB "RightSpeedPlusHotSpot"
+	ENDIF
 	Angle = RightAngle[i]
 	CurveRadius = Width[i-1]/2 + CurveRight[i-1]
 	rCenter = CurveRight[i-1] + Width[i]/2 + Width[i-1]-Width[i]
@@ -4043,7 +4055,11 @@ RETURN
 
 "CurveLeft":
 	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "LeftSpeedPlusHotSpot"
-	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "LeftSpeedPlusHotSpot"
+	IF RightSpeedPlus[i-2] > 1 OR LeftSpeedPlus[i-2] > 1 THEN
+		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "LeftSpeedPlusHotSpot"
+	ELSE
+		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] THEN GOSUB "LeftSpeedPlusHotSpot"
+	ENDIF
 	Angle = LeftAngle[i]
 	CurveRadius = -Width[i-1]/2 - CurveLeft[i-1]
 	rCenter = CurveLeft[i-1] + Width[i]/2 + Width[i-1]-Width[i]
@@ -4357,7 +4373,7 @@ RETURN
 RETURN
 
 "StraightResizingHotSpot":
-	IF CurveLeft[i] < ESP AND CurveRight[i] < ESP THEN
+	IF CurveLeft[i] < ESP AND CurveRight[i] < ESP AND ((RightSpeedPlus[i-1] < 1 AND LeftSpeedPlus[i-1] < 1 ) OR Length[i-1] > Width[i]) THEN
 		HOTSPOT2  Width[i]/4,  0,	unID, StraightResizing[i], 1 : unID = unID + 1
 		HOTSPOT2  Width[i]/4,  0,	unID, StraightResizing[i], 2 : unID = unID + 1
 		HOTSPOT2  Width[i]/4, -1,	unID, StraightResizing[i], 3 : unID = unID + 1
@@ -4919,9 +4935,9 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 		<Length Name="Length">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
-				<AVal Row="1">10</AVal>
+				<AVal Row="1">1</AVal>
 				<AVal Row="2">0</AVal>
-				<AVal Row="3">15</AVal>
+				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
 				<AVal Row="5">0</AVal>
 				<AVal Row="6">0</AVal>
@@ -5125,9 +5141,9 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
 				<AVal Row="1">0</AVal>
-				<AVal Row="2">5</AVal>
+				<AVal Row="2">0</AVal>
 				<AVal Row="3">0</AVal>
-				<AVal Row="4">5</AVal>
+				<AVal Row="4">0</AVal>
 				<AVal Row="5">0</AVal>
 				<AVal Row="6">0</AVal>
 				<AVal Row="7">0</AVal>
@@ -5948,7 +5964,7 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 				<AVal Row="2">0</AVal>
 				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
-				<AVal Row="5">9</AVal>
+				<AVal Row="5">0</AVal>
 				<AVal Row="6">0</AVal>
 				<AVal Row="7">0</AVal>
 				<AVal Row="8">0</AVal>
