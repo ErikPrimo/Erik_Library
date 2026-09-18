@@ -122,9 +122,9 @@ RETURN
 	PreviousLength = Length[i-1]
 	SpeedPlusBool = 0
 	BREAKPOINT 1
-	Bool = (CurveRight[i+2] > ESP OR CurveLeft[i+2] > ESP) AND Length[i+1] < Width[i]
+	Bool = (CurveRight[i+2] > ESP OR CurveLeft[i+2] > ESP OR StraightResizing[i+2] > ESP) AND Length[i+1] < Width[i]
 	IF Length[i+1] < ESP AND ObjectOrder[i+1] = 0 THEN Bool = 0
-	IF ((LeftSpeedPlus[i+1] > 1 OR RightSpeedPlus[i+1] > 1) AND PreviousLength > Width[i] AND NOT(Bool) AND (Length[i+1] > Width[i] OR Length[i+1] < ESP)) AND (CurveRight[i] > ESP OR CurveLeft[i] > ESP) THEN 
+	IF ((LeftSpeedPlus[i+1] > 1 OR RightSpeedPlus[i+1] > 1) AND PreviousLength > Width[i] AND NOT(Bool) AND (Length[i+1] > Width[i] OR Length[i+1] < ESP)) AND (CurveRight[i] > ESP OR CurveLeft[i] > ESP) AND ParamSpeedPlusBool THEN 
 		SpeedPlusBool = 1
 		PreviousLength = PreviousLength - Width[i]
 		IF Length[i+1] > ESP THEN Length[i+1] = Length[i+1] - Width[i]
@@ -154,7 +154,7 @@ RETURN
 		EXTRUDE 4, 0, 0, LineThickness, 1+2+4+16+32,
 			-LineWidth,	0,					1,
 			LineWidth,	0,					1,
-			LineWidth,	PreviousLength, 	1,
+			LineWidth,	PreviousLength,		1,
 			-LineWidth,	PreviousLength,		1
 		DEL 2
 		LineMargin = LineMargin + LineWidth*4
@@ -4377,7 +4377,7 @@ RETURN
     InvertedCurve = 0
     IF RightInvertedBool[i] > ESP THEN InvertedCurve = 1
 	!IF (CurveRight[i] < ESP AND Length[i] > Width[i]) OR (CurveLeft[i] < ESP AND Length[i] > Width[i]) THEN
-	IF (CurveRight[i] < ESP AND (Length[i] > Width[i]) OR Length[i] < ESP) OR (CurveLeft[i] < ESP AND (Length[i] > Width[i]) OR Length[i] < ESP) THEN
+	IF ((CurveRight[i] < ESP AND (Length[i] > Width[i]) OR Length[i] < ESP) OR (CurveLeft[i] < ESP AND (Length[i] > Width[i]) OR Length[i] < ESP)) AND ParamSpeedPlusBool THEN
 		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "RightSpeedPlusHotSpot"
 		IF LeftSpeedPlus[i-2] > 1 OR RightSpeedPlus[i-2] > 1 THEN
 			IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "RightSpeedPlusHotSpot"
@@ -4386,14 +4386,6 @@ RETURN
 		ENDIF
 	ENDIF
 
-	! IF (CurveRight[i] < ESP AND (Length[i] > Width[i]) OR Length[i] < ESP) OR (CurveLeft[i] < ESP AND (Length[i] > Width[i]) OR Length[i] < ESP) THEN
-	! 	IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "LeftSpeedPlusHotSpot"
-	! 	IF LeftSpeedPlus[i-2] > 1 OR RightSpeedPlus[i-2] > 1 THEN
-	! 		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "LeftSpeedPlusHotSpot"
-	! 	ELSE
-	! 		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] THEN GOSUB "LeftSpeedPlusHotSpot"
-	! 	ENDIF
-    ! ENDIF
     Angle = RightAngle[i]
     CurveRadius = Width[i-1] / 2 + CurveRight[i-1]
     WidthDifferenceIn  = 0
@@ -4590,7 +4582,7 @@ RETURN
     BREAKPOINT 1
     InvertedCurve = 0
     IF LeftInvertedBool[i] > ESP THEN InvertedCurve = 1
-	IF (CurveRight[i] < ESP AND (Length[i] > Width[i]) OR Length[i] < ESP) OR (CurveLeft[i] < ESP AND (Length[i] > Width[i]) OR Length[i] < ESP) THEN
+	IF ((CurveRight[i] < ESP AND (Length[i] > Width[i]) OR Length[i] < ESP) OR (CurveLeft[i] < ESP AND (Length[i] > Width[i]) OR Length[i] < ESP)) AND ParamSpeedPlusBool THEN
 		IF Width[i-1] = Width[i] AND Length[i-2] > Width[i] AND i = 3 THEN GOSUB "LeftSpeedPlusHotSpot"
 		IF LeftSpeedPlus[i-2] > 1 OR RightSpeedPlus[i-2] > 1 THEN
 			IF Width[i-1] = Width[i] AND Length[i-2] > Width[i]*2 THEN GOSUB "LeftSpeedPlusHotSpot"
@@ -4896,7 +4888,7 @@ RETURN
 RETURN
 
 "RightSpeedPlusHotSpot":
-	IF SpeedPlusBool THEN
+	IF SpeedPlusBool  THEN
 		SpeedPlusOffset = Width[i+1]
 	ELSE
 		SpeedPlusOffset = 0
@@ -5450,6 +5442,9 @@ ENDIF
 
 UI_OUTFIELD "Information",         230,  210,  70, 15
 UI_INFIELD  "Information",         230,  230,  70, 25
+
+UI_OUTFIELD "Speed+",         	230,  260,  70, 15
+UI_INFIELD  "ParamSpeedPlusBool",   230,  280,  70, 25
 
 UI_OUTFIELD "Segment Number",         310,  210,  100, 15
 UI_INFIELD  "SegmentNumberBool",      310,  230,  100, 25
@@ -9016,6 +9011,10 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 				<AVal Row="200">0</AVal>
 			</ArrayValues>
 		</Length>
+		<Boolean Name="ParamSpeedPlusBool">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
 	</Parameters>
 </ParamSection>
 
