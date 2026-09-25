@@ -6,6 +6,10 @@
 </Ancestry>
 
 <CalledMacros SectVersion="2" SectionFlags="0" SubIdent="0">
+	<Macro>
+		<MName><![CDATA["Erik_MVO"]]></MName>
+		<MainGUID>F1CB3256-3CB8-463B-BECE-D04237B17F4A</MainGUID>
+	</Macro>
 </CalledMacros>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
@@ -881,6 +885,9 @@ LeftLightBool = 0
 
 TempWidth = 7
 
+ColorCircles = 1
+LibraryBool = LIBRARYGLOBAL ("Erik_MVO", "ColorCircles", ColorCircles)
+
 IF Sectors THEN
 	ExtrudeValues =  1+2+4+16+32
 ELSE
@@ -936,14 +943,11 @@ UI_PAGE 1
 UI_OUTFIELD "Sectors", 20, 2, 80, 15
 UI_INFIELD "Sectors", 20, 20, 80, 18
 
-UI_OUTFIELD "Color Circles", 20, 40, 80, 15
-UI_INFIELD "ColorCircles", 20, 60, 80, 18
+UI_OUTFIELD "Segments Resolution", 20, 40, 80, 15
+UI_INFIELD "SegmentsResolution", 20, 60, 80, 18
 
-UI_OUTFIELD "Segments Resolution", 20, 80, 120, 15
-UI_INFIELD "SegmentsResolution", 20, 100, 80, 18
-
-UI_OUTFIELD "Track Thickness", 20, 120, 120, 15
-UI_INFIELD "TrackThickness", 20, 140, 80, 18
+UI_OUTFIELD "Track Thickness", 20, 80, 120, 15
+UI_INFIELD "TrackThickness", 20, 100, 80, 18
 ]]>
 </Script_UI>
 
@@ -1420,10 +1424,6 @@ VALUES "LightAngle" RANGE [0, 180]
 			</ArrayValues>
 		</Integer>
 		<Boolean Name="Sectors">
-			<Description><![CDATA[""]]></Description>
-			<Value>1</Value>
-		</Boolean>
-		<Boolean Name="ColorCircles">
 			<Description><![CDATA[""]]></Description>
 			<Value>1</Value>
 		</Boolean>

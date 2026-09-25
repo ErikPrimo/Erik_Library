@@ -7,6 +7,10 @@
 
 <CalledMacros SectVersion="2" SectionFlags="0" SubIdent="0">
 	<Macro>
+		<MName><![CDATA["Erik_MVO"]]></MName>
+		<MainGUID>F1CB3256-3CB8-463B-BECE-D04237B17F4A</MainGUID>
+	</Macro>
+	<Macro>
 		<MName><![CDATA["GF_TopTube"]]></MName>
 		<MainGUID>50E0B58A-7166-4D4C-B488-2BE5249C11F7</MainGUID>
 	</Macro>
@@ -737,6 +741,8 @@ PoleWidth = 0.042
 RightLightRemainingDistance = 0
 TotalLength_Calc = 0
 
+ColorCircles = 1
+LibraryBool = LIBRARYGLOBAL ("Erik_MVO", "ColorCircles", ColorCircles)
 
 FOR i = 1 TO 120
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
@@ -853,9 +859,6 @@ ENDIF
 
 ! --- HORIZONTAL SEPARATOR ----------------------------------------------------
 UI_SEPARATOR 20, 230, 420, 85
-
-UI_OUTFIELD "Color Circles",        20,   240,  65, 15
-UI_INFIELD  "ColorCircles",         20,   260,  65, 20
 ]]>
 </Script_UI>
 
@@ -2189,10 +2192,6 @@ VALUES "LightAngle" 45, 90, 135, 225, 270, 315
 			<Description><![CDATA[""]]></Description>
 			<Value>1</Value>
 		</Integer>
-		<Boolean Name="ColorCircles">
-			<Description><![CDATA[""]]></Description>
-			<Value>1</Value>
-		</Boolean>
 		<Boolean Name="LightVisible">
 			<Description><![CDATA[""]]></Description>
 			<Value>1</Value>

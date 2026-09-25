@@ -7,6 +7,10 @@
 
 <CalledMacros SectVersion="2" SectionFlags="0" SubIdent="0">
 	<Macro>
+		<MName><![CDATA["Erik_MVO"]]></MName>
+		<MainGUID>F1CB3256-3CB8-463B-BECE-D04237B17F4A</MainGUID>
+	</Macro>
+	<Macro>
 		<MName><![CDATA["GF_TopTube"]]></MName>
 		<MainGUID>50E0B58A-7166-4D4C-B488-2BE5249C11F7</MainGUID>
 	</Macro>
@@ -5150,6 +5154,8 @@ BarrierOffset = 0.3
 
 SegmentCounter = 0
 
+ColorCircles = 1
+LibraryBool = LIBRARYGLOBAL ("Erik_MVO", "ColorCircles", ColorCircles)
 
 IF NOT(TopTubeVisible) THEN SiderailBool = 0
 
@@ -5421,33 +5427,24 @@ UI_STYLE 0, 1   ! Bold Header
 UI_OUTFIELD "2D Settings",          230,   10,  65, 15
 UI_STYLE 0, 0   ! Regular Text
 
-UI_OUTFIELD "Color Circles",        230,   30,  65, 15
-UI_INFIELD  "ColorCircles",         230,   48,  65, 20
-
-IF ColorCircles THEN
-	UI_PICT     "Dots_True",   300,  0,  180, 65, 1
-ELSE
-	UI_PICT     "Dots_False",  300,  0,  180, 65, 1
-ENDIF
-
-UI_OUTFIELD "Detail Overlay",      230,   80,  90, 15
-UI_INFIELD  "DetailOverlay",       230,   98,  120, 20
+UI_OUTFIELD "Detail Overlay",      230,   30,  90, 15
+UI_INFIELD  "DetailOverlay",       230,   48,  120, 20
 
 IF DetailOverlay THEN
-	UI_PICT     "Detailed_True",   230,  120,  90.2+150, 28.5+50, 1
+	UI_PICT     "Detailed_True",   230,  80,  90.2+150, 28.5+50, 1
 ELSE
-	UI_PICT     "Detailed_False",  230,  120,  90.2+150, 28.5+50, 1
+	UI_PICT     "Detailed_False",  230,  80,  90.2+150, 28.5+50, 1
 ENDIF
 
 
-UI_OUTFIELD "Information",         230,  210,  70, 15
-UI_INFIELD  "Information",         230,  230,  70, 25
+UI_OUTFIELD "Information",         230,  180,  70, 15
+UI_INFIELD  "Information",         230,  200,  70, 25
 
-UI_OUTFIELD "Speed+",         	230,  260,  70, 15
-UI_INFIELD  "ParamSpeedPlusBool",   230,  280,  70, 25
+UI_OUTFIELD "Speed+",         		230,  230,  70, 15
+UI_INFIELD  "ParamSpeedPlusBool",   230,  250,  70, 25
 
-UI_OUTFIELD "Segment Number",         310,  210,  100, 15
-UI_INFIELD  "SegmentNumberBool",      310,  230,  100, 25
+UI_OUTFIELD "Segment Number",         310,  230,  100, 15
+UI_INFIELD  "SegmentNumberBool",      310,  250,  100, 25
 ! PAGE 2 - LIGHTING & FENCE SETTINGS
 
 UI_PAGE 2, -1, "Lighting & Fence"!---------------------------------PAGE 2-------------------------------------------------------------------------------------------------------
@@ -7066,10 +7063,6 @@ PARAMETERS FlexiPieceCount = FlexiPieceCount
 			<Description><![CDATA[""]]></Description>
 			<Value>0.6</Value>
 		</Length>
-		<Boolean Name="ColorCircles">
-			<Description><![CDATA[""]]></Description>
-			<Value>1</Value>
-		</Boolean>
 		<Integer Name="HomeStraight">
 			<Description><![CDATA[""]]></Description>
 			<Value>1</Value>
