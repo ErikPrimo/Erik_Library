@@ -44,6 +44,11 @@ ui_dialog "Erik MVO Settings", 600, 150
 UI_OUTFIELD "Color Circles",       		20,   20,  100, 15
 UI_INFIELD  "ColorCircles",         	20,   40,  20, 20
 
+IF ColorCircles THEN
+	UI_PICT     "Dots_True",   100,  20,  131, 46, 1
+ELSE
+	UI_PICT     "Dots_False",   100,  20,  131, 46, 1
+ENDIF
 ]]>
 </Script_UI>
 
