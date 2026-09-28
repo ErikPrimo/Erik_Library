@@ -966,6 +966,7 @@ WHILE ObjectOrder[k] <> 0 DO
 				TotalCurbCount = TotalCurbCount + 1
 			NEXT j
 		ENDIF
+		ObjectOrder[k+1] = 2 
 	ENDIF
 	! --- RIGHT CURVE SEGMENT ---
 	IF ObjectOrder[k] = 4 THEN
@@ -1004,6 +1005,7 @@ WHILE ObjectOrder[k] <> 0 DO
 				TotalCurbCount = TotalCurbCount + 1
 			NEXT j
 		ENDIF
+		ObjectOrder[k+1] = 2 
 	ENDIF
 	k = k + 1
 ENDWHILE
