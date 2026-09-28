@@ -76,6 +76,16 @@ WHILE ObjectOrder[i] <> 0 DO
 	i = i + 1
 ENDWHILE
 
+IF LastLightBool THEN 
+	ADDX -PoleWidth/2
+	ADDY -0.03
+	IF TopTubeVisible THEN CALL "GF_TopTube"
+	IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+		ROTZ -LightAngle
+		CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+	ENDIF
+ENDIF
+
 END
 !-----Makes The Straight-------------------------------------------------------------------------------------------------------------------------------------------------
 "Straight":
@@ -286,7 +296,6 @@ RETURN
     ELSE
         RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
     ENDIF
-
     DEL 1
 RETURN
 
@@ -377,6 +386,7 @@ RETURN
 	ENDIF
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
+
 ]]>
 </Script_3D>
 
@@ -386,10 +396,10 @@ RETURN
 <![CDATA[
 SET FILL "Solid Fill"
 PEN 1
-!PROJECT2{3} 3, 270, 3 + 16, 4 + 8
-PROJECT2 3, 270, 2
-LightAngle = LightAngle + 90
+PROJECT2{3} 3, 270, 3 + 16, 4 + 8
 
+LightAngle = LightAngle + 90
+LightBool = 0
 !------Object Angle-----------------------------------------------------------------------------------------------------------------------------------------------------------
 ROT2 ObjectAngle
 Orietation = Orietation + ObjectAngle
@@ -442,6 +452,9 @@ WHILE ObjectOrder[i] <> 0 DO
 	"NextIter2D":
 	i = i + 1
 ENDWHILE
+ADD2 -PoleWidth/2, -0.03
+
+IF LastLightBool THEN GOSUB "PoleIndicator"
 !ROT2 Orietation - SYMB_ROTANGLE
 !IF ObjectOrder[i+1] = 0 THEN TEXT2 0, -2, STR(TotalLength_Calc, 10, 3) + " m"
 
@@ -453,7 +466,6 @@ END
 	IF TopTubeVisible THEN
 		LINE2 0, 0, 0, NextLength[i-1]
 	ENDIF
-
 	! --- Right Edge Lights (2D Symbol Placement) ---
 	IF RightLightRemainingDistance <= NextLength[i-1] THEN
 		NumLightsRight = INT((NextLength[i-1] - RightLightRemainingDistance) / LightDistance)
@@ -461,10 +473,13 @@ END
 			CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
 			IF CurrentPosRight <= NextLength[i-1] THEN
 				ADD2 -PoleWidth/2, CurrentPosRight
+				LightBool = NOT(LightBool)
+				IF TopTubeVisible THEN GOSUB "PoleIndicator"
+				IF NOT(TopTubeVisible) THEN
+					IF LightBool THEN GOSUB "PoleIndicator"
+				ENDIF
 				ROT2 -LightAngle
-				
-				GOSUB "DrawLightSymbol2D"
-				
+				IF LightBool THEN GOSUB "DrawLightSymbol2D"
 				RightLightBool = NOT(RightLightBool)
 				DEL 2
 			ENDIF
@@ -510,10 +525,14 @@ RETURN
 			IF CurrentAngle <= Angle THEN
 				ROT2 -CurrentAngle
 				ADD2 -CurveRadius - PoleWidth/2, 0
+				LightBool = NOT(LightBool)
+				IF TopTubeVisible THEN GOSUB "PoleIndicator"
+				IF NOT(TopTubeVisible) THEN
+					IF LightBool THEN GOSUB "PoleIndicator"
+				ENDIF
 				ROT2 -LightAngle
 
-				GOSUB "DrawLightSymbol2D"
-
+				IF LightBool THEN GOSUB "DrawLightSymbol2D"
 				RightLightBool = NOT(RightLightBool)
 				DEL 3
 			ENDIF
@@ -563,10 +582,14 @@ RETURN
 			IF CurrentAngle <= Angle THEN
 				ROT2 CurrentAngle
 				ADD2 CurveRadius - PoleWidth/2, 0
+				LightBool = NOT(LightBool)
+				IF TopTubeVisible THEN GOSUB "PoleIndicator"
+				IF NOT(TopTubeVisible) THEN
+					IF LightBool THEN GOSUB "PoleIndicator"
+				ENDIF
 				ROT2 -LightAngle
 
-				GOSUB "DrawLightSymbol2D"
-
+				IF LightBool THEN GOSUB "DrawLightSymbol2D"
 				RightLightBool = NOT(RightLightBool)
 				DEL 3
 			ENDIF
@@ -586,7 +609,7 @@ RETURN
 
 !-----2D Light Symbol Helper---------------------------------------------------------------------------------------------------------------------
 "DrawLightSymbol2D":
-	IF LightVisible THEN
+	IF LightVisible AND FloorPlanLights THEN
 		CIRCLE2 0, 0, 0.06
 		HOTSPOT2 0, 0
 
@@ -710,6 +733,22 @@ RETURN
 			CircleSize,            360, 4001
 	ENDIF
 RETURN
+
+"PoleIndicator":
+	PEN 20
+	_armLen = 0.20
+	_gap    = 0.10
+	IF TopTubeVisible THEN ADD2 0.05, 0.075
+	IF NOT(TopTubeVisible) THEN ADD2 0.05, -0.015
+
+	line2 -_armLen, 0, -_gap, 0
+	line2  _gap,    0,  _armLen, 0
+
+	line2 0, -_armLen, 0, -_gap
+	line2 0,  _gap,    0,  _armLen
+	DEL 1
+	PEN 1
+RETURN
 ]]>
 </Script_2D>
 
@@ -743,7 +782,8 @@ TotalLength_Calc = 0
 
 ColorCircles = 1
 LibraryBool = LIBRARYGLOBAL ("Erik_MVO", "ColorCircles", ColorCircles)
-
+!succ2 = LIBRARYGLOBAL ("LibraryGlobals_Karting", "LibGlo_KONS1", L_Glo_res)
+BREAKPOINT 1
 FOR i = 1 TO 120
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
 	IF RightAngle[i] < ESP THEN RightAngle[i] = 90
@@ -859,6 +899,12 @@ ENDIF
 
 ! --- HORIZONTAL SEPARATOR ----------------------------------------------------
 UI_SEPARATOR 20, 230, 420, 85
+
+UI_OUTFIELD "Last Light",			20,  240,  70, 15
+UI_INFIELD  "LastLightBool",		20,  260,  20, 20
+
+UI_OUTFIELD "Floor Plan Lights",	100,  240,  100, 15
+UI_INFIELD  "FloorPlanLights",		100,  260,  100, 20
 ]]>
 </Script_UI>
 
@@ -882,6 +928,16 @@ LOCK "NumberOfPosts"
 PARAMETERS NumberOfPosts = NumberOfPosts
 
 VALUES "LightAngle" 45, 90, 135, 225, 270, 315
+
+if not(TopTubeVisible) and not(LightVisible) then
+    if GLOB_MODPAR_NAME = "TopTubeVisible" then
+        LightVisible = 1
+        parameters LightVisible = 1
+    else
+        TopTubeVisible = 1
+        parameters TopTubeVisible = 1
+    endif
+endif
 ]]>
 </Script_VL>
 
@@ -2220,6 +2276,14 @@ VALUES "LightAngle" 45, 90, 135, 225, 270, 315
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
 		</Length>
+		<Boolean Name="LastLightBool">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
+		<Boolean Name="FloorPlanLights">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
 	</Parameters>
 </ParamSection>
 
