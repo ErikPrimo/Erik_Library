@@ -10,6 +10,10 @@
 		<MName><![CDATA["Erik_MVO"]]></MName>
 		<MainGUID>F1CB3256-3CB8-463B-BECE-D04237B17F4A</MainGUID>
 	</Macro>
+	<Macro>
+		<MName><![CDATA["LibraryGlobals_Karting_Colors"]]></MName>
+		<MainGUID>B4A04562-B752-0746-84C0-FAA37ED336B7</MainGUID>
+	</Macro>
 </CalledMacros>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
@@ -34,7 +38,7 @@ i = 1
 GOSUB "StraightHotSpot"
 IF NextLength[1] < ESP AND CurveLeft[1] < ESP AND CurveRight[1] < ESP THEN
 	NextLength[1] = CurbeSegmentMargin
-	MATERIAL 18
+	MATERIAL 753
 	EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
 		-CurbeSegmentHeight - TransitionLineMargin, 			0,						1,
 		-CurbeSegmentHeight - TransitionLineMargin - LineWidth, 0,						1,
@@ -89,7 +93,7 @@ END
 		IF Directions < -ESP THEN
 			MULX -1
 		ENDIF
-		MATERIAL 18
+		MATERIAL 753
 		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
 			0,														0,						1,
 			-LineWidth,												0,						1,
@@ -118,7 +122,7 @@ END
 		IF Directions < -ESP  THEN
 			MULX -1
 		ENDIF
-		MATERIAL 18
+		MATERIAL 753
 		LineFillerX = TransitionLength : GOSUB "LineFiller"
 		ADDY XMargin
 		ADDX -CurbeSegmentHeight
@@ -141,7 +145,7 @@ END
 		IF Directions < -ESP  THEN DEL 1
 	ENDIF
 	DEL 1
-	MATERIAL 18
+	MATERIAL 753
 	BREAKPOINT 1
 	ADDY TransitionLength
 	LineFillerX = CurbeSegmentMargin : GOSUB "LineFiller"
@@ -155,7 +159,7 @@ RETURN
 		IF Directions < -ESP  THEN
 			MULX -1
 		ENDIF
-		MATERIAL 18
+		MATERIAL 753
 		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
 			-CurbeSegmentHeight - TransitionLineMargin - LineWidth,	0,					1,
 			-CurbeSegmentHeight - TransitionLineMargin,				0,					1,
@@ -185,7 +189,7 @@ RETURN
 		IF Directions < -ESP  THEN
 			MULX -1
 		ENDIF
-		MATERIAL 18
+		MATERIAL 753
 		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
 			-CurbeSegmentHeight - TransitionLineMargin,				0,					1,
 			-CurbeSegmentHeight - TransitionLineMargin - LineWidth,	0,					1,
@@ -330,7 +334,7 @@ RETURN
     ! ---------------------------------------------------------
     ! 3. CURVED TRANSITION LINE
     ! ---------------------------------------------------------
-    MATERIAL 18
+    MATERIAL 753
     EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
         xLineOuter,                                     0,                                  1,
         xLineInner,                                     0,                                  1,
@@ -445,7 +449,7 @@ RETURN
         xCurbInner, NewCurbeSegmentWidth, 1,
         xCurbInner, 0,                    1
 
-    MATERIAL 18
+    MATERIAL 753
     EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
         xLineInner, 0,                    1,
         xLineInner, NewCurbeSegmentWidth, 1,
@@ -520,7 +524,7 @@ RETURN
     ! ---------------------------------------------------------
     ! 3. CURVED TRANSITION LINE
     ! ---------------------------------------------------------
-    MATERIAL 18
+    MATERIAL 753
     EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
         xLineOuter,                                         0,                                  1,
         xLineInner,                                         0,                                  1,
@@ -635,7 +639,7 @@ RETURN
         xCurbOuter, 0,                    1
 
     ! Straight transition line (matches start edge xLineOuter -> xLineInner)
-    MATERIAL 18
+    MATERIAL 753
     EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
         xLineOuter, 0,                    1,
         xLineInner, 0,                    1,
@@ -657,7 +661,7 @@ RETURN
 	IF AlternatingColorsBool THEN
 		MATERIAL CurbColor
 	ELSE
-		MATERIAL 18
+		MATERIAL 753
 	ENDIF
 RETURN
 
@@ -665,20 +669,23 @@ RETURN
 	IF AlternatingColorsBool THEN
 		MATERIAL CurbColor
 	ELSE
-		MATERIAL 18
+		MATERIAL 753
 	ENDIF
 RETURN
 
 "LineFiller":
-	MATERIAL 18
-	IF Directions > ESP THEN
+BREAKPOINT 1
+	MATERIAL 753
+	!IF Directions > LineOffsetMargin THEN
+	IF Directions > LineOffsetMargin OR (Directions < LineOffsetMargin AND Directions > -LineOffsetMargin) THEN
 		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
 			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin,				0,					1,
 			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin - LineWidth,	0,					1,
 			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin - LineWidth,	LineFillerX,		1,
 			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin,				LineFillerX,		1,
 			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin,				0,					1
-	ELSE
+	ENDIF
+	IF Directions < -LineOffsetMargin THEN
 		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
 			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin,				0,					1,
 			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin + LineWidth,	0,					1,
@@ -1248,23 +1255,6 @@ ELSE
 ENDIF
 
 
-! --- V UI SCRIPTU ---
-matFullName = ""
-n = REQUEST ("Name_of_material", CurbColor, matFullName)
-IF n > 0 AND matFullName <> "" THEN
-    posRAL = STRSTR (matFullName, "RAL")
-    IF posRAL > 0 THEN
-        curbColorClean = STRSUB (matFullName, posRAL, 8)
-    ELSE
-        curbColorClean = matFullName
-    ENDIF
-ELSE
-    curbColorClean = STR(CurbColor, 1, 0)
-ENDIF
-
-ERP_Code_Val = "|Signocryl|cf:" + curbColorClean + "|" + STR(TotalArea_Curbs_Color, 4, 2)
-PARAMETERS ERP_Code_Val = ERP_Code_Val
-
 FOR i = 1 TO 120
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
 	IF RightAngle[i] < ESP THEN RightAngle[i] = 90
@@ -1278,35 +1268,30 @@ FOR i = 1 TO 120
 	!IF NOT(NextLength[i] < ESP) THEN NextLength[i] = INT(NextLength[i] / SegmentSizeWithMargin) * SegmentSizeWithMargin
 NEXT i
 
-! Geometric constants
-CurbUnitArea = CurbeSegmentHeight * CurbeSegmentWidth  ! Rectangular area per block
 
-! Local color alternation tracker matching 3D loop state
-calcAlternatingBool   = 0
-TotalArea_Line        = 0.0
-TotalArea_Curbs_White = 0.0
-TotalArea_Curbs_Color = 0.0
-TotalCurbCount        = 0
-! Geometric constants
-CurbUnitArea = CurbeSegmentHeight * CurbeSegmentWidth  ! Rectangular area per block
+! ----------------------------------------------------------------------------------------------------------------------------------------
+! GEOMETRIC CONSTANTS & INITIALIZATION
+! ----------------------------------------------------------------------------------------------------------------------------------------
+CurbUnitArea = CurbeSegmentHeight * CurbeSegmentWidth  ! Rectangular area per full block
 
 TotalArea_Line        = 0.0
 TotalArea_Curbs_White = 0.0
 TotalArea_Curbs_Color = 0.0
 TotalCurbCount        = 0
+RemainingSegment      = 0
 
 ! -------------------------------------------------------------------------
 ! 1. FIRST STRAIGHT (TRANSITION)
 ! -------------------------------------------------------------------------
 LineArea_First = LineWidth * TransitionLength
 TotalArea_Line = TotalArea_Line + LineArea_First
-
-! Matches 3D: Block 1 (White half), Block 2 (Color full), Block 3 (White full)
-TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea/2
-TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
+BREAKPOINT 1
+! Matches 3D: Block 1 (White half = 0.5), Block 2 (Color full = 1.0), Block 3 (White full = 1.0)
+TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea * 0.5
+TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea * 1.0
 TotalCurbCount        = TotalCurbCount + 3
 
-! After Block 3 (White), the active state is True (1)
+! After Block 3 (White), active state is 1 (White)
 calcAlternatingBool = 0
 
 ! -------------------------------------------------------------------------
@@ -1315,28 +1300,58 @@ calcAlternatingBool = 0
 IF NextLength[1] < ESP AND CurveLeft[1] < ESP AND CurveRight[1] < ESP THEN
     NextLength[1] = CurbeSegmentMargin
 ENDIF
+
 k = 1
 WHILE ObjectOrder[k] <> 0 DO
     IF NextLength[k] > ESP THEN ObjectOrder[k+1] = 2
     IF CurveLeft[k]  > ESP THEN ObjectOrder[k+1] = 3
     IF CurveRight[k] > ESP THEN ObjectOrder[k+1] = 4
+
     ! =========================================================================
     ! --- STRAIGHT SEGMENT ---
     ! =========================================================================
     IF ObjectOrder[k] = 2 THEN
-        NumOfSegments  = INT(NextLength[k-1] / SegmentSizeWithMargin)
-        lineSpan       = NumOfSegments * SegmentSizeWithMargin
-        TotalArea_Line = TotalArea_Line + (LineWidth * lineSpan)
-        FOR j = 1 TO NumOfSegments
-            calcAlternatingBool = NOT(calcAlternatingBool)
-            IF calcAlternatingBool THEN
-                TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea
-            ELSE
-                TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
+        curLen = NextLength[k-1]
+        IF CurveRight[k] < ESP AND CurveLeft[k] < ESP THEN
+            curLen = INT(curLen / SegmentSizeWithMargin) * SegmentSizeWithMargin
+        ENDIF
+
+        NumOfSegments = INT(curLen / SegmentSizeWithMargin)
+        TotalArea_Line = TotalArea_Line + (LineWidth * curLen)
+
+        ! Full regular straight blocks
+		IF curLen > CurbeSegmentMargin THEN
+			FOR j = 1 TO NumOfSegments
+				calcAlternatingBool = NOT(calcAlternatingBool)
+				IF calcAlternatingBool THEN
+					TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea
+				ELSE
+					TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
+				ENDIF
+				TotalCurbCount = TotalCurbCount + 1
+			NEXT j
+		ENDIF
+
+        ! Extra segment & RemainingSegment handover logic matching 3D
+        RemainingSegment = 0
+        IF NOT(CurveRight[k] < ESP AND CurveLeft[k] < ESP) THEN
+            ExtraSegment = curLen - NumOfSegments * (CurbeSegmentWidth + CurbeSegmentMargin)
+            IF ExtraSegment > CurbeSegmentWidth THEN ExtraSegment = CurbeSegmentWidth
+
+            IF ExtraSegment > 0.0001 AND curLen > CurbeSegmentMargin THEN
+                extraCurbArea = CurbeSegmentHeight * ExtraSegment
+                calcAlternatingBool = NOT(calcAlternatingBool)
+                IF calcAlternatingBool THEN
+                    TotalArea_Curbs_White = TotalArea_Curbs_White + extraCurbArea
+                ELSE
+                    TotalArea_Curbs_Color = TotalArea_Curbs_Color + extraCurbArea
+                ENDIF
+                TotalCurbCount = TotalCurbCount + 1
+                RemainingSegment = CurbeSegmentWidth - ExtraSegment
             ENDIF
-            TotalCurbCount = TotalCurbCount + 1
-        NEXT j
+        ENDIF
     ENDIF
+
     ! =========================================================================
     ! --- LEFT CURVE SEGMENT ---
     ! =========================================================================
@@ -1344,22 +1359,49 @@ WHILE ObjectOrder[k] <> 0 DO
         CurveRadius = CurveLeft[k-1]
         rCurbInner  = CurveRadius + LineOffsetMargin
         rCurbOuter  = CurveRadius + CurbeSegmentHeight + LineOffsetMargin
+
         IF rCurbInner > 0.0001 THEN
-            ! 1. Arc line area
+            ! 1. Transition line area
             InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin + LineOffsetMargin
             OuterRadius = InnerRadius + LineWidth
             angleRad    = LeftAngle[k] * PI / 180
             TotalArea_Line = TotalArea_Line + (0.5 * angleRad * (OuterRadius^2 - InnerRadius^2))
-            ! 2. Discrete angular steps along curb
+
+            ! 2. Angular sizing & RemainingSegment conversion
             SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
             MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
-            StepAngLocal = SegmentAngle + MarginAngle
-            Angle = INT(LeftAngle[k] / StepAngLocal) * StepAngLocal
-            IF Angle < StepAngLocal THEN Angle = StepAngLocal
-            nSegments = INT((Angle + MarginAngle) / StepAngLocal)
-            ! 3. Full curved blocks
+            StepAngle    = SegmentAngle + MarginAngle
+
+            IF RemainingSegment > 0.0001 THEN
+                RemainingSegmentAngle = RemainingSegment * 180 / (PI * rCurbInner)
+                InitStepAngle = RemainingSegmentAngle + MarginAngle
+            ELSE
+                RemainingSegmentAngle = 0
+                InitStepAngle = 0
+            ENDIF
+
+            AvailAngle = LeftAngle[k] - InitStepAngle
+            IF AvailAngle < 0 THEN AvailAngle = 0
+
+            nSegments = INT((AvailAngle + MarginAngle) / StepAngle)
+            Angle = nSegments * StepAngle
+
+            ! 3. Initial leftover block (Current color preserved - no toggle)
+            IF RemainingSegmentAngle > 0.0001 THEN
+                remLeadAngleRad = RemainingSegmentAngle * PI / 180
+                remLeadCurbArea = 0.5 * remLeadAngleRad * (rCurbOuter^2 - rCurbInner^2)
+                IF calcAlternatingBool THEN
+                    TotalArea_Curbs_White = TotalArea_Curbs_White + remLeadCurbArea
+                ELSE
+                    TotalArea_Curbs_Color = TotalArea_Curbs_Color + remLeadCurbArea
+                ENDIF
+                TotalCurbCount = TotalCurbCount + 1
+            ENDIF
+
+            ! 4. Full curved regular blocks
             segAngleRad    = SegmentAngle * PI / 180
             curvedCurbArea = 0.5 * segAngleRad * (rCurbOuter^2 - rCurbInner^2)
+
             FOR j = 1 TO nSegments
                 calcAlternatingBool = NOT(calcAlternatingBool)
                 IF calcAlternatingBool THEN
@@ -1369,25 +1411,30 @@ WHILE ObjectOrder[k] <> 0 DO
                 ENDIF
                 TotalCurbCount = TotalCurbCount + 1
             NEXT j
-            ! 4. Extra curved remainder segment
-            AngleDifference      = LeftAngle[k] - Angle
+
+            ! 5. Remainder curved segment at curve end
+            AngleDifference      = AvailAngle - Angle
             NewSegmentAngle      = SegmentAngle - AngleDifference
             ActualSegmentAngle   = ABS(NewSegmentAngle - SegmentAngle)
             NewCurbeSegmentWidth = NewSegmentAngle * PI * rCurbInner / 180
-            remAngleRad = ActualSegmentAngle * PI / 180
-            remCurbArea = 0.5 * remAngleRad * (rCurbOuter^2 - rCurbInner^2)
-            calcAlternatingBool = NOT(calcAlternatingBool)
-            IF calcAlternatingBool THEN
-                TotalArea_Curbs_White = TotalArea_Curbs_White + remCurbArea
-            ELSE
-                TotalArea_Curbs_Color = TotalArea_Curbs_Color + remCurbArea
+
+            IF ActualSegmentAngle > 0.0001 THEN
+                remAngleRad = ActualSegmentAngle * PI / 180
+                remCurbArea = 0.5 * remAngleRad * (rCurbOuter^2 - rCurbInner^2)
+                calcAlternatingBool = NOT(calcAlternatingBool)
+                IF calcAlternatingBool THEN
+                    TotalArea_Curbs_White = TotalArea_Curbs_White + remCurbArea
+                ELSE
+                    TotalArea_Curbs_Color = TotalArea_Curbs_Color + remCurbArea
+                ENDIF
+                TotalCurbCount = TotalCurbCount + 1
             ENDIF
-            TotalCurbCount = TotalCurbCount + 1
-            ! 5. Straight extension segment & marking line
-            ! Uses the SAME color as remainder segment (matches 3D - no flip)
+
+            ! 6. Straight extension segment & marking line (same color as remainder)
             straightExtCurbArea = CurbeSegmentHeight * NewCurbeSegmentWidth
-            straightExtLineArea = LineWidth * NewCurbeSegmentWidth
+            straightExtLineArea = LineWidth * (NewCurbeSegmentWidth + CurbeSegmentMargin)
             TotalArea_Line      = TotalArea_Line + straightExtLineArea
+
             IF calcAlternatingBool THEN
                 TotalArea_Curbs_White = TotalArea_Curbs_White + straightExtCurbArea
             ELSE
@@ -1395,31 +1442,61 @@ WHILE ObjectOrder[k] <> 0 DO
             ENDIF
             TotalCurbCount = TotalCurbCount + 1
         ENDIF
+
+        RemainingSegment = 0
         ObjectOrder[k+1] = 2 
     ENDIF
+
     ! =========================================================================
     ! --- RIGHT CURVE SEGMENT ---
     ! =========================================================================
     IF ObjectOrder[k] = 4 THEN
-        CurveRadius = CurveRight[k-1]
-        rCurbInner  = CurveRadius - LineOffsetMargin
-        rCurbOuter  = CurveRadius + CurbeSegmentHeight - LineOffsetMargin
+        CurveRadius = CurveRight[k-1] - LineOffsetMargin
+        rCurbInner  = CurveRadius
+        rCurbOuter  = CurveRadius + CurbeSegmentHeight
+
         IF rCurbInner > 0.0001 THEN
-            ! 1. Arc line area
-            InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin - LineOffsetMargin
+            ! 1. Transition line area
+            InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin
             OuterRadius = InnerRadius + LineWidth
             angleRad    = RightAngle[k] * PI / 180
             TotalArea_Line = TotalArea_Line + (0.5 * angleRad * (OuterRadius^2 - InnerRadius^2))
-            ! 2. Discrete angular steps along curb
+
+            ! 2. Angular sizing & RemainingSegment conversion
             SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
             MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
-            StepAngLocal = SegmentAngle + MarginAngle
-            Angle = INT(RightAngle[k] / StepAngLocal) * StepAngLocal
-            IF Angle < StepAngLocal THEN Angle = StepAngLocal
-            nSegments = INT((Angle + MarginAngle) / StepAngLocal)
-            ! 3. Full curved blocks
+            StepAngle    = SegmentAngle + MarginAngle
+
+            IF RemainingSegment > 0.0001 THEN
+                RemainingSegmentAngle = RemainingSegment * 180 / (PI * rCurbInner)
+                InitStepAngle = RemainingSegmentAngle + MarginAngle
+            ELSE
+                RemainingSegmentAngle = 0
+                InitStepAngle = 0
+            ENDIF
+
+            AvailAngle = RightAngle[k] - InitStepAngle
+            IF AvailAngle < 0 THEN AvailAngle = 0
+
+            nSegments = INT((AvailAngle + MarginAngle) / StepAngle)
+            Angle = nSegments * StepAngle
+
+            ! 3. Initial leftover block (Current color preserved - no toggle)
+            IF RemainingSegmentAngle > 0.0001 THEN
+                remLeadAngleRad = RemainingSegmentAngle * PI / 180
+                remLeadCurbArea = 0.5 * remLeadAngleRad * (rCurbOuter^2 - rCurbInner^2)
+                IF calcAlternatingBool THEN
+                    TotalArea_Curbs_White = TotalArea_Curbs_White + remLeadCurbArea
+                ELSE
+                    TotalArea_Curbs_Color = TotalArea_Curbs_Color + remLeadCurbArea
+                ENDIF
+                TotalCurbCount = TotalCurbCount + 1
+            ENDIF
+
+            ! 4. Full curved regular blocks
             segAngleRad    = SegmentAngle * PI / 180
             curvedCurbArea = 0.5 * segAngleRad * (rCurbOuter^2 - rCurbInner^2)
+
             FOR j = 1 TO nSegments
                 calcAlternatingBool = NOT(calcAlternatingBool)
                 IF calcAlternatingBool THEN
@@ -1429,25 +1506,30 @@ WHILE ObjectOrder[k] <> 0 DO
                 ENDIF
                 TotalCurbCount = TotalCurbCount + 1
             NEXT j
-            ! 4. Extra curved remainder segment
-            AngleDifference      = RightAngle[k] - Angle
+
+            ! 5. Remainder curved segment at curve end
+            AngleDifference      = AvailAngle - Angle
             NewSegmentAngle      = SegmentAngle - AngleDifference
             ActualSegmentAngle   = ABS(NewSegmentAngle - SegmentAngle)
             NewCurbeSegmentWidth = NewSegmentAngle * PI * rCurbInner / 180
-            remAngleRad = ActualSegmentAngle * PI / 180
-            remCurbArea = 0.5 * remAngleRad * (rCurbOuter^2 - rCurbInner^2)
-            calcAlternatingBool = NOT(calcAlternatingBool)
-            IF calcAlternatingBool THEN
-                TotalArea_Curbs_White = TotalArea_Curbs_White + remCurbArea
-            ELSE
-                TotalArea_Curbs_Color = TotalArea_Curbs_Color + remCurbArea
+
+            IF ActualSegmentAngle > 0.0001 THEN
+                remAngleRad = ActualSegmentAngle * PI / 180
+                remCurbArea = 0.5 * remAngleRad * (rCurbOuter^2 - rCurbInner^2)
+                calcAlternatingBool = NOT(calcAlternatingBool)
+                IF calcAlternatingBool THEN
+                    TotalArea_Curbs_White = TotalArea_Curbs_White + remCurbArea
+                ELSE
+                    TotalArea_Curbs_Color = TotalArea_Curbs_Color + remCurbArea
+                ENDIF
+                TotalCurbCount = TotalCurbCount + 1
             ENDIF
-            TotalCurbCount = TotalCurbCount + 1
-            ! 5. Straight extension segment & marking line
-            ! Uses the SAME color as remainder segment (matches 3D - no flip)
+
+            ! 6. Straight extension segment & marking line (same color as remainder)
             straightExtCurbArea = CurbeSegmentHeight * NewCurbeSegmentWidth
-            straightExtLineArea = LineWidth * NewCurbeSegmentWidth
+            straightExtLineArea = LineWidth * (NewCurbeSegmentWidth + CurbeSegmentMargin)
             TotalArea_Line      = TotalArea_Line + straightExtLineArea
+
             IF calcAlternatingBool THEN
                 TotalArea_Curbs_White = TotalArea_Curbs_White + straightExtCurbArea
             ELSE
@@ -1455,8 +1537,11 @@ WHILE ObjectOrder[k] <> 0 DO
             ENDIF
             TotalCurbCount = TotalCurbCount + 1
         ENDIF
+
+        RemainingSegment = 0
         ObjectOrder[k+1] = 2 
     ENDIF
+
     k = k + 1
 ENDWHILE
 ! -------------------------------------------------------------------------
@@ -1466,18 +1551,56 @@ LineArea_Last  = LineWidth * TransitionLength
 TotalArea_Line = TotalArea_Line + LineArea_Last
 
 calcAlternatingBool = NOT(calcAlternatingBool)
-
+curbFactor = 1.0
 IF calcAlternatingBool THEN
-	TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea/2
-	TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
-ELSE
 	TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea
-	TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea/2
+	TotalArea_Curbs_Color = TotalArea_Curbs_Color + (CurbUnitArea * 0.5)
+ELSE
+	TotalArea_Curbs_White = TotalArea_Curbs_White + (CurbUnitArea * 0.5)
+	TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
 ENDIF
 TotalCurbCount = TotalCurbCount + 3
-
+! -------------------------------------------------------------------------
+! 4. TOTALS
+! -------------------------------------------------------------------------
 TotalArea_Curbs = TotalArea_Curbs_White + TotalArea_Curbs_Color
 TotalArea_All   = TotalArea_Line + TotalArea_Curbs
+
+
+! ---------------------------------------------------------
+! RAL CODE MAPPING & ERP STRING GENERATION
+! ---------------------------------------------------------
+sucs2 = 0
+DIM LibG_cMet[]
+sucs2 = LIBRARYGLOBAL ("LibraryGlobals_Karting_Colors", "LibraryGlo_c1_met", LibG_cMet[1], LibG_cMet[2], LibG_cMet[3], LibG_cMet[4], LibG_cMet[5], LibG_cMet[6])										!!!dopolnitev barv
+curbColorClean = ""
+IF CurbColor = 741 THEN curbColorClean = "RAL 1003"
+IF CurbColor = 742 THEN curbColorClean = "RAL 1016"
+IF CurbColor = 743 THEN curbColorClean = "RAL 2003"
+IF CurbColor = 755 THEN curbColorClean = "RAL 2143"
+IF CurbColor = 744 THEN curbColorClean = "RAL 3020"
+IF CurbColor = 745 THEN curbColorClean = "RAL 4008"
+IF CurbColor = 746 THEN curbColorClean = "RAL 4010"
+IF CurbColor = 747 THEN curbColorClean = "RAL 5012"
+IF CurbColor = 748 THEN curbColorClean = "RAL 5018"
+IF CurbColor = 749 THEN curbColorClean = "RAL 6018"
+IF CurbColor = 750 THEN curbColorClean = "RAL 6027"
+IF CurbColor = 751 THEN curbColorClean = "RAL 7015"
+IF CurbColor = 752 THEN curbColorClean = "RAL 7021"
+IF CurbColor = 754 THEN curbColorClean = "RAL 7044"
+IF CurbColor = 753 THEN curbColorClean = "RAL 9003"
+!IF CurbColor = 756 THEN curbColorClean = LibG_cMet[1]
+IF CurbColor = 756 THEN curbColorClean = LibG_cMet[2]
+IF CurbColor = 757 THEN curbColorClean = LibG_cMet[3]
+IF CurbColor = 758 THEN curbColorClean = LibG_cMet[4]
+IF CurbColor = 759 THEN curbColorClean = LibG_cMet[5]
+
+! If still unmapped, fall back to the raw number
+IF curbColorClean = "" THEN curbColorClean = STR(CurbColor, 4, 0)
+
+ERP_Code_Color = "|Signocryl|cf:" + curbColorClean + "|" + STR(TotalArea_Curbs_Color, 4, 2)
+ERP_Code_White = "|Signocryl|cf:" + "RAL 9003" + "|" + STR(TotalArea_Curbs_White, 4, 2)
+
 ]]>
 </Script_1D>
 
@@ -1511,22 +1634,19 @@ ENDIF
 UI_OUTFIELD "Curb Color",       20, 120, 100, 15
 UI_INFIELD  "CurbColor",        20, 138, 100, 20
 
-UI_OUTFIELD "Line Offset",				20, 170, 100, 15
-UI_INFIELD  "LineOffsetMarginBool",		20, 198, 100, 20
+! UI_OUTFIELD "Line Offset",				20, 170, 100, 15
+! UI_INFIELD  "LineOffsetMarginBool",		20, 198, 100, 20
 
 ! ==============================================================================
 ! TAB 2: ERP DESCRIPTION & QUANTITIES
 ! ==============================================================================
 UI_PAGE 2, -1, "ERP Description"
 TABID_ERP = 1
-UI_LISTFIELD TABID_ERP, 10, 35, 232, 220, 0, "Description Header Text", "Value Header Text"
+UI_LISTFIELD TABID_ERP, 10, 5, 170, 220, 0, "Description", "Value"
+
 _itemID = 1
-
-
-
-! Sintaksa: itemID, listFieldID, "ime_parametra", flags, childFlag, iconID, description
-UI_LISTITEM _itemID, TABID_ERP, "ERP_Code_Val",  1, "", "Curb Color Area" : _itemID = _itemID + 1
-UI_LISTITEM _itemID, TABID_ERP, "TotalArea", 1, "", "Skupna površina" : _itemID = _itemID + 1
+UI_LISTITEM _itemID, TABID_ERP, "ERP_Code_Color", 0, "", "Curb Color ERP Code" : _itemID = _itemID + 1
+UI_LISTITEM _itemID, TABID_ERP, "ERP_Code_White", 0, "", "Curb White ERP Code" : _itemID = _itemID + 1
 ]]>
 </Script_UI>
 
@@ -1543,7 +1663,7 @@ VALUES{2} "BSO_Angle",
 
 DIM colorList[]
 index = 1
-FOR i = 741 TO 759
+FOR i = 741 TO 760
     colorList[index] = i
     index = index + 1
 NEXT i
@@ -1557,8 +1677,10 @@ PARAMETERS TotalArea      = TotalArea_All,
 		   TotalArea_Curbs_Color = TotalArea_Curbs_Color,
 		   TotalArea_Curbs_White = TotalArea_Curbs_White
 
+PARAMETERS ERP_Code_Color = ERP_Code_Color 
+PARAMETERS ERP_Code_White = ERP_Code_White 
 
-LOCK "TotalArea", "TotalCurbArea", "TotalLineArea", "TotalCurbCount"
+LOCK "TotalArea", "TotalCurbArea", "TotalLineArea", "TotalCurbCount", "ERP_Code_Color", "ERP_Code_White"
 !SegmentSizeWithMargin = CurbeSegmentWidth + CurbeSegmentMargin
 
 ! ! --- Zaskok kota na polne segmente ---
@@ -2826,15 +2948,19 @@ LOCK "TotalArea", "TotalCurbArea", "TotalLineArea", "TotalCurbCount"
 		</Length>
 		<Length Name="TotalArea_Curbs_Color">
 			<Description><![CDATA[""]]></Description>
-			<Value>0.3</Value>
+			<Value>0.225</Value>
 		</Length>
 		<Length Name="TotalArea_Curbs_White">
 			<Description><![CDATA[""]]></Description>
-			<Value>0.15</Value>
+			<Value>0.225</Value>
 		</Length>
-		<String Name="ERP_Code_Val">
+		<String Name="ERP_Code_Color">
 			<Description><![CDATA[""]]></Description>
-			<Value><![CDATA["|Signocryl|cf:744|0,30"]]></Value>
+			<Value><![CDATA["|Signocryl|cf:RAL 3020|0,23"]]></Value>
+		</String>
+		<String Name="ERP_Code_White">
+			<Description><![CDATA[""]]></Description>
+			<Value><![CDATA["|Signocryl|cf:RAL 9003|0,23"]]></Value>
 		</String>
 		<Length Name="LastStraightOrientation">
 			<Description><![CDATA[""]]></Description>
