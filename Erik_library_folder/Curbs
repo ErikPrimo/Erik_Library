@@ -82,10 +82,11 @@ END
 
 "FirstStraight":
 	BREAKPOINT 1
+	ADDX LineOffsetMargin
 	GOSUB "FirstStraightOrientationHotSpot"
 	IF NOT(FirstStraightOrientation < -ESP) THEN
 		HOTSPOT  0,  0,	0
-		IF Directions < -ESP  THEN
+		IF Directions < -ESP THEN
 			MULX -1
 		ENDIF
 		MATERIAL 18
@@ -118,12 +119,7 @@ END
 			MULX -1
 		ENDIF
 		MATERIAL 18
-		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
-			-CurbeSegmentHeight - TransitionLineMargin,				0,					1,
-			-CurbeSegmentHeight - TransitionLineMargin - LineWidth,	0,					1,
-			-CurbeSegmentHeight - TransitionLineMargin - LineWidth,	TransitionLength,	1,
-			-CurbeSegmentHeight - TransitionLineMargin,				TransitionLength,	1,
-			-CurbeSegmentHeight - TransitionLineMargin,				0,					1
+		LineFillerX = TransitionLength : GOSUB "LineFiller"
 		ADDY XMargin
 		ADDX -CurbeSegmentHeight
 		ROTY 90
@@ -144,11 +140,17 @@ END
 		DEL 3
 		IF Directions < -ESP  THEN DEL 1
 	ENDIF
+	DEL 1
+	MATERIAL 18
+	BREAKPOINT 1
 	ADDY TransitionLength
+	LineFillerX = CurbeSegmentMargin : GOSUB "LineFiller"
+	ADDY CurbeSegmentMargin
 RETURN
 
 "LastStraight":
 	GOSUB "LastStraightOrientationHotSpot"
+	!ADDX -LineOffsetMargin
 	IF NOT(LastStraightOrientation < -ESP) THEN
 		IF Directions < -ESP  THEN
 			MULX -1
@@ -208,24 +210,27 @@ RETURN
 		DEL 3
 		IF Directions < -ESP  THEN DEL 1
 	ENDIF
+	DEL 1
 RETURN
 
 !-----Makes The Straight-------------------------------------------------------------------------------------------------------------------------------------------------
 "Straight":
 	BREAKPOINT 1
+	ADDX LineOffsetMargin
 	IF Directions < -ESP  THEN
 		MULX -1
 	ENDIF
 	NumOfSegments = INT((NextLength[i-1]) / SegmentSizeWithMargin)
-	MATERIAL 18
-	InitialLineGap = 0
-	IF i = 2 THEN InitialLineGap = CurbeSegmentMargin
+	IF CurveRight[i] < ESP AND CurveLeft[i] < ESP THEN
+		NextLength[i-1] = INT(NextLength[i-1] / SegmentSizeWithMargin) * SegmentSizeWithMargin
+	ENDIF
 	EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
-			-CurbeSegmentHeight - TransitionLineMargin,				0,															1,
-			-CurbeSegmentHeight - TransitionLineMargin - LineWidth,	0,															1,
-			-CurbeSegmentHeight - TransitionLineMargin - LineWidth,	NumOfSegments * SegmentSizeWithMargin + InitialLineGap,		1,
-			-CurbeSegmentHeight - TransitionLineMargin,				NumOfSegments * SegmentSizeWithMargin + InitialLineGap,		1,
-			-CurbeSegmentHeight - TransitionLineMargin,				0,															1
+		-CurbeSegmentHeight - TransitionLineMargin,				0,						1,
+		-CurbeSegmentHeight - TransitionLineMargin - LineWidth,	0,						1,
+		-CurbeSegmentHeight - TransitionLineMargin - LineWidth,	NextLength[i-1],		1,
+		-CurbeSegmentHeight - TransitionLineMargin,				NextLength[i-1],		1,
+		-CurbeSegmentHeight - TransitionLineMargin,				0,						1
+	ADDY InitialLineGap
 	FOR j = 1 TO NumOfSegments 
 		GOSUB "AlternatingColors"
 		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
@@ -236,230 +241,415 @@ RETURN
 			0,						0,						1
 		ADDY CurbeSegmentWidth + CurbeSegmentMargin
 	NEXT j
+
+	RemainingSegment = 0
+	ExtraSegment = 0
+	ExtraSegmentMargin = 0
+	IF NOT(CurveRight[i] < ESP AND CurveLeft[i] < ESP) THEN
+		ExtraSegment = NextLength[i-1] - NumOfSegments*(CurbeSegmentWidth + CurbeSegmentMargin)
+		IF ExtraSegment > CurbeSegmentWidth THEN 
+			ExtraSegmentMargin = CurbeSegmentMargin
+			ExtraSegment = CurbeSegmentWidth
+		ENDIF
+		GOSUB "AlternatingColors"
+		BREAKPOINT 1
+		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
+			0,						0,						1,
+			-CurbeSegmentHeight,	0,						1,
+			-CurbeSegmentHeight,	ExtraSegment,			1,
+			0,						ExtraSegment,			1,
+			0,						0,						1
+		RemainingSegment = CurbeSegmentWidth - ExtraSegment
+	ENDIF
 	DEL NumOfSegments
     IF Directions < -ESP  THEN DEL 1
-	ADDY NextLength[i-1]
+	DEL 1
+	ADDY NumOfSegments*(CurbeSegmentWidth + CurbeSegmentMargin) + ExtraSegment
+	LineFillerX = ExtraSegmentMargin : GOSUB "LineFiller"
+	ADDY ExtraSegmentMargin
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 
 !-----Makes The Right Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveRight":
-	Angle = RightAngle[i]
-	CurveRadius = CurveRight[i-1]
-	SegmentAngle = CurbeSegmentWidth * 360 / (2 * PI * CurveRadius)
-	IF CurveRadius > 0 THEN
-		StepAngle = SegmentSizeWithMargin * 360 / (2 * PI * CurveRadius)
-		Angle = INT(RightAngle[i] / StepAngle) * StepAngle
-		IF Angle < StepAngle THEN Angle = StepAngle
-	ELSE
-		Angle = RightAngle[i]
-	ENDIF
-	EndingX = CurveRadius - CurveRadius * COS(RightAngle[i])
-	EndingY = CurveRadius * SIN(RightAngle[i])
+	BREAKPOINT 1
+    CurveRadius = CurveRight[i-1] - LineOffsetMargin
+
+    ! ---------------------------------------------------------
+    ! 1. RADIAL BOUNDARIES
+    ! ---------------------------------------------------------
+	rCurbInner = CurveRadius
+	rCurbOuter = CurveRadius + CurbeSegmentHeight
+	xCurbInner = 0
+	xCurbOuter = -CurbeSegmentHeight
 
 	InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin
 	OuterRadius = InnerRadius + LineWidth
-	MATERIAL 18
-	EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
-		-CurbeSegmentHeight - TransitionLineMargin - LineWidth,			0,									1,
-		-CurbeSegmentHeight - TransitionLineMargin,						0,									1,
-		CurveRadius,													0,									900,
-		CurveRadius - InnerRadius * COS(RightAngle[i]),					InnerRadius * SIN(RightAngle[i]),	3001,
-		CurveRadius - InnerRadius * COS(RightAngle[i]),					InnerRadius * SIN(RightAngle[i]),	1,
-		CurveRadius - OuterRadius * COS(RightAngle[i]),					OuterRadius * SIN(RightAngle[i]),	1,
-		CurveRadius,													0,									900,
-		-CurbeSegmentHeight - TransitionLineMargin - LineWidth,			0,									3001,
-		-CurbeSegmentHeight - TransitionLineMargin - LineWidth,			0,									1
-	SegmentAngle = CurbeSegmentWidth * 360 / (2 * PI * CurveRadius)
-	MarginAngle  = CurbeSegmentMargin * 360 / (2 * PI * CurveRadius)
-	StepAngle    = SegmentAngle + MarginAngle
-	IF StepAngle > 0 THEN
-		nSegments = INT((Angle + MarginAngle) / StepAngle)
-	ELSE
-		nSegments = 0
-	ENDIF
-	SegmentEndingX = CurveRadius - CurveRadius * COS(SegmentAngle)
-	SegmentEndingY = CurveRadius * SIN(SegmentAngle)
-	OuterSegmentEndingX = CurveRadius - (CurveRadius + CurbeSegmentHeight) * COS(SegmentAngle)
-	OuterSegmentEndingY = (CurveRadius + CurbeSegmentHeight) * SIN(SegmentAngle)
-	FOR j = 1 TO nSegments
-		GOSUB "AlternatingColors"
-		EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
-			-CurbeSegmentHeight,	0,						1,
-			0,						0,						1,
-			CurveRadius,			0,						900,
-			SegmentEndingX,			SegmentEndingY,			3001,
-			SegmentEndingX,			SegmentEndingY,			1,
-			OuterSegmentEndingX,	OuterSegmentEndingY,	1,
-			CurveRadius,			0,						900,
-			-CurbeSegmentHeight,	0,						3001,
-			-CurbeSegmentHeight,	0,						1
+	xLineInner  = -CurbeSegmentHeight - TransitionLineMargin
+	xLineOuter  = xLineInner - LineWidth
 
-		ADDX CurveRadius
-		ROTZ -StepAngle
-		ADDX -CurveRadius
-	NEXT j
+    ! ---------------------------------------------------------
+    ! 2. ANGLES & DISCRETE STEP BUDGET
+    ! ---------------------------------------------------------
+    pushedTransforms = 0
 
-	AngleDifference = RightAngle[i] - Angle
-	NewSegmentAngle = SegmentAngle - AngleDifference
-	ActualSegmentAngle = ABS(NewSegmentAngle-SegmentAngle)
-	NewCurbeSegmentWidth = NewSegmentAngle * 2 * PI * CurveRadius / 360
+    IF rCurbInner > 0.0001 THEN
+        SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
+        MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
+        StepAngle    = SegmentAngle + MarginAngle
 
-	SegmentEndingX = CurveRadius - CurveRadius * COS(ActualSegmentAngle)
-	SegmentEndingY = CurveRadius * SIN(ActualSegmentAngle)
-	OuterSegmentEndingX = CurveRadius - (CurveRadius + CurbeSegmentHeight) * COS(ActualSegmentAngle)
-	OuterSegmentEndingY = (CurveRadius + CurbeSegmentHeight) * SIN(ActualSegmentAngle)
-	GOSUB "AlternatingColors"
-	EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
-			-CurbeSegmentHeight,	0,						1,
-			0,						0,						1,
-			CurveRadius,			0,						900,
-			SegmentEndingX,			SegmentEndingY,			3001,
-			SegmentEndingX,			SegmentEndingY,			1,
-			OuterSegmentEndingX,	OuterSegmentEndingY,	1,
-			CurveRadius,			0,						900,
-			-CurbeSegmentHeight,	0,						3001,
-			-CurbeSegmentHeight,	0,						1
-	IF nSegments > 0 THEN DEL 3 * nSegments
-	ADDX EndingX
-	ADDY EndingY
-	ROTZ -RightAngle[i]
-	EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
-		0,							0,						1,
-		-CurbeSegmentHeight,		0,						1,
-		-CurbeSegmentHeight,		NewCurbeSegmentWidth,	1,
-		0,							NewCurbeSegmentWidth,	1,
-		0,							0,						1
-	MATERIAL 18
-	EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
-		-CurbeSegmentHeight - TransitionLineMargin,						0,									1,
-		-CurbeSegmentHeight - TransitionLineMargin,						NewCurbeSegmentWidth,				1,
-		-CurbeSegmentHeight - TransitionLineMargin - LineWidth,			NewCurbeSegmentWidth,				1,
-		-CurbeSegmentHeight - TransitionLineMargin - LineWidth,			0,									1,
-		-CurbeSegmentHeight - TransitionLineMargin,						0,									1
-	ADDY NewCurbeSegmentWidth
-RETURN
+        ! Convert incoming remainder length to angle
+        IF RemainingSegment > 0.0001 THEN
+            RemainingSegmentAngle = RemainingSegment * 180 / (PI * rCurbInner)
+            InitStepAngle = RemainingSegmentAngle + MarginAngle
+        ELSE
+            RemainingSegmentAngle = 0
+            InitStepAngle = 0
+        ENDIF
 
-!-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
-"CurveLeft":
-    Angle = LeftAngle[i]
-    CurveRadius = CurveLeft[i-1]
-    SegmentSizeWithMargin = CurbeSegmentWidth + CurbeSegmentMargin
+        ! Calculate available angular space left for full blocks
+        AvailAngle = RightAngle[i] - InitStepAngle
+        IF AvailAngle < 0 THEN AvailAngle = 0
 
-    IF CurveRadius > 0 THEN
-        StepAngle = SegmentSizeWithMargin * 360 / (2 * PI * CurveRadius)
-        Angle = INT(LeftAngle[i] / StepAngle) * StepAngle
-        IF Angle < StepAngle THEN Angle = StepAngle
+        nSegments = INT((AvailAngle + MarginAngle) / StepAngle)
+        Angle = nSegments * StepAngle
     ELSE
-        Angle = LeftAngle[i]
+        SegmentAngle          = 0
+        MarginAngle           = 0
+        StepAngle             = 0
+        RemainingSegmentAngle = 0
+        InitStepAngle         = 0
+        Angle                 = RightAngle[i]
+        nSegments             = 0
     ENDIF
 
-    ! Pure Track Geometric End Position evaluated at full LeftAngle[i]
-    EndingX = -(CurveRadius - CurveRadius * COS(LeftAngle[i]))
-    EndingY = CurveRadius * SIN(LeftAngle[i])
+    ! End coordinates of primary curve track
+    EndingX = CurveRadius - CurveRadius * COS(RightAngle[i])
+    EndingY = CurveRadius * SIN(RightAngle[i])
 
-    InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin
-    OuterRadius = InnerRadius + LineWidth
-
+    ! ---------------------------------------------------------
+    ! 3. CURVED TRANSITION LINE
+    ! ---------------------------------------------------------
     MATERIAL 18
     EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
-        CurbeSegmentHeight + TransitionLineMargin + LineWidth,  0,                                  1,
-        CurbeSegmentHeight + TransitionLineMargin,              0,                                  1,
-        -CurveRadius,                                           0,                                  900,
-        -(CurveRadius - InnerRadius * COS(LeftAngle[i])),       InnerRadius * SIN(LeftAngle[i]),    3001,
-        -(CurveRadius - InnerRadius * COS(LeftAngle[i])),       InnerRadius * SIN(LeftAngle[i]),    1,
-        -(CurveRadius - OuterRadius * COS(LeftAngle[i])),       OuterRadius * SIN(LeftAngle[i]),    1,
-        -CurveRadius,                                           0,                                  900,
-        CurbeSegmentHeight + TransitionLineMargin + LineWidth,  0,                                  3001,
-        CurbeSegmentHeight + TransitionLineMargin + LineWidth,  0,                                  1
+        xLineOuter,                                     0,                                  1,
+        xLineInner,                                     0,                                  1,
+        CurveRadius,                                    0,                                  900,
+        CurveRadius - InnerRadius * COS(RightAngle[i]), InnerRadius * SIN(RightAngle[i]),   3001,
+        CurveRadius - InnerRadius * COS(RightAngle[i]), InnerRadius * SIN(RightAngle[i]),   1,
+        CurveRadius - OuterRadius * COS(RightAngle[i]), OuterRadius * SIN(RightAngle[i]),   1,
+        CurveRadius,                                    0,                                  900,
+        xLineOuter,                                     0,                                  3001,
+        xLineOuter,                                     0,                                  1
 
-    SegmentAngle = CurbeSegmentWidth * 360 / (2 * PI * CurveRadius)
-    MarginAngle  = CurbeSegmentMargin * 360 / (2 * PI * CurveRadius)
-    StepAngle    = SegmentAngle + MarginAngle
+    ! ---------------------------------------------------------
+    ! 4. INITIAL LEFTOVER SEGMENT (Only when RemainingSegment > 0)
+    ! ---------------------------------------------------------
+    IF RemainingSegmentAngle > 0.0001 THEN
+		! IF RemainingSegmentAngle < MarginAngle THEN 
+		! 	ADDX CurveRadius
+		! 	ROTZ -MarginAngle
+		! 	ADDX -CurveRadius
+		! ENDIF
+        SegmentEndingX      = CurveRadius - rCurbInner * COS(RemainingSegmentAngle)
+        SegmentEndingY      = rCurbInner * SIN(RemainingSegmentAngle)
+        OuterSegmentEndingX = CurveRadius - rCurbOuter * COS(RemainingSegmentAngle)
+        OuterSegmentEndingY = rCurbOuter * SIN(RemainingSegmentAngle)
 
-    IF StepAngle > 0 THEN
-        nSegments = INT((Angle + MarginAngle) / StepAngle)
-    ELSE
-        nSegments = 0
+        GOSUB "CurentColors"
+        EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
+            xCurbOuter,          0,                   1,
+            xCurbInner,          0,                   1,
+            CurveRadius,         0,                   900,
+            SegmentEndingX,      SegmentEndingY,      3001,
+            SegmentEndingX,      SegmentEndingY,      1,
+            OuterSegmentEndingX, OuterSegmentEndingY, 1,
+            CurveRadius,         0,                   900,
+            xCurbOuter,          0,                   3001,
+            xCurbOuter,          0,                   1
+
+        ADDX CurveRadius
+        ROTZ -InitStepAngle
+        ADDX -CurveRadius
+        pushedTransforms = pushedTransforms + 3
     ENDIF
 
-    SegmentEndingX = -(CurveRadius - CurveRadius * COS(SegmentAngle))
-    SegmentEndingY = CurveRadius * SIN(SegmentAngle)
-    OuterSegmentEndingX = -(CurveRadius - (CurveRadius + CurbeSegmentHeight) * COS(SegmentAngle))
-    OuterSegmentEndingY = (CurveRadius + CurbeSegmentHeight) * SIN(SegmentAngle)
+    ! ---------------------------------------------------------
+    ! 5. FULL REGULAR SEGMENTS
+    ! ---------------------------------------------------------
+    SegmentEndingX      = CurveRadius - rCurbInner * COS(SegmentAngle)
+    SegmentEndingY      = rCurbInner * SIN(SegmentAngle)
+    OuterSegmentEndingX = CurveRadius - rCurbOuter * COS(SegmentAngle)
+    OuterSegmentEndingY = rCurbOuter * SIN(SegmentAngle)
 
     FOR j = 1 TO nSegments
         GOSUB "AlternatingColors"
         EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
-            CurbeSegmentHeight,     0,                      1,
-            0,                      0,                      1,
-            -CurveRadius,           0,                      900,
-            SegmentEndingX,         SegmentEndingY,         3001,
-            SegmentEndingX,         SegmentEndingY,         1,
-            OuterSegmentEndingX,    OuterSegmentEndingY,    1,
-            -CurveRadius,           0,                      900,
-            CurbeSegmentHeight,     0,                      3001,
-            CurbeSegmentHeight,     0,                      1
+            xCurbOuter,          0,                   1,
+            xCurbInner,          0,                   1,
+            CurveRadius,         0,                   900,
+            SegmentEndingX,      SegmentEndingY,      3001,
+            SegmentEndingX,      SegmentEndingY,      1,
+            OuterSegmentEndingX, OuterSegmentEndingY, 1,
+            CurveRadius,         0,                   900,
+            xCurbOuter,          0,                   3001,
+            xCurbOuter,          0,                   1
 
-        ! Step left along arc around center (-CurveRadius, 0)
+        ADDX CurveRadius
+        ROTZ -StepAngle
+        ADDX -CurveRadius
+        pushedTransforms = pushedTransforms + 3
+    NEXT j
+	BREAKPOINT 1
+    ! ---------------------------------------------------------
+    ! 6. REMAINDER CURVED SEGMENT AT CURVE END
+    ! ---------------------------------------------------------
+    AngleDifference      = AvailAngle - Angle
+    NewSegmentAngle      = SegmentAngle - AngleDifference
+    ActualSegmentAngle   = ABS(NewSegmentAngle - SegmentAngle)
+    NewCurbeSegmentWidth = NewSegmentAngle * PI * rCurbInner / 180
+
+    remSegmentEndingX      = CurveRadius - rCurbInner * COS(ActualSegmentAngle)
+    remSegmentEndingY      = rCurbInner * SIN(ActualSegmentAngle)
+    remOuterSegmentEndingX = CurveRadius - rCurbOuter * COS(ActualSegmentAngle)
+    remOuterSegmentEndingY = rCurbOuter * SIN(ActualSegmentAngle)
+
+    IF ActualSegmentAngle > 0.0001 THEN
+        GOSUB "AlternatingColors"
+        EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
+            xCurbOuter,             0,                      1,
+            xCurbInner,             0,                      1,
+            CurveRadius,            0,                      900,
+            remSegmentEndingX,      remSegmentEndingY,      3001,
+            remSegmentEndingX,      remSegmentEndingY,      1,
+            remOuterSegmentEndingX, remOuterSegmentEndingY, 1,
+            CurveRadius,            0,                      900,
+            xCurbOuter,             0,                      3001,
+            xCurbOuter,             0,                      1
+    ENDIF
+
+    ! Pop all intermediate curve steps (initial leftover + full blocks)
+    IF pushedTransforms > 0 THEN DEL pushedTransforms
+
+    ! ---------------------------------------------------------
+    ! 7. STRAIGHT EXTENSION SEGMENT & MARKING
+    ! ---------------------------------------------------------
+    ADDX EndingX
+    ADDY EndingY
+    ROTZ -RightAngle[i]
+
+    EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
+        xCurbInner, 0,                    1,
+        xCurbOuter, 0,                    1,
+        xCurbOuter, NewCurbeSegmentWidth, 1,
+        xCurbInner, NewCurbeSegmentWidth, 1,
+        xCurbInner, 0,                    1
+
+    MATERIAL 18
+    EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
+        xLineInner, 0,                    1,
+        xLineInner, NewCurbeSegmentWidth, 1,
+        xLineOuter, NewCurbeSegmentWidth, 1,
+        xLineOuter, 0,                    1,
+        xLineInner, 0,                    1
+    ADDY NewCurbeSegmentWidth
+	BREAKPOINT 1
+	ADDX -LineOffsetMargin
+	LineFillerX = CurbeSegmentMargin : GOSUB "LineFiller"
+	ADDY CurbeSegmentMargin
+    ! Consumed remainder; reset for next segment
+    RemainingSegment = 0
+RETURN
+
+!-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
+"CurveLeft":
+    BREAKPOINT 1
+    CurveRadius = CurveLeft[i-1] + LineOffsetMargin
+
+    ! ---------------------------------------------------------
+    ! 1. RADIAL BOUNDARIES
+    ! ---------------------------------------------------------
+	rCurbInner = CurveRadius
+    rCurbOuter = CurveRadius + CurbeSegmentHeight
+    xCurbInner = 0
+    xCurbOuter = CurbeSegmentHeight
+
+    InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin
+    OuterRadius = InnerRadius + LineWidth
+    xLineInner  = CurbeSegmentHeight + TransitionLineMargin
+    xLineOuter  = xLineInner + LineWidth
+    ! ---------------------------------------------------------
+    ! 2. ANGLES & DISCRETE STEP BUDGET
+    ! ---------------------------------------------------------
+    pushedTransforms = 0
+
+    IF rCurbInner > 0.0001 THEN
+        SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
+        MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
+        StepAngle    = SegmentAngle + MarginAngle
+
+        ! Convert incoming remainder length to angle along left arc
+        IF RemainingSegment > 0.0001 THEN
+            RemainingSegmentAngle = RemainingSegment * 180 / (PI * rCurbInner)
+            InitStepAngle = RemainingSegmentAngle + MarginAngle
+        ELSE
+            RemainingSegmentAngle = 0
+            InitStepAngle = 0
+        ENDIF
+
+        ! Calculate available angular space left for full blocks
+        AvailAngle = LeftAngle[i] - InitStepAngle
+        IF AvailAngle < 0 THEN AvailAngle = 0
+
+        nSegments = INT((AvailAngle + MarginAngle) / StepAngle)
+        Angle = nSegments * StepAngle
+    ELSE
+        SegmentAngle          = 0
+        MarginAngle           = 0
+        StepAngle             = 0
+        RemainingSegmentAngle = 0
+        InitStepAngle         = 0
+        Angle                 = LeftAngle[i]
+        nSegments             = 0
+    ENDIF
+
+    ! End coordinates of primary curve track (mirrored to -X)
+    EndingX = -(CurveRadius - CurveRadius * COS(LeftAngle[i]))
+    EndingY = CurveRadius * SIN(LeftAngle[i])
+
+    ! ---------------------------------------------------------
+    ! 3. CURVED TRANSITION LINE
+    ! ---------------------------------------------------------
+    MATERIAL 18
+    EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
+        xLineOuter,                                         0,                                  1,
+        xLineInner,                                         0,                                  1,
+        -CurveRadius,                                       0,                                  900,
+        -(CurveRadius - InnerRadius * COS(LeftAngle[i])),   InnerRadius * SIN(LeftAngle[i]),    3001,
+        -(CurveRadius - InnerRadius * COS(LeftAngle[i])),   InnerRadius * SIN(LeftAngle[i]),    1,
+        -(CurveRadius - OuterRadius * COS(LeftAngle[i])),   OuterRadius * SIN(LeftAngle[i]),    1,
+        -CurveRadius,                                       0,                                  900,
+        xLineOuter,                                         0,                                  3001,
+        xLineOuter,                                         0,                                  1
+
+    ! ---------------------------------------------------------
+    ! 4. INITIAL LEFTOVER SEGMENT (Only when RemainingSegment > 0)
+    ! ---------------------------------------------------------
+    IF RemainingSegmentAngle > 0.0001 THEN
+        SegmentEndingX      = -(CurveRadius - rCurbInner * COS(RemainingSegmentAngle))
+        SegmentEndingY      = rCurbInner * SIN(RemainingSegmentAngle)
+        OuterSegmentEndingX = -(CurveRadius - rCurbOuter * COS(RemainingSegmentAngle))
+        OuterSegmentEndingY = rCurbOuter * SIN(RemainingSegmentAngle)
+
+        GOSUB "CurentColors"
+        EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
+            xCurbOuter,          0,                   1,
+            xCurbInner,          0,                   1,
+            -CurveRadius,        0,                   900,
+            SegmentEndingX,      SegmentEndingY,      3001,
+            SegmentEndingX,      SegmentEndingY,      1,
+            OuterSegmentEndingX, OuterSegmentEndingY, 1,
+            -CurveRadius,        0,                   900,
+            xCurbOuter,          0,                   3001,
+            xCurbOuter,          0,                   1
+
+        ! Step left along arc centered at (-CurveRadius, 0)
+        ADDX -CurveRadius
+        ROTZ InitStepAngle
+        ADDX CurveRadius
+        pushedTransforms = pushedTransforms + 3
+    ENDIF
+
+    ! ---------------------------------------------------------
+    ! 5. FULL REGULAR SEGMENTS
+    ! ---------------------------------------------------------
+    SegmentEndingX      = -(CurveRadius - rCurbInner * COS(SegmentAngle))
+    SegmentEndingY      = rCurbInner * SIN(SegmentAngle)
+    OuterSegmentEndingX = -(CurveRadius - rCurbOuter * COS(SegmentAngle))
+    OuterSegmentEndingY = rCurbOuter * SIN(SegmentAngle)
+
+    FOR j = 1 TO nSegments
+        GOSUB "AlternatingColors"
+        EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
+            xCurbOuter,          0,                   1,
+            xCurbInner,          0,                   1,
+            -CurveRadius,        0,                   900,
+            SegmentEndingX,      SegmentEndingY,      3001,
+            SegmentEndingX,      SegmentEndingY,      1,
+            OuterSegmentEndingX, OuterSegmentEndingY, 1,
+            -CurveRadius,        0,                   900,
+            xCurbOuter,          0,                   3001,
+            xCurbOuter,          0,                   1
+
         ADDX -CurveRadius
         ROTZ StepAngle
         ADDX CurveRadius
+        pushedTransforms = pushedTransforms + 3
     NEXT j
 
-    ! ---------------------------------------------------------
-    ! REMAINDER CALCULATION & EXTRA CURVED SEGMENT
-    ! ---------------------------------------------------------
-    AngleDifference = LeftAngle[i] - Angle
-    NewSegmentAngle = SegmentAngle - AngleDifference
-    ActualSegmentAngle = ABS(NewSegmentAngle - SegmentAngle)
-    NewCurbeSegmentWidth = NewSegmentAngle * 2 * PI * CurveRadius / 360
+    BREAKPOINT 1
 
-    SegmentEndingX = -(CurveRadius - CurveRadius * COS(ActualSegmentAngle))
-    SegmentEndingY = CurveRadius * SIN(ActualSegmentAngle)
-    OuterSegmentEndingX = -(CurveRadius - (CurveRadius + CurbeSegmentHeight) * COS(ActualSegmentAngle))
-    OuterSegmentEndingY = (CurveRadius + CurbeSegmentHeight) * SIN(ActualSegmentAngle)
+    ! ---------------------------------------------------------
+    ! 6. REMAINDER CURVED SEGMENT AT CURVE END
+    ! ---------------------------------------------------------
+    AngleDifference      = AvailAngle - Angle
+    NewSegmentAngle      = SegmentAngle - AngleDifference
+    ActualSegmentAngle   = ABS(NewSegmentAngle - SegmentAngle)
+    NewCurbeSegmentWidth = NewSegmentAngle * PI * rCurbInner / 180
 
-    GOSUB "AlternatingColors"
-    EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
-            CurbeSegmentHeight,     0,                      1,
-            0,                      0,                      1,
+    remSegmentEndingX      = -(CurveRadius - rCurbInner * COS(ActualSegmentAngle))
+    remSegmentEndingY      = rCurbInner * SIN(ActualSegmentAngle)
+    remOuterSegmentEndingX = -(CurveRadius - rCurbOuter * COS(ActualSegmentAngle))
+    remOuterSegmentEndingY = rCurbOuter * SIN(ActualSegmentAngle)
+
+    IF ActualSegmentAngle > 0.0001 THEN
+        GOSUB "AlternatingColors"
+        EXTRUDE 9, 0, 0, Thickness, ExtrudeValues,
+            xCurbOuter,             0,                      1,
+            xCurbInner,             0,                      1,
             -CurveRadius,           0,                      900,
-            SegmentEndingX,         SegmentEndingY,         3001,
-            SegmentEndingX,         SegmentEndingY,         1,
-            OuterSegmentEndingX,    OuterSegmentEndingY,    1,
+            remSegmentEndingX,      remSegmentEndingY,      3001,
+            remSegmentEndingX,      remSegmentEndingY,      1,
+            remOuterSegmentEndingX, remOuterSegmentEndingY, 1,
             -CurveRadius,           0,                      900,
-            CurbeSegmentHeight,     0,                      3001,
-            CurbeSegmentHeight,     0,                      1
+            xCurbOuter,             0,                      3001,
+            xCurbOuter,             0,                      1
+    ENDIF
 
-    ! Clean up transformations from the FOR loop
-    IF nSegments > 0 THEN DEL 3 * nSegments
+    ! Pop all intermediate curve steps (initial leftover + full blocks)
+    IF pushedTransforms > 0 THEN DEL pushedTransforms
 
     ! ---------------------------------------------------------
-    ! STRAIGHT EXTENSION SEGMENT & MARKING
+    ! 7. STRAIGHT EXTENSION SEGMENT & MARKING
     ! ---------------------------------------------------------
     ADDX EndingX
     ADDY EndingY
     ROTZ LeftAngle[i]
 
-    ! Straight curb segment (+X direction on the left side)
+    ! Straight curb segment
     EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
-        0,                      0,                      1,
-        CurbeSegmentHeight,     0,                      1,
-        CurbeSegmentHeight,     NewCurbeSegmentWidth,   1,
-        0,                      NewCurbeSegmentWidth,   1,
-        0,                      0,                      1
+        xCurbOuter, 0,                    1,
+        xCurbInner, 0,                    1,
+        xCurbInner, NewCurbeSegmentWidth, 1,
+        xCurbOuter, NewCurbeSegmentWidth, 1,
+        xCurbOuter, 0,                    1
 
-    ! Straight transition line (+X direction on the left side)
+    ! Straight transition line (matches start edge xLineOuter -> xLineInner)
     MATERIAL 18
     EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
-        CurbeSegmentHeight + TransitionLineMargin,                          0,                      1,
-        CurbeSegmentHeight + TransitionLineMargin,                          NewCurbeSegmentWidth,   1,
-        CurbeSegmentHeight + TransitionLineMargin + LineWidth,              NewCurbeSegmentWidth,   1,
-        CurbeSegmentHeight + TransitionLineMargin + LineWidth,              0,                      1,
-        CurbeSegmentHeight + TransitionLineMargin,                          0,                      1
+        xLineOuter, 0,                    1,
+        xLineInner, 0,                    1,
+        xLineInner, NewCurbeSegmentWidth, 1,
+        xLineOuter, NewCurbeSegmentWidth, 1,
+        xLineOuter, 0,                    1
 
     ADDY NewCurbeSegmentWidth
+	ADDX -LineOffsetMargin
+    LineFillerX = CurbeSegmentMargin : GOSUB "LineFiller"
+    ADDY CurbeSegmentMargin
+
+    ! Consumed remainder; reset for next segment
+    RemainingSegment = 0
 RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------------
 "AlternatingColors":
@@ -468,6 +658,33 @@ RETURN
 		MATERIAL CurbColor
 	ELSE
 		MATERIAL 18
+	ENDIF
+RETURN
+
+"CurentColors":
+	IF AlternatingColorsBool THEN
+		MATERIAL CurbColor
+	ELSE
+		MATERIAL 18
+	ENDIF
+RETURN
+
+"LineFiller":
+	MATERIAL 18
+	IF Directions > ESP THEN
+		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
+			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin,				0,					1,
+			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin - LineWidth,	0,					1,
+			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin - LineWidth,	LineFillerX,		1,
+			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin,				LineFillerX,		1,
+			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin,				0,					1
+	ELSE
+		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
+			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin,				0,					1,
+			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin + LineWidth,	0,					1,
+			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin + LineWidth,	LineFillerX,		1,
+			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin,				LineFillerX,		1,
+			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin,				0,					1
 	ENDIF
 RETURN
 !---Hot Spots-------------------------------------------------------------------------------------------------------------------------------------
@@ -596,12 +813,12 @@ GOSUB "FirstStraightOrientationHotSpot"
 ADD2 0, TransitionLength
 
 i = 1
+ADD2 0, CurbeSegmentMargin
 GOSUB "StraightHotSpot2D"
 IF NextLength[1] < ESP AND CurveLeft[1] < ESP AND CurveRight[1] < ESP THEN
 	NextLength[1] = CurbeSegmentMargin
 ENDIF
 
-! Glavna zanka po segmentih
 WHILE ObjectOrder[i] <> 0 DO
     IF NextLength[i] > ESP THEN ObjectOrder[i+1] = 2
     IF CurveLeft[i]  > ESP THEN ObjectOrder[i+1] = 3
@@ -649,67 +866,121 @@ END
 !=================================================================================================================================================
 
 "Straight2D":
-    ADD2 0, NextLength[i-1]
+    NumOfSegments = INT((NextLength[i-1]) / SegmentSizeWithMargin)
+
+    ! If no curve follows, clamp length to exact multiple of segment size
+    IF CurveRight[i] < ESP AND CurveLeft[i] < ESP THEN
+        NextLength[i-1] = INT(NextLength[i-1] / SegmentSizeWithMargin) * SegmentSizeWithMargin
+    ENDIF
+
+    ! Calculate leftovers to match 3D state handover
+    RemainingSegment   = 0
+    ExtraSegment       = 0
+    ExtraSegmentMargin = 0
+
+    IF NOT(CurveRight[i] < ESP AND CurveLeft[i] < ESP) THEN
+        ExtraSegment = NextLength[i-1] - NumOfSegments * (CurbeSegmentWidth + CurbeSegmentMargin)
+        IF ExtraSegment > CurbeSegmentWidth THEN
+            ExtraSegmentMargin = CurbeSegmentMargin
+            ExtraSegment       = CurbeSegmentWidth
+        ENDIF
+        RemainingSegment = CurbeSegmentWidth - ExtraSegment
+    ENDIF
+
+    ! Match 3D end movement:
+    ! ADDY NumOfSegments*(CurbeSegmentWidth + CurbeSegmentMargin) + ExtraSegment + ExtraSegmentMargin
+    ADD2 0, NumOfSegments * (CurbeSegmentWidth + CurbeSegmentMargin) + ExtraSegment + ExtraSegmentMargin
 RETURN
 
 "CurveRight2D":
-    CurveRadius = CurveRight[i-1]
-    SegmentSizeWithMargin = CurbeSegmentWidth + CurbeSegmentMargin
+    CurveRadius = CurveRight[i-1] - LineOffsetMargin
+    rCurbInner  = CurveRadius
 
-    IF CurveRadius > 0 THEN
-        StepAngle = SegmentSizeWithMargin * 360 / (2 * PI * CurveRadius)
-        Angle = INT(RightAngle[i] / StepAngle) * StepAngle
-        IF Angle < StepAngle THEN Angle = StepAngle
-        
-        ! Calculate SegmentAngle based on width and radius
-        SegmentAngle = CurbeSegmentWidth * 360 / (2 * PI * CurveRadius)
-        
-        AngleDifference = RightAngle[i] - Angle
-        NewSegmentAngle = SegmentAngle - AngleDifference
-        NewCurbeSegmentWidth = NewSegmentAngle * 2 * PI * CurveRadius / 360
+    IF rCurbInner > 0.0001 THEN
+        SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
+        MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
+        StepAngle    = SegmentAngle + MarginAngle
+
+        IF RemainingSegment > 0.0001 THEN
+            RemainingSegmentAngle = RemainingSegment * 180 / (PI * rCurbInner)
+            InitStepAngle = RemainingSegmentAngle + MarginAngle
+        ELSE
+            RemainingSegmentAngle = 0
+            InitStepAngle = 0
+        ENDIF
+
+        AvailAngle = RightAngle[i] - InitStepAngle
+        IF AvailAngle < 0 THEN AvailAngle = 0
+
+        nSegments = INT((AvailAngle + MarginAngle) / StepAngle)
+        Angle = nSegments * StepAngle
+
+        AngleDifference      = AvailAngle - Angle
+        NewSegmentAngle      = SegmentAngle - AngleDifference
+        NewCurbeSegmentWidth = NewSegmentAngle * PI * rCurbInner / 180
     ELSE
-        Angle = RightAngle[i]
         NewCurbeSegmentWidth = CurbeSegmentWidth
     ENDIF
 
-    ! End coordinates of the curve
+    ! End of arc center-line track
     EndingX = CurveRadius - CurveRadius * COS(RightAngle[i])
     EndingY = CurveRadius * SIN(RightAngle[i])
 
-    ! Match 3D translation & rotation
+    ! 1. Go to end of curve track and rotate to tangential heading
     ADD2 EndingX, EndingY
     ROT2 -RightAngle[i]
-    ADD2 0, NewCurbeSegmentWidth
+
+    ! 2. Advance by the straight extension + joint margin along Y, 
+    !    and cancel the cross-track line offset along X
+    ADD2 -LineOffsetMargin, NewCurbeSegmentWidth + CurbeSegmentMargin
+
+    ! Reset consumed remainder
+    RemainingSegment = 0
 RETURN
 
 "CurveLeft2D":
     CurveRadius = CurveLeft[i-1]
-    SegmentSizeWithMargin = CurbeSegmentWidth + CurbeSegmentMargin
+    rCurbInner  = CurveRadius + LineOffsetMargin
 
-    IF CurveRadius > 0 THEN
-        StepAngle = SegmentSizeWithMargin * 360 / (2 * PI * CurveRadius)
-        Angle = INT(LeftAngle[i] / StepAngle) * StepAngle
-        IF Angle < StepAngle THEN Angle = StepAngle
-        
-        ! Calculate SegmentAngle based on width and radius
-        SegmentAngle = CurbeSegmentWidth * 360 / (2 * PI * CurveRadius)
-        
-        AngleDifference = LeftAngle[i] - Angle
-        NewSegmentAngle = SegmentAngle - AngleDifference
-        NewCurbeSegmentWidth = NewSegmentAngle * 2 * PI * CurveRadius / 360
+    IF rCurbInner > 0.0001 THEN
+        SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
+        MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
+        StepAngle    = SegmentAngle + MarginAngle
+
+        IF RemainingSegment > 0.0001 THEN
+            RemainingSegmentAngle = RemainingSegment * 180 / (PI * rCurbInner)
+            InitStepAngle = RemainingSegmentAngle + MarginAngle
+        ELSE
+            RemainingSegmentAngle = 0
+            InitStepAngle = 0
+        ENDIF
+
+        AvailAngle = LeftAngle[i] - InitStepAngle
+        IF AvailAngle < 0 THEN AvailAngle = 0
+
+        nSegments = INT((AvailAngle + MarginAngle) / StepAngle)
+        Angle = nSegments * StepAngle
+
+        AngleDifference      = AvailAngle - Angle
+        NewSegmentAngle      = SegmentAngle - AngleDifference
+        NewCurbeSegmentWidth = NewSegmentAngle * PI * rCurbInner / 180
     ELSE
-        Angle = LeftAngle[i]
         NewCurbeSegmentWidth = CurbeSegmentWidth
     ENDIF
 
-    ! End coordinates of the curve evaluated at full LeftAngle[i]
+    ! End coordinates of primary curve track (identical to 3D)
     EndingX = -(CurveRadius - CurveRadius * COS(LeftAngle[i]))
     EndingY = CurveRadius * SIN(LeftAngle[i])
 
-    ! Match 3D translation & rotation
+    ! 1. Match 3D end of track rotation
     ADD2 EndingX, EndingY
     ROT2 LeftAngle[i]
-    ADD2 0, NewCurbeSegmentWidth
+
+    ! 2. Advance by the straight extension + margin along track heading
+    ADD2 0, NewCurbeSegmentWidth + CurbeSegmentMargin
+
+    ! Reset consumed remainder
+    RemainingSegment = 0
 RETURN
 
 !=================================================================================================================================================
@@ -964,6 +1235,18 @@ TransitionLineMargin = 0.0509
 TransitionOrientation = 1
 SegmentSizeWithMargin = CurbeSegmentWidth + CurbeSegmentMargin
 AlternatingColorsBool = 1
+LineFillerX = 0
+
+IF LineOffsetMarginBool THEN
+	IF Directions < -ESP THEN
+		LineOffsetMargin = LineOffsetMargin
+	ELSE
+		LineOffsetMargin = LineOffsetMargin*(-1)
+	ENDIF
+ELSE
+	LineOffsetMargin = 0
+ENDIF
+
 
 ! --- V UI SCRIPTU ---
 matFullName = ""
@@ -992,151 +1275,207 @@ FOR i = 1 TO 120
 	RightAngle[i] = MIN(180, MAX(0, RightAngle[i]))
 	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
 	!-------------------------------------------------------------------------------------------------------------------------------------
-	IF NOT(NextLength[i] < ESP) THEN NextLength[i] = INT(NextLength[i] / SegmentSizeWithMargin) * SegmentSizeWithMargin
+	!IF NOT(NextLength[i] < ESP) THEN NextLength[i] = INT(NextLength[i] / SegmentSizeWithMargin) * SegmentSizeWithMargin
 NEXT i
-
 
 ! Geometric constants
 CurbUnitArea = CurbeSegmentHeight * CurbeSegmentWidth  ! Rectangular area per block
+
 ! Local color alternation tracker matching 3D loop state
-calcAlternatingBool = 0
+calcAlternatingBool   = 0
 TotalArea_Line        = 0.0
 TotalArea_Curbs_White = 0.0
 TotalArea_Curbs_Color = 0.0
 TotalCurbCount        = 0
+! Geometric constants
+CurbUnitArea = CurbeSegmentHeight * CurbeSegmentWidth  ! Rectangular area per block
+
+TotalArea_Line        = 0.0
+TotalArea_Curbs_White = 0.0
+TotalArea_Curbs_Color = 0.0
+TotalCurbCount        = 0
+
 ! -------------------------------------------------------------------------
 ! 1. FIRST STRAIGHT (TRANSITION)
 ! -------------------------------------------------------------------------
-! Line element is a trapezoid: base1 = LineWidth, base2 = LineWidth, length = TransitionLength
 LineArea_First = LineWidth * TransitionLength
 TotalArea_Line = TotalArea_Line + LineArea_First
-! 3 transition curb blocks
+
+! Matches 3D: Block 1 (White half), Block 2 (Color full), Block 3 (White full)
 TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea/2
 TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
-TotalCurbCount = TotalCurbCount + 3
+TotalCurbCount        = TotalCurbCount + 3
+
+! After Block 3 (White), the active state is True (1)
+calcAlternatingBool = 0
+
 ! -------------------------------------------------------------------------
 ! 2. MAIN SEGMENT LOOP
 ! -------------------------------------------------------------------------
 IF NextLength[1] < ESP AND CurveLeft[1] < ESP AND CurveRight[1] < ESP THEN
-	NextLength[1] = CurbeSegmentMargin
+    NextLength[1] = CurbeSegmentMargin
 ENDIF
 k = 1
 WHILE ObjectOrder[k] <> 0 DO
-	IF NextLength[k] > ESP 		 THEN ObjectOrder[k+1] = 2
-	IF CurveLeft[k]  > ESP 		 THEN ObjectOrder[k+1] = 3
-	IF CurveRight[k] > ESP 		 THEN ObjectOrder[k+1] = 4
-	! --- STRAIGHT SEGMENT ---
-	IF ObjectOrder[k] = 2 THEN
-		NumOfSegments   = INT(NextLength[k-1] / SegmentSizeWithMargin)
-		! Line area along the snapped curb span
-		lineSpan = NumOfSegments * SegmentSizeWithMargin
-		TotalArea_Line = TotalArea_Line + (LineWidth * lineSpan)
-		! Curb blocks
-		FOR j = 1 TO NumOfSegments
-			calcAlternatingBool = NOT(calcAlternatingBool)
-			IF calcAlternatingBool THEN
-				TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea
-			ELSE
-				TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
-			ENDIF
-			TotalCurbCount = TotalCurbCount + 1
-		NEXT j
-	ENDIF
-	! --- LEFT CURVE SEGMENT ---
-	IF ObjectOrder[k] = 3 THEN
-		CurveRadius = CurveLeft[k-1]
-		IF CurveRadius > 0 THEN
-			StepAngle = SegmentSizeWithMargin * 360 / (2 * PI * CurveRadius)
-			Angle     = INT(LeftAngle[k] / StepAngle) * StepAngle
-			IF Angle < StepAngle THEN Angle = StepAngle
-			! Line area: Circular ring sector
-			InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin
-			OuterRadius = InnerRadius + LineWidth
-			angleRad    = Angle * PI / 180
-			TotalArea_Line = TotalArea_Line + (0.5 * angleRad * (OuterRadius^2 - InnerRadius^2))
-			! Curved curb blocks
-			SegmentAngle = CurbeSegmentWidth * 360 / (2 * PI * CurveRadius)
-			MarginAngle  = CurbeSegmentMargin * 360 / (2 * PI * CurveRadius)
-			StepAngLocal = SegmentAngle + MarginAngle
-			IF StepAngLocal > 0 THEN
-				nSegments = INT((Angle + MarginAngle) / StepAngLocal)
-			ELSE
-				nSegments = 0
-			ENDIF
-			segAngleRad  = SegmentAngle * PI / 180
-			R_curb_inner = CurveRadius
-			R_curb_outer = CurveRadius + CurbeSegmentHeight
-			curvedCurbArea = 0.5 * segAngleRad * (R_curb_outer^2 - R_curb_inner^2)
-			FOR j = 1 TO nSegments
-				calcAlternatingBool = NOT(calcAlternatingBool)
-				IF calcAlternatingBool THEN
-					TotalArea_Curbs_White = TotalArea_Curbs_White + curvedCurbArea
-				ELSE
-					TotalArea_Curbs_Color = TotalArea_Curbs_Color + curvedCurbArea
-				ENDIF
-				TotalCurbCount = TotalCurbCount + 1
-			NEXT j
-		ENDIF
-		ObjectOrder[k+1] = 2 
-	ENDIF
-	! --- RIGHT CURVE SEGMENT ---
-	IF ObjectOrder[k] = 4 THEN
-		CurveRadius = CurveRight[k-1]
-		IF CurveRadius > 0 THEN
-			StepAngle = SegmentSizeWithMargin * 360 / (2 * PI * CurveRadius)
-			Angle     = INT(RightAngle[k] / StepAngle) * StepAngle
-			IF Angle < StepAngle THEN Angle = StepAngle
-			! Line area: Circular ring sector between InnerRadius and OuterRadius
-			! Area = (Angle in radians / 2) * (R_outer^2 - R_inner^2)
-			InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin
-			OuterRadius = InnerRadius + LineWidth
-			angleRad    = Angle * PI / 180
-			TotalArea_Line = TotalArea_Line + (0.5 * angleRad * (OuterRadius^2 - InnerRadius^2))
-			! Curved curb blocks
-			SegmentAngle = CurbeSegmentWidth * 360 / (2 * PI * CurveRadius)
-			MarginAngle  = CurbeSegmentMargin * 360 / (2 * PI * CurveRadius)
-			StepAngLocal = SegmentAngle + MarginAngle
-			IF StepAngLocal > 0 THEN
-				nSegments = INT((Angle + MarginAngle) / StepAngLocal)
-			ELSE
-				nSegments = 0
-			ENDIF
-			! Circular ring sector area per single curved curb block
-			segAngleRad  = SegmentAngle * PI / 180
-			R_curb_inner = CurveRadius
-			R_curb_outer = CurveRadius + CurbeSegmentHeight
-			curvedCurbArea = 0.5 * segAngleRad * (R_curb_outer^2 - R_curb_inner^2)
-			FOR j = 1 TO nSegments
-				calcAlternatingBool = NOT(calcAlternatingBool)
-				IF calcAlternatingBool THEN
-					TotalArea_Curbs_White = TotalArea_Curbs_White + curvedCurbArea
-				ELSE
-					TotalArea_Curbs_Color = TotalArea_Curbs_Color + curvedCurbArea
-				ENDIF
-				TotalCurbCount = TotalCurbCount + 1
-			NEXT j
-		ENDIF
-		ObjectOrder[k+1] = 2 
-	ENDIF
-	k = k + 1
+    IF NextLength[k] > ESP THEN ObjectOrder[k+1] = 2
+    IF CurveLeft[k]  > ESP THEN ObjectOrder[k+1] = 3
+    IF CurveRight[k] > ESP THEN ObjectOrder[k+1] = 4
+    ! =========================================================================
+    ! --- STRAIGHT SEGMENT ---
+    ! =========================================================================
+    IF ObjectOrder[k] = 2 THEN
+        NumOfSegments  = INT(NextLength[k-1] / SegmentSizeWithMargin)
+        lineSpan       = NumOfSegments * SegmentSizeWithMargin
+        TotalArea_Line = TotalArea_Line + (LineWidth * lineSpan)
+        FOR j = 1 TO NumOfSegments
+            calcAlternatingBool = NOT(calcAlternatingBool)
+            IF calcAlternatingBool THEN
+                TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea
+            ELSE
+                TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
+            ENDIF
+            TotalCurbCount = TotalCurbCount + 1
+        NEXT j
+    ENDIF
+    ! =========================================================================
+    ! --- LEFT CURVE SEGMENT ---
+    ! =========================================================================
+    IF ObjectOrder[k] = 3 THEN
+        CurveRadius = CurveLeft[k-1]
+        rCurbInner  = CurveRadius + LineOffsetMargin
+        rCurbOuter  = CurveRadius + CurbeSegmentHeight + LineOffsetMargin
+        IF rCurbInner > 0.0001 THEN
+            ! 1. Arc line area
+            InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin + LineOffsetMargin
+            OuterRadius = InnerRadius + LineWidth
+            angleRad    = LeftAngle[k] * PI / 180
+            TotalArea_Line = TotalArea_Line + (0.5 * angleRad * (OuterRadius^2 - InnerRadius^2))
+            ! 2. Discrete angular steps along curb
+            SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
+            MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
+            StepAngLocal = SegmentAngle + MarginAngle
+            Angle = INT(LeftAngle[k] / StepAngLocal) * StepAngLocal
+            IF Angle < StepAngLocal THEN Angle = StepAngLocal
+            nSegments = INT((Angle + MarginAngle) / StepAngLocal)
+            ! 3. Full curved blocks
+            segAngleRad    = SegmentAngle * PI / 180
+            curvedCurbArea = 0.5 * segAngleRad * (rCurbOuter^2 - rCurbInner^2)
+            FOR j = 1 TO nSegments
+                calcAlternatingBool = NOT(calcAlternatingBool)
+                IF calcAlternatingBool THEN
+                    TotalArea_Curbs_White = TotalArea_Curbs_White + curvedCurbArea
+                ELSE
+                    TotalArea_Curbs_Color = TotalArea_Curbs_Color + curvedCurbArea
+                ENDIF
+                TotalCurbCount = TotalCurbCount + 1
+            NEXT j
+            ! 4. Extra curved remainder segment
+            AngleDifference      = LeftAngle[k] - Angle
+            NewSegmentAngle      = SegmentAngle - AngleDifference
+            ActualSegmentAngle   = ABS(NewSegmentAngle - SegmentAngle)
+            NewCurbeSegmentWidth = NewSegmentAngle * PI * rCurbInner / 180
+            remAngleRad = ActualSegmentAngle * PI / 180
+            remCurbArea = 0.5 * remAngleRad * (rCurbOuter^2 - rCurbInner^2)
+            calcAlternatingBool = NOT(calcAlternatingBool)
+            IF calcAlternatingBool THEN
+                TotalArea_Curbs_White = TotalArea_Curbs_White + remCurbArea
+            ELSE
+                TotalArea_Curbs_Color = TotalArea_Curbs_Color + remCurbArea
+            ENDIF
+            TotalCurbCount = TotalCurbCount + 1
+            ! 5. Straight extension segment & marking line
+            ! Uses the SAME color as remainder segment (matches 3D - no flip)
+            straightExtCurbArea = CurbeSegmentHeight * NewCurbeSegmentWidth
+            straightExtLineArea = LineWidth * NewCurbeSegmentWidth
+            TotalArea_Line      = TotalArea_Line + straightExtLineArea
+            IF calcAlternatingBool THEN
+                TotalArea_Curbs_White = TotalArea_Curbs_White + straightExtCurbArea
+            ELSE
+                TotalArea_Curbs_Color = TotalArea_Curbs_Color + straightExtCurbArea
+            ENDIF
+            TotalCurbCount = TotalCurbCount + 1
+        ENDIF
+        ObjectOrder[k+1] = 2 
+    ENDIF
+    ! =========================================================================
+    ! --- RIGHT CURVE SEGMENT ---
+    ! =========================================================================
+    IF ObjectOrder[k] = 4 THEN
+        CurveRadius = CurveRight[k-1]
+        rCurbInner  = CurveRadius - LineOffsetMargin
+        rCurbOuter  = CurveRadius + CurbeSegmentHeight - LineOffsetMargin
+        IF rCurbInner > 0.0001 THEN
+            ! 1. Arc line area
+            InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin - LineOffsetMargin
+            OuterRadius = InnerRadius + LineWidth
+            angleRad    = RightAngle[k] * PI / 180
+            TotalArea_Line = TotalArea_Line + (0.5 * angleRad * (OuterRadius^2 - InnerRadius^2))
+            ! 2. Discrete angular steps along curb
+            SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
+            MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
+            StepAngLocal = SegmentAngle + MarginAngle
+            Angle = INT(RightAngle[k] / StepAngLocal) * StepAngLocal
+            IF Angle < StepAngLocal THEN Angle = StepAngLocal
+            nSegments = INT((Angle + MarginAngle) / StepAngLocal)
+            ! 3. Full curved blocks
+            segAngleRad    = SegmentAngle * PI / 180
+            curvedCurbArea = 0.5 * segAngleRad * (rCurbOuter^2 - rCurbInner^2)
+            FOR j = 1 TO nSegments
+                calcAlternatingBool = NOT(calcAlternatingBool)
+                IF calcAlternatingBool THEN
+                    TotalArea_Curbs_White = TotalArea_Curbs_White + curvedCurbArea
+                ELSE
+                    TotalArea_Curbs_Color = TotalArea_Curbs_Color + curvedCurbArea
+                ENDIF
+                TotalCurbCount = TotalCurbCount + 1
+            NEXT j
+            ! 4. Extra curved remainder segment
+            AngleDifference      = RightAngle[k] - Angle
+            NewSegmentAngle      = SegmentAngle - AngleDifference
+            ActualSegmentAngle   = ABS(NewSegmentAngle - SegmentAngle)
+            NewCurbeSegmentWidth = NewSegmentAngle * PI * rCurbInner / 180
+            remAngleRad = ActualSegmentAngle * PI / 180
+            remCurbArea = 0.5 * remAngleRad * (rCurbOuter^2 - rCurbInner^2)
+            calcAlternatingBool = NOT(calcAlternatingBool)
+            IF calcAlternatingBool THEN
+                TotalArea_Curbs_White = TotalArea_Curbs_White + remCurbArea
+            ELSE
+                TotalArea_Curbs_Color = TotalArea_Curbs_Color + remCurbArea
+            ENDIF
+            TotalCurbCount = TotalCurbCount + 1
+            ! 5. Straight extension segment & marking line
+            ! Uses the SAME color as remainder segment (matches 3D - no flip)
+            straightExtCurbArea = CurbeSegmentHeight * NewCurbeSegmentWidth
+            straightExtLineArea = LineWidth * NewCurbeSegmentWidth
+            TotalArea_Line      = TotalArea_Line + straightExtLineArea
+            IF calcAlternatingBool THEN
+                TotalArea_Curbs_White = TotalArea_Curbs_White + straightExtCurbArea
+            ELSE
+                TotalArea_Curbs_Color = TotalArea_Curbs_Color + straightExtCurbArea
+            ENDIF
+            TotalCurbCount = TotalCurbCount + 1
+        ENDIF
+        ObjectOrder[k+1] = 2 
+    ENDIF
+    k = k + 1
 ENDWHILE
 ! -------------------------------------------------------------------------
 ! 3. LAST STRAIGHT (TRANSITION)
 ! -------------------------------------------------------------------------
 LineArea_Last  = LineWidth * TransitionLength
 TotalArea_Line = TotalArea_Line + LineArea_Last
+
 calcAlternatingBool = NOT(calcAlternatingBool)
+
 IF calcAlternatingBool THEN
-	TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea/2
-	TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea
-ELSE
 	TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea/2
 	TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
+ELSE
+	TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea
+	TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea/2
 ENDIF
 TotalCurbCount = TotalCurbCount + 3
-! -------------------------------------------------------------------------
-! 4. COMBINED TOTALS
-! -------------------------------------------------------------------------
+
 TotalArea_Curbs = TotalArea_Curbs_White + TotalArea_Curbs_Color
 TotalArea_All   = TotalArea_Line + TotalArea_Curbs
 ]]>
@@ -1171,6 +1510,10 @@ ENDIF
 ! --- Material / Color ---
 UI_OUTFIELD "Curb Color",       20, 120, 100, 15
 UI_INFIELD  "CurbColor",        20, 138, 100, 20
+
+UI_OUTFIELD "Line Offset",				20, 170, 100, 15
+UI_INFIELD  "LineOffsetMarginBool",		20, 198, 100, 20
+
 ! ==============================================================================
 ! TAB 2: ERP DESCRIPTION & QUANTITIES
 ! ==============================================================================
@@ -1198,7 +1541,13 @@ VALUES{2} "BSO_Angle",
     9.86,   "12°",
     12.29,  "14°"
 
-!VALUES "CurbColor", "470", "471" 
+DIM colorList[]
+index = 1
+FOR i = 741 TO 759
+    colorList[index] = i
+    index = index + 1
+NEXT i
+VALUES "CurbColor" colorList
 
 ! Send calculated values into the object's parameters
 PARAMETERS TotalArea      = TotalArea_All,
@@ -1311,7 +1660,7 @@ LOCK "TotalArea", "TotalCurbArea", "TotalLineArea", "TotalCurbCount"
 		<Length Name="NextLength">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
-				<AVal Row="1">0.1</AVal>
+				<AVal Row="1">0</AVal>
 				<AVal Row="2">0</AVal>
 				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
@@ -1925,7 +2274,7 @@ LOCK "TotalArea", "TotalCurbArea", "TotalLineArea", "TotalCurbCount"
 		</Length>
 		<Angle Name="RightAngle">
 			<Description><![CDATA[""]]></Description>
-			<ArrayValues FirstDimension="120" SecondDimension="0">
+			<ArrayValues FirstDimension="118" SecondDimension="0">
 				<AVal Row="1">90</AVal>
 				<AVal Row="2">90</AVal>
 				<AVal Row="3">90</AVal>
@@ -2044,8 +2393,6 @@ LOCK "TotalArea", "TotalCurbArea", "TotalLineArea", "TotalCurbCount"
 				<AVal Row="116">90</AVal>
 				<AVal Row="117">90</AVal>
 				<AVal Row="118">90</AVal>
-				<AVal Row="119">90</AVal>
-				<AVal Row="120">90</AVal>
 			</ArrayValues>
 		</Angle>
 		<Angle Name="LeftAngle">
@@ -2479,15 +2826,15 @@ LOCK "TotalArea", "TotalCurbArea", "TotalLineArea", "TotalCurbCount"
 		</Length>
 		<Length Name="TotalArea_Curbs_Color">
 			<Description><![CDATA[""]]></Description>
-			<Value>0.225</Value>
+			<Value>0.3</Value>
 		</Length>
 		<Length Name="TotalArea_Curbs_White">
 			<Description><![CDATA[""]]></Description>
-			<Value>0.225</Value>
+			<Value>0.15</Value>
 		</Length>
 		<String Name="ERP_Code_Val">
 			<Description><![CDATA[""]]></Description>
-			<Value><![CDATA["|Signocryl|cf:744|0,23"]]></Value>
+			<Value><![CDATA["|Signocryl|cf:744|0,30"]]></Value>
 		</String>
 		<Length Name="LastStraightOrientation">
 			<Description><![CDATA[""]]></Description>
@@ -2497,6 +2844,14 @@ LOCK "TotalArea", "TotalCurbArea", "TotalLineArea", "TotalCurbCount"
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
 		</Length>
+		<Length Name="LineOffsetMargin">
+			<Description><![CDATA[""]]></Description>
+			<Value>0.05</Value>
+		</Length>
+		<Boolean Name="LineOffsetMarginBool">
+			<Description><![CDATA[""]]></Description>
+			<Value>0</Value>
+		</Boolean>
 	</Parameters>
 </ParamSection>
 
