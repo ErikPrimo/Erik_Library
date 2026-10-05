@@ -81,11 +81,11 @@ WHILE ObjectOrder[i] <> 0 DO
 	i = i + 1
 ENDWHILE
 GOSUB "LastStraight"
-BREAKPOINT 1
+ 
 END
 
 "FirstStraight":
-	BREAKPOINT 1
+	 
 	ADDX LineOffsetMargin
 	GOSUB "FirstStraightOrientationHotSpot"
 	IF NOT(FirstStraightOrientation < -ESP) THEN
@@ -146,7 +146,7 @@ END
 	ENDIF
 	DEL 1
 	MATERIAL 753
-	BREAKPOINT 1
+	 
 	ADDY TransitionLength
 	LineFillerX = CurbeSegmentMargin : GOSUB "LineFiller"
 	ADDY CurbeSegmentMargin
@@ -219,7 +219,7 @@ RETURN
 
 !-----Makes The Straight-------------------------------------------------------------------------------------------------------------------------------------------------
 "Straight":
-	BREAKPOINT 1
+	 
 	ADDX LineOffsetMargin
 	IF Directions < -ESP  THEN
 		MULX -1
@@ -256,7 +256,7 @@ RETURN
 			ExtraSegment = CurbeSegmentWidth
 		ENDIF
 		GOSUB "AlternatingColors"
-		BREAKPOINT 1
+		 
 		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
 			0,						0,						1,
 			-CurbeSegmentHeight,	0,						1,
@@ -276,7 +276,7 @@ RETURN
 
 !-----Makes The Right Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveRight":
-	BREAKPOINT 1
+	 
     CurveRadius = CurveRight[i-1] - LineOffsetMargin
 
     ! ---------------------------------------------------------
@@ -404,7 +404,7 @@ RETURN
         ADDX -CurveRadius
         pushedTransforms = pushedTransforms + 3
     NEXT j
-	BREAKPOINT 1
+	 
     ! ---------------------------------------------------------
     ! 6. REMAINDER CURVED SEGMENT AT CURVE END
     ! ---------------------------------------------------------
@@ -457,7 +457,7 @@ RETURN
         xLineOuter, 0,                    1,
         xLineInner, 0,                    1
     ADDY NewCurbeSegmentWidth
-	BREAKPOINT 1
+	 
 	ADDX -LineOffsetMargin
 	LineFillerX = CurbeSegmentMargin : GOSUB "LineFiller"
 	ADDY CurbeSegmentMargin
@@ -467,7 +467,7 @@ RETURN
 
 !-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveLeft":
-    BREAKPOINT 1
+     
     CurveRadius = CurveLeft[i-1] + LineOffsetMargin
 
     ! ---------------------------------------------------------
@@ -591,7 +591,7 @@ RETURN
         pushedTransforms = pushedTransforms + 3
     NEXT j
 
-    BREAKPOINT 1
+     
 
     ! ---------------------------------------------------------
     ! 6. REMAINDER CURVED SEGMENT AT CURVE END
@@ -674,7 +674,6 @@ RETURN
 RETURN
 
 "LineFiller":
-BREAKPOINT 1
 	MATERIAL 753
 	!IF Directions > LineOffsetMargin THEN
 	IF Directions > LineOffsetMargin OR (Directions < LineOffsetMargin AND Directions > -LineOffsetMargin) THEN
@@ -1063,7 +1062,6 @@ RETURN
 RETURN
 
 "StraightHotSpot2D":
-BREAKPOINT 1
     IF NextLength[i] < -ESP THEN NextLength[i] = ESP
     HOTSPOT2 0,  0,             unID, NextLength[i], 1 + 128	: unID = unID + 1
     HOTSPOT2 0,  NextLength[i], unID, NextLength[i], 2 			: unID = unID + 1
@@ -1285,7 +1283,6 @@ RemainingSegment      = 0
 ! -------------------------------------------------------------------------
 LineArea_First = LineWidth * TransitionLength
 TotalArea_Line = TotalArea_Line + LineArea_First
-BREAKPOINT 1
 ! Matches 3D: Block 1 (White half = 0.5), Block 2 (Color full = 1.0), Block 3 (White full = 1.0)
 TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea * 0.5
 TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea * 1.0
@@ -1572,8 +1569,9 @@ TotalArea_All   = TotalArea_Line + TotalArea_Curbs
 ! ---------------------------------------------------------
 sucs2 = 0
 DIM LibG_cMet[]
-sucs2 = LIBRARYGLOBAL ("LibraryGlobals_Karting_Colors", "LibraryGlo_c1_met", LibG_cMet[1], LibG_cMet[2], LibG_cMet[3], LibG_cMet[4], LibG_cMet[5], LibG_cMet[6])										!!!dopolnitev barv
+sucs2 = LIBRARYGLOBAL ("LibraryGlobals_Karting_Colors", "LibraryGlo_c1_met", LibG_cMet[1], LibG_cMet[2], LibG_cMet[3], LibG_cMet[4], LibG_cMet[5], LibG_cMet[6])
 curbColorClean = ""
+
 IF CurbColor = 741 THEN curbColorClean = "RAL 1003"
 IF CurbColor = 742 THEN curbColorClean = "RAL 1016"
 IF CurbColor = 743 THEN curbColorClean = "RAL 2003"
@@ -1589,11 +1587,10 @@ IF CurbColor = 751 THEN curbColorClean = "RAL 7015"
 IF CurbColor = 752 THEN curbColorClean = "RAL 7021"
 IF CurbColor = 754 THEN curbColorClean = "RAL 7044"
 IF CurbColor = 753 THEN curbColorClean = "RAL 9003"
-!IF CurbColor = 756 THEN curbColorClean = LibG_cMet[1]
-IF CurbColor = 756 THEN curbColorClean = LibG_cMet[2]
-IF CurbColor = 757 THEN curbColorClean = LibG_cMet[3]
-IF CurbColor = 758 THEN curbColorClean = LibG_cMet[4]
-IF CurbColor = 759 THEN curbColorClean = LibG_cMet[5]
+IF CurbColor = 756 THEN curbColorClean = LibG_cMet[1]
+IF CurbColor = 757 THEN curbColorClean = LibG_cMet[2]
+IF CurbColor = 758 THEN curbColorClean = LibG_cMet[3]
+IF CurbColor = 759 THEN curbColorClean = LibG_cMet[4]
 
 ! If still unmapped, fall back to the raw number
 IF curbColorClean = "" THEN curbColorClean = STR(CurbColor, 4, 0)
@@ -1681,32 +1678,6 @@ PARAMETERS ERP_Code_Color = ERP_Code_Color
 PARAMETERS ERP_Code_White = ERP_Code_White 
 
 LOCK "TotalArea", "TotalCurbArea", "TotalLineArea", "TotalCurbCount", "ERP_Code_Color", "ERP_Code_White"
-!SegmentSizeWithMargin = CurbeSegmentWidth + CurbeSegmentMargin
-
-! ! --- Zaskok kota na polne segmente ---
-! FOR i = 1 TO VARDIM1(RightAngle)
-!     IF CurveRight[i] > 0 THEN
-!         StepAngle = SegmentSizeWithMargin * 360 / (2 * PI * CurveRight[i])
-!         IF RightAngle[i] > 0 AND StepAngle > 0 THEN
-!             newAngle = INT(RightAngle[i] / StepAngle) * StepAngle
-!             IF newAngle < StepAngle THEN newAngle = StepAngle
-!             RightAngle[i] = newAngle
-!         ENDIF
-!     ENDIF
-! NEXT i
-! PARAMETERS RightAngle = RightAngle
-
-! ! --- ALI zaskok polmera na polne segmente (če prilagajaš polmer) ---
-! FOR i = 1 TO VARDIM1(CurveRight)
-!     IF CurveRight[i] > 0 AND RightAngle[i] > 0 THEN
-!         ArcLen = (2 * PI * CurveRight[i]) * (RightAngle[i] / 360)
-!         nSeg = INT(ArcLen / SegmentSizeWithMargin)
-!         IF nSeg < 1 THEN nSeg = 1
-        
-!         CurveRight[i] = (nSeg * SegmentSizeWithMargin * 360) / (2 * PI * RightAngle[i])
-!     ENDIF
-! NEXT i
-! PARAMETERS CurveRight = CurveRight
 ]]>
 </Script_VL>
 
