@@ -1125,52 +1125,56 @@ RETURN
 RETURN
 
 "LastStraightOrientationHotSpot2D":
- 	IF NOT(LastStraightOrientation < -ESP) THEN
-		Offset = 0
-		IF Directions > ESP THEN
-			Direction = -1
+	IF NOT(Directions < ESP AND Directions > -ESP) THEN
+		IF NOT(LastStraightOrientation < -ESP) THEN
+			Offset = 0
+			IF Directions > ESP THEN
+				Direction = -1
+			ELSE
+				Direction = 1
+			ENDIF
 		ELSE
-			Direction = 1
+			IF Directions > ESP THEN
+				Offset = -CurbeSegmentHeight - TransitionLineMargin
+				Direction = -1
+			ELSE
+				Offset = CurbeSegmentHeight + TransitionLineMargin
+				Direction = 1
+			ENDIF
 		ENDIF
-	ELSE
-		IF Directions > ESP THEN
-			Offset = -CurbeSegmentHeight - TransitionLineMargin
-			Direction = -1
-		ELSE
-			Offset = CurbeSegmentHeight + TransitionLineMargin
-			Direction = 1
+		HOTSPOT2 Offset,					TransitionLength,	unID, LastStraightOrientation, 1 : unID = unID + 1
+		HOTSPOT2 Offset,					TransitionLength, 	unID, LastStraightOrientation, 2 : unID = unID + 1
+		HOTSPOT2 Offset+Direction,			TransitionLength,	unID, LastStraightOrientation, 3 : unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				31, 0,
+				Offset, TransitionLength, 900,
+				CircleSize, 360, 4001
 		ENDIF
 	ENDIF
-	HOTSPOT2 Offset,					TransitionLength,	unID, LastStraightOrientation, 1 : unID = unID + 1
-	HOTSPOT2 Offset,					TransitionLength, 	unID, LastStraightOrientation, 2 : unID = unID + 1
-	HOTSPOT2 Offset+Direction,			TransitionLength,	unID, LastStraightOrientation, 3 : unID = unID + 1
-	IF ColorCircles THEN
-		POLY2_B 2, 1+2+4,
-			31, 0,
-			Offset, TransitionLength, 900,
-			CircleSize, 360, 4001
-    ENDIF
 RETURN
 
 "FirstStraightOrientationHotSpot":
-	Direction = 1
-	IF Directions > ESP THEN
-		Direction = -1
+	IF NOT(Directions < ESP AND Directions > -ESP) THEN
+		Direction = 1
+		IF Directions > ESP THEN
+			Direction = -1
+		ENDIF
+		IF NOT (FirstStraightOrientation < -ESP) THEN
+			Offset = 0
+		ELSE
+			Offset = Direction * (CurbeSegmentHeight + TransitionLineMargin)
+		ENDIF
+		HOTSPOT2  Offset,				0,		unID, FirstStraightOrientation, 1 : unID = unID + 1
+		HOTSPOT2  Offset,				0, 		unID, FirstStraightOrientation, 2 : unID = unID + 1
+		HOTSPOT2  Offset+Direction,		0,		unID, FirstStraightOrientation, 3 : unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				31, 0,
+				Offset, 0, 900,
+				CircleSize, 360, 4001
+		ENDIF
 	ENDIF
-	IF NOT (FirstStraightOrientation < -ESP) THEN
-		Offset = 0
-	ELSE
-		Offset = Direction * (CurbeSegmentHeight + TransitionLineMargin)
-	ENDIF
-	HOTSPOT2  Offset,				0,		unID, FirstStraightOrientation, 1 : unID = unID + 1
-	HOTSPOT2  Offset,				0, 		unID, FirstStraightOrientation, 2 : unID = unID + 1
-	HOTSPOT2  Offset+Direction,		0,		unID, FirstStraightOrientation, 3 : unID = unID + 1
-	IF ColorCircles THEN
-		POLY2_B 2, 1+2+4,
-			31, 0,
-			Offset, 0, 900,
-			CircleSize, 360, 4001
-    ENDIF
 RETURN
 ]]>
 </Script_2D>
