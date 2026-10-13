@@ -23,19 +23,19 @@ GOSUB "SizeAndShapeHotSpots"
 EXTRUDE 17, 0, 0, TrackThickness, ExtrudeValues,
 	0,					0,						1,
 	Length,				0,						1,
-	Length,				0 + RightRadi,			900,
-	Length + RightRadi,	0 + RightRadi,			3001, 
-	Length + RightRadi,	0 + RightRadi,			1,
-	Length + RightRadi,	Width - RightRadi,		1,
-	Length,				Width - RightRadi,		900,
+	Length,				0 + PitRadi,			900,
+	Length + PitRadi,	0 + PitRadi,			3001, 
+	Length + PitRadi,	0 + PitRadi,			1,
+	Length + PitRadi,	Width - PitRadi,		1,
+	Length,				Width - PitRadi,		900,
 	Length,				Width,					3001,
 	Length,				Width,					1,
 	0,					Width,					1,
-	0,					Width - RightRadi,		900,
-	-RightRadi,			Width - RightRadi,		3001,
-	-RightRadi,			Width - RightRadi,		1,
-	-RightRadi,			0 + RightRadi,			1,
-	0,					0 + RightRadi,			900,
+	0,					Width - PitRadi,		900,
+	-PitRadi,			Width - PitRadi,		3001,
+	-PitRadi,			Width - PitRadi,		1,
+	-PitRadi,			0 + PitRadi,			1,
+	0,					0 + PitRadi,			900,
 	0,					0,						3001,
 	0,					0,						1
 ADDZ TrackThickness
@@ -56,10 +56,8 @@ END
 
     ActualBoxWidth = SegmentWidthPit[i] - PitBoxMargin * 2
 
-    ! --- Draw Pit Box Stalls (U-shaped markings/walls) ---
     FOR j = 1 TO SegmentCount
-        ! Sub-routine for stall geometry using PRISM_
-        ! PRISM_ n, height, x1, y1, s1, ...
+
         PRISM_ 9, PitBoxHeight,
             0,              0,                              1,
             PitBoxLength,   0,                              1,
@@ -74,46 +72,53 @@ END
         ADDX PitBoxLength
     NEXT j
 
-    ! --- Draw End Cap Wall ---
     PRISM_ 5, PitBoxHeight,
         0,          0,              1,
         PitBoxLine, 0,              1,
         PitBoxLine, ActualBoxWidth, 1,
         0,          ActualBoxWidth, 1,
         0,          0,              1
-
-    ! --- Clean up transformations ---
-    ! 1 (initial Z) + 1 (initial Y) + 1 (initial X) + SegmentCount (loop translations)
     DEL 3 + SegmentCount
 
-    ! --- Move local origin to the start of the next Y-segment ---
     ADDY SegmentWidthPit[i]
 RETURN
 
 "CatWalk":
 	GOSUB "CatRightHotSpots"
 	GOSUB "CatLeftHotSpots"
+	GOSUB "RightRadiHotSpots"
+	GOSUB "LeftRadiHotSpots"
+	GOSUB "RightRadiDirectionHotSpots"
 	MATERIAL CatColor[i]
 	ADDY SegmentWidthCat[i] / 2
 	CatWalkWidth = SegmentWidthCat[i]
-	EXTRUDE 17, 0, 0, .2, ExtrudeValues,
-		0,													-CatWalkWidth/2,						1,
-		CatWalkLength + CatRight[i],						-CatWalkWidth/2,						1,
-		CatWalkLength + CatRight[i],						-CatWalkWidth/2 + CatWalkWidth/2,		900,  
-		CatWalkLength + CatRight[i] + CatWalkWidth/2,		-CatWalkWidth/2 + CatWalkWidth/2,		3001, 
-		CatWalkLength + CatRight[i] + CatWalkWidth/2,		-CatWalkWidth/2 + CatWalkWidth/2,		1,
-		CatWalkLength + CatRight[i] + CatWalkWidth/2,		CatWalkWidth/2 - CatWalkWidth/2,		1,
-		CatWalkLength + CatRight[i],						CatWalkWidth/2 - CatWalkWidth/2,		900,  
-		CatWalkLength + CatRight[i],						CatWalkWidth/2,							3001,
-		CatWalkLength + CatRight[i],						CatWalkWidth/2,							1,
-		CatLeft[i],											CatWalkWidth/2,							1,
-		CatLeft[i],											CatWalkWidth/2 - CatWalkWidth/2,		900,  
-		CatLeft[i]-CatWalkWidth/2,							CatWalkWidth/2 - CatWalkWidth/2,		3001,
-		CatLeft[i]-CatWalkWidth/2,							CatWalkWidth/2 - CatWalkWidth/2,		1,
-		CatLeft[i]-CatWalkWidth/2,							-CatWalkWidth/2 + CatWalkWidth/2,		1,
-		CatLeft[i],											-CatWalkWidth/2 + CatWalkWidth/2,		900,  
-		CatLeft[i],											-CatWalkWidth/2,						3001,
-		CatLeft[i],											-CatWalkWidth/2,						1
+	Radi = RightRadi[i]
+	Direction = 0
+	InnerRadi = Radi - CatWalkWidth / 2
+	OuterRadi = Radi + CatWalkWidth / 2
+	IF RightRadiDirection[i] > ESP THEN
+		Direction = -1
+	ELSE
+		Direction = 1
+	ENDIF
+	GOSUB "AngleHotSpot"
+
+	EXTRUDE 15, 0, 0, 0.2, ExtrudeValues,
+		CatLeft[i],					 											Direction * CatWalkWidth/2,															1,				!1
+		CatWalkLength + CatRight[i],											Direction * CatWalkWidth/2,															1,				!2
+		CatWalkLength + CatRight[i],											Direction * Radi,																	900,			!3
+		CatWalkLength + CatRight[i] + InnerRadi * SIN(AngleRight[i]),			Direction * InnerRadi * (1 - COS(AngleRight[i]))-(CatWalkWidth/2)*(-Direction),		3000,			!4
+		CatWalkLength + CatRight[i] + InnerRadi * SIN(AngleRight[i]),			Direction * InnerRadi * (1 - COS(AngleRight[i]))-(CatWalkWidth/2)*(-Direction),		1,				!5
+		CatWalkLength + CatRight[i] + Radi	* SIN(AngleRight[i]),				Direction * Radi * (1 - COS(AngleRight[i])),										900,			!6
+		0,																		-(Direction) * 180,																	4000,			!7
+		CatWalkLength + CatRight[i] + OuterRadi * SIN(AngleRight[i]),			Direction * OuterRadi * (1 - COS(AngleRight[i]))+(CatWalkWidth/2)*(-Direction),		1,				!8
+		CatWalkLength + CatRight[i],											Direction * Radi,																	900,			!9
+		CatWalkLength + CatRight[i],											-(Direction) * CatWalkWidth/2,														3000,			!10
+		CatWalkLength + CatRight[i],											-(Direction) * CatWalkWidth/2,														1,				!11
+		CatLeft[i],																-(Direction) * CatWalkWidth/2,														1,				!12
+		CatLeft[i],																0,																					900,			!13
+		0,																		-(Direction) * 180,																	4000,			!14
+		CatLeft[i],																Direction * CatWalkWidth/2,															1				!15
 	DEL 1
 	ADDY SegmentWidthCat[i]
 RETURN
@@ -145,6 +150,40 @@ RETURN
 	DEL 1
 RETURN
 
+"RightRadiHotSpots":
+	ADDY SegmentWidthCat[i] / 2
+	ADDX CatWalkLength + SegmentWidthCat[i]/2
+	HOTSPOT		0,		0,	0, unID, RightRadi[i], 1 : unID = unID + 1
+	HOTSPOT		0,		0,	0, unID, RightRadi[i], 2 : unID = unID + 1
+	HOTSPOT		-1,		0,	0, unID, RightRadi[i], 3 : unID = unID + 1
+	DEL 2
+RETURN
+
+"LeftRadiHotSpots":
+	ADDX -SegmentWidthCat[i]/2
+	HOTSPOT		0,		0,	0, unID, LeftRadi[i], 1 : unID = unID + 1
+	HOTSPOT		0,		0,	0, unID, LeftRadi[i], 2 : unID = unID + 1
+	HOTSPOT		1,		0,	0, unID, LeftRadi[i], 3 : unID = unID + 1
+	DEL 1
+RETURN
+
+"RightRadiDirectionHotSpots":
+	ADDY SegmentWidthCat[i] / 2
+	ADDX CatWalkLength + SegmentWidthCat[i]/2
+	HOTSPOT		0,		 0,		0, unID, RightRadiDirection[i], 1 : unID = unID + 1
+	HOTSPOT		0,		 0,		0, unID, RightRadiDirection[i], 2 : unID = unID + 1
+	HOTSPOT		0,		 1,		0, unID, RightRadiDirection[i], 3 : unID = unID + 1
+	DEL 2
+RETURN
+
+"AngleHotSpot":
+	IF Direction < -ESP THEN : AngleNum = 518 : ELSE : AngleNum = 6 : ENDIF
+	IF RightRadi[i] > ESP OR LeftRadi[i] > ESP THEN
+		HOTSPOT		CatWalkLength,			Direction*Radi,	0, unID, AngleRight[i], AngleNum	: unID = unID + 1
+		HOTSPOT		CatWalkLength+Radi,		Direction*Radi,	0, unID, AngleRight[i], 5			: unID = unID + 1
+		HOTSPOT		CatWalkLength,			0,				0, unID, AngleRight[i], 4			: unID = unID + 1
+	ENDIF
+RETURN
 
 !-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ]]>
@@ -167,16 +206,16 @@ GOSUB "SizeAndShapeHotSpots"
 ! 		TrackColor, 0,
 ! 		0, 						0,					1,
 ! 		Length, 				0,					1,
-! 		Length, 				RightRadi,			900,
+! 		Length, 				PitRadi,			900,
 ! 		0, 						90,					4001,
-! 		Length + RightRadi,		Width - RightRadi,	1,
-! 		Length,					Width - RightRadi,	900,
+! 		Length + PitRadi,		Width - PitRadi,	1,
+! 		Length,					Width - PitRadi,	900,
 ! 		0,						90,					4001,
 ! 		0,						Width,				1,
-! 		0,						Width - RightRadi,	900,
+! 		0,						Width - PitRadi,	900,
 ! 		0,						90,					4001,
-! 		-RightRadi,				RightRadi,			1,
-! 		0,						RightRadi,			900,
+! 		-PitRadi,				PitRadi,			1,
+! 		0,						PitRadi,			900,
 ! 		0,						90,					4001,
 ! 		0,						0,					1,
 ! 		0,						0,					-1
@@ -218,8 +257,18 @@ RETURN
 
 "CatWalk":
 	ADD2 0, SegmentWidthCat[i] / 2
+	Radi = RightRadi[i]
 	GOSUB "CatRightHotSpots"
 	GOSUB "CatLeftHotSpots"
+	GOSUB "RightRadiHotSpots"
+	GOSUB "LeftRadiHotSpots"
+	GOSUB "RightRadiDirectionHotSpots"
+		IF RightRadiDirection[i] > ESP THEN
+		Direction = -1
+	ELSE
+		Direction = 1
+	ENDIF
+	GOSUB "AngleHotSpot"
 	! CatWalkWidth = SegmentWidthCat[i]
 	! POLY2_B 17, 1 + 2 + 4,
 	! 	CatColor[i], 0,
@@ -266,6 +315,33 @@ RETURN
 	HOTSPOT2	0,		0, unID, CatLeft[i], 2 : unID = unID + 1
 	HOTSPOT2	-1,		0, unID, CatLeft[i], 3 : unID = unID + 1
 RETURN
+
+"RightRadiHotSpots":
+	HOTSPOT2	CatWalkLength + SegmentWidthCat[i]/2,		0, unID, RightRadi[i], 1 : unID = unID + 1
+	HOTSPOT2	CatWalkLength + SegmentWidthCat[i]/2,		0, unID, RightRadi[i], 2 : unID = unID + 1
+	HOTSPOT2	CatWalkLength + SegmentWidthCat[i]/2-1,		0, unID, RightRadi[i], 3 : unID = unID + 1
+RETURN
+
+"LeftRadiHotSpots":
+	HOTSPOT2		-SegmentWidthCat[i]/2,			0,	unID, LeftRadi[i], 1 : unID = unID + 1
+	HOTSPOT2		-SegmentWidthCat[i]/2,			0,	unID, LeftRadi[i], 2 : unID = unID + 1
+	HOTSPOT2		-SegmentWidthCat[i]/2+1,		0,	unID, LeftRadi[i], 3 : unID = unID + 1
+RETURN
+
+"RightRadiDirectionHotSpots":
+	HOTSPOT2	CatWalkLength + SegmentWidthCat[i]/2,		0, unID, RightRadiDirection[i], 1 : unID = unID + 1
+	HOTSPOT2	CatWalkLength + SegmentWidthCat[i]/2,		0, unID, RightRadiDirection[i], 2 : unID = unID + 1
+	HOTSPOT2	CatWalkLength + SegmentWidthCat[i]/2,		1, unID, RightRadiDirection[i], 3 : unID = unID + 1
+RETURN
+
+"AngleHotSpot":
+	IF Direction < -ESP THEN : AngleNum = 518 : ELSE : AngleNum = 6 : ENDIF
+	IF RightRadi[i] > ESP OR LeftRadi[i] > ESP THEN
+		HOTSPOT2		CatWalkLength,			Direction * Radi,	unID, AngleRight[i], AngleNum	: unID = unID + 1
+		HOTSPOT2		CatWalkLength+Radi,		Direction * Radi,	unID, AngleRight[i], 5			: unID = unID + 1
+		HOTSPOT2		CatWalkLength,			0,					unID, AngleRight[i], 4			: unID = unID + 1
+	ENDIF
+RETURN
 !--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ]]>
 </Script_2D>
@@ -294,8 +370,10 @@ ELSE
 	Detail = 2 + 4
 ENDIF
 !------------------------------------------------------------------------------------------------------------------------------------------
-BREAKPOINT 1
 
+FOR i = 1 TO 15
+	IF AngleRight[i] < ESP THEN AngleRight[i] = 90
+NEXT i
 SegmentNum = 1
 
 WHILE SegmentOrder[SegmentNum] <> 0 DO
@@ -305,7 +383,7 @@ WHILE SegmentOrder[SegmentNum] <> 0 DO
 	SegmentNum = SegmentNum + 1
 ENDWHILE
 
-RightRadi = Width/3
+PitRadi = Width/3
 ]]>
 </Script_1D>
 
@@ -345,7 +423,9 @@ NEXT i
 <![CDATA[
 VALUES "Length" RANGE [1, )
 VALUES "Width"  RANGE [1, )
-VALUES "RightRadi"  RANGE [1, Width/2)
+VALUES "RightRadi" 0, RANGE [2.2, )
+VALUES "LeftRadi" 0, RANGE [2.2, )
+VALUES "PitRadi"  RANGE [1, Width/2)
 
 !-----Length Jumps To The Next PitBox--------------------------------------------------------------
 Length = INT((Length / PitBoxLength) + 0.5) * PitBoxLength
@@ -463,7 +543,7 @@ VALUES "CatWalkColor" colorList
 			<Description><![CDATA[""]]></Description>
 			<Value>13</Value>
 		</Length>
-		<Length Name="RightRadi">
+		<Length Name="PitRadi">
 			<Description><![CDATA[""]]></Description>
 			<Value>1</Value>
 		</Length>
@@ -599,6 +679,66 @@ VALUES "CatWalkColor" colorList
 				<AVal Row="15">0</AVal>
 			</ArrayValues>
 		</Length>
+		<Angle Name="AngleRight">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="15" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+			</ArrayValues>
+		</Angle>
+		<Length Name="RightRadi">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="15" SecondDimension="0">
+				<AVal Row="1">2.2</AVal>
+				<AVal Row="2">2.2</AVal>
+				<AVal Row="3">2.2</AVal>
+				<AVal Row="4">2.2</AVal>
+				<AVal Row="5">2.2</AVal>
+				<AVal Row="6">2.2</AVal>
+				<AVal Row="7">2.2</AVal>
+				<AVal Row="8">2.2</AVal>
+				<AVal Row="9">2.2</AVal>
+				<AVal Row="10">2.2</AVal>
+				<AVal Row="11">2.2</AVal>
+				<AVal Row="12">2.2</AVal>
+				<AVal Row="13">2.2</AVal>
+				<AVal Row="14">2.2</AVal>
+				<AVal Row="15">2.2</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="RightRadiDirection">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="15" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+			</ArrayValues>
+		</Length>
 		<Length Name="CatLeft">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="15" SecondDimension="0">
@@ -617,6 +757,26 @@ VALUES "CatWalkColor" colorList
 				<AVal Row="13">0</AVal>
 				<AVal Row="14">0</AVal>
 				<AVal Row="15">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="LeftRadi">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="15" SecondDimension="0">
+				<AVal Row="1">2.2</AVal>
+				<AVal Row="2">2.2</AVal>
+				<AVal Row="3">2.2</AVal>
+				<AVal Row="4">2.2</AVal>
+				<AVal Row="5">2.2</AVal>
+				<AVal Row="6">2.2</AVal>
+				<AVal Row="7">2.2</AVal>
+				<AVal Row="8">2.2</AVal>
+				<AVal Row="9">2.2</AVal>
+				<AVal Row="10">2.2</AVal>
+				<AVal Row="11">2.2</AVal>
+				<AVal Row="12">2.2</AVal>
+				<AVal Row="13">2.2</AVal>
+				<AVal Row="14">2.2</AVal>
+				<AVal Row="15">2.2</AVal>
 			</ArrayValues>
 		</Length>
 	</Parameters>
