@@ -214,13 +214,12 @@ RETURN
 
 "AngleLeftHotSpot":
 	IF L_Direction < -ESP THEN : AngleNum = 518 : ELSE : AngleNum = 6 : ENDIF
-	IF LeftRadi[i] > ESP THEN
+	!IF LeftRadi[i] > ESP THEN
 		HOTSPOT		0,					L_Direction*LeftRadiSt,	0, unID, AngleLeft[i], AngleNum		: unID = unID + 1
 		HOTSPOT		-LeftRadiSt,		L_Direction*LeftRadiSt,	0, unID, AngleLeft[i], 5			: unID = unID + 1
 		HOTSPOT		0,					0,						0, unID, AngleLeft[i], 4			: unID = unID + 1
-	ENDIF
+	!ENDIF
 RETURN
-
 !-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ]]>
 </Script_3D>
@@ -512,7 +511,7 @@ PARAMETERS	Length = Length,
 VALUES "Length" RANGE [0, ] STEP 0, PitBoxLength
 VALUES "SegmentCount" RANGE [0, ]
 !-------------------------------------------------------------------
-BREAKPOINT 1
+
 FOR i = 1 TO SegmentNum
 	VALUES{2} "SegmentOrder" 0, "Prazno", 1, "CatWalk", 2, "PitBox", 3, "Space"
 	IF SegmentOrder[i] = 1 THEN VALUES "SegmentWidthCat" .50, .60, .75, 1.00
@@ -531,15 +530,15 @@ NEXT i
 VALUES "CatColor" colorList
 !-------------------------------------------------------------------
 
-!----Limits colors to 360 colors---------------------------------------------------------------
-DIM colorList[]
-index = 1
-FOR i = 741 TO 760
-    colorList[index] = i
-    index = index + 1
-NEXT i
-VALUES "CatWalkColor" colorList
-!-------------------------------------------------------------------
+! !----Limits colors to 360 colors---------------------------------------------------------------
+! DIM colorList[]
+! index = 1
+! FOR i = 741 TO 760
+!     colorList[index] = i
+!     index = index + 1
+! NEXT i
+! VALUES "CatWalkColor" colorList
+! !-------------------------------------------------------------------
 ]]>
 </Script_VL>
 
@@ -707,10 +706,6 @@ VALUES "CatWalkColor" colorList
 				<AVal Row="15">0.1</AVal>
 			</ArrayValues>
 		</Length>
-		<Material Name="CatWalkColor">
-			<Description><![CDATA[""]]></Description>
-			<Value>744</Value>
-		</Material>
 		<Integer Name="SegmentCount">
 			<Description><![CDATA[""]]></Description>
 			<Value>5</Value>

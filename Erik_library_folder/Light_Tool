@@ -30,8 +30,9 @@
 <![CDATA[
 MATERIAL Asfalt
 RESOL 64
-BREAKPOINT 1
 ROTZ ObjectAngle
+CurentPost = 1
+
 !----Light Angle----------------------------------------------------------------------------------------------------------------------------------------------
 GOSUB "LightAngleHotSpot"
 !-----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -104,14 +105,98 @@ END
 
 	! --- Right Edge Lights --------------------------------------------------------------------------------------------------
 	IF RightLightRemainingDistance <= NextLength[i-1] THEN
-		NumLightsRight = INT((NextLength[i-1] - RightLightRemainingDistance) / LightDistance)
-		FOR j = 0 TO NumLightsRight
-			CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
-			IF CurrentPosRight <= NextLength[i-1] THEN
-				ADDY CurrentPosRight
-				ADDX -PoleWidth/2
-				IF TopTubeVisible THEN CALL "GF_TopTube"
+		WHILE RightLightRemainingDistance <= NextLength[i-1] DO
+			StepDist = StandardLightMargin + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			StepDist = StepDist + LightDistanceAll[CurentPost+1]
+			ADDY RightLightRemainingDistance
+			IF RightLightBool OR TopTubeVisible THEN GOSUB "LightDistanceHotSpot"
+			ADDX -PoleWidth / 2
+			IF TopTubeVisible THEN CALL "GF_TopTube"
+			DEL 1
+			ROTZ -LightAngle
+			IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+				CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+			ENDIF
+			IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+				ADDZ TopTubeLightHeight
+				CALL "FenceLight" PARAMETERS LightStrength = LightStrength
 				DEL 1
+			ENDIF
+			DEL 2
+			RightLightBool = NOT(RightLightBool)
+			RightLightRemainingDistance = RightLightRemainingDistance + StepDist
+			CurentPost = CurentPost + 1
+		ENDWHILE
+		RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
+	ELSE
+		RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
+	ENDIF
+	ADDY NextLength[i-1]
+RETURN
+!-------------------------------------------------------------------------------------------------------------------
+
+!-----Makes The Right Curving Part-----------------------------------------------------------------------------------------------------------------------------------
+"CurveRight":
+	Angle = RightAngle[i]
+	CurveRadius = CurveRight[i-1]
+	! Real track segment end point (unaffected by tube offsets)
+	EndingX = CurveRadius - CurveRadius * COS(Angle)
+	EndingY = CurveRadius * SIN(Angle)
+	GOSUB "RightTopTube"
+	GOSUB "RightCurveLights"
+	ADDX EndingX
+	ADDY EndingY
+	ROTZ -Angle
+RETURN
+
+"RightTopTube":
+	TubeFi     = 0.080
+	PoleHeigth = 1.148 - TubeFi / 2
+	TubeOffset = 0.1 / 2 - 0.042 / 2
+
+	! Center tube radius with hardware offset applied
+	TubeRadius = CurveRadius - TubeOffset
+	ADDZ PoleHeigth - TubeFi / 4
+	ADDX (0.1/2 - 0.042/2)
+	! Tangent lead-in vector along Y-axis
+	PUT 0, -1, 0, 0
+	PUT 0,  0, 0, 0
+	! Centerline curve arc
+	FOR n = 0 TO SegmentsResolution
+		AngleSegment = (n / SegmentsResolution) * RightAngle[i]
+		_curX = TubeRadius - TubeRadius * COS(AngleSegment)
+		_curY = TubeRadius * SIN(AngleSegment)
+		PUT _curX, _curY, 0, 0
+	NEXT n
+	! Exact tangent lead-out vector along the exit angle
+	_lastX   = TubeRadius - TubeRadius * COS(RightAngle[i])
+	_lastY   = TubeRadius * SIN(RightAngle[i])
+	_xEndOut = _lastX + SIN(RightAngle[i])
+	_yEndOut = _lastY + COS(RightAngle[i])
+	PUT _xEndOut, _yEndOut, 0, 0
+	GOSUB "LightTube"
+	DEL 2
+RETURN
+
+"RightCurveLights":
+	ADDX CurveRadius
+	InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
+	CurrentArcDistance = RightLightRemainingDistance
+	IF CurrentArcDistance <= InnerCurveArcLength THEN
+		WHILE CurrentArcDistance <= InnerCurveArcLength DO
+			StepDist = StandardLightMargin
+			IF CurentPost + 1 <= VARDIM1(LightDistance1) THEN
+				StepDist = StepDist + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			ENDIF
+			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
+				StepDist = StepDist + LightDistanceAll[CurentPost+1]
+			ENDIF
+			CurrentAngle = (CurrentArcDistance / CurveRadius) * (180 / PI)
+			IF CurrentAngle <= Angle THEN
+				ROTZ -CurrentAngle
+				ADDX -CurveRadius - PoleWidth / 2
+				IF RightLightBool OR TopTubeVisible THEN GOSUB "LightDistanceHotSpot"
+				IF TopTubeVisible THEN CALL "GF_TopTube"
 				ROTZ -LightAngle
 				IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
 					CALL "GF_Light" PARAMETERS LightStrength = LightStrength
@@ -122,181 +207,103 @@ END
 					DEL 1
 				ENDIF
 				RightLightBool = NOT(RightLightBool)
-				DEL 2
+				DEL 3
 			ENDIF
-			LastLightPosRight = CurrentPosRight
-		NEXT j
-		RightLightRemainingDistance = LightDistance - (NextLength[i-1] - LastLightPosRight)
+			CurrentArcDistance = CurrentArcDistance + StepDist
+			CurentPost = CurentPost + 1
+		ENDWHILE
+		FinalLeftoverLinearIn = InnerCurveArcLength - (CurrentArcDistance - StepDist)
+		RightLightRemainingDistance = StepDist - FinalLeftoverLinearIn
 	ELSE
-		RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
+		RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
 	ENDIF
-	ADDY NextLength[i-1]
-RETURN
-!----------------------------------------------------------------------------------------------------------------------------------------
-
-!-----Makes The Right Curving Part-----------------------------------------------------------------------------------------------------------------------------------
-"CurveRight":
-    Angle = RightAngle[i]
-    CurveRadius = CurveRight[i-1]
-    ! Real track segment end point (unaffected by tube offsets)
-    EndingX = CurveRadius - CurveRadius * COS(Angle)
-    EndingY = CurveRadius * SIN(Angle)
-    GOSUB "RightTopTube"
-    GOSUB "RightCurveLights"
-    ADDX EndingX
-    ADDY EndingY
-    ROTZ -Angle
-RETURN
-
-"RightTopTube":
-    TubeFi     = 0.080
-    PoleHeigth = 1.148 - TubeFi / 2
-    TubeOffset = 0.1 / 2 - 0.042 / 2
-
-    ! Center tube radius with hardware offset applied
-    TubeRadius = CurveRadius - TubeOffset
-    ADDZ PoleHeigth - TubeFi / 4
-	ADDX (0.1/2 - 0.042/2)
-    ! Tangent lead-in vector along Y-axis
-    PUT 0, -1, 0, 0
-    PUT 0,  0, 0, 0
-    ! Centerline curve arc
-    FOR n = 0 TO SegmentsResolution
-        AngleSegment = (n / SegmentsResolution) * RightAngle[i]
-        _curX = TubeRadius - TubeRadius * COS(AngleSegment)
-        _curY = TubeRadius * SIN(AngleSegment)
-        PUT _curX, _curY, 0, 0
-    NEXT n
-    ! Exact tangent lead-out vector along the exit angle
-    _lastX   = TubeRadius - TubeRadius * COS(RightAngle[i])
-    _lastY   = TubeRadius * SIN(RightAngle[i])
-    _xEndOut = _lastX + SIN(RightAngle[i])
-    _yEndOut = _lastY + COS(RightAngle[i])
-    PUT _xEndOut, _yEndOut, 0, 0
-    GOSUB "LightTube"
-    DEL 2
-RETURN
-
-"RightCurveLights":
-    CurveRadius = CurveRadius
-    ADDX CurveRadius
-    InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
-    InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
-    InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
-    RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
-    IF RemainingCurveLengthIn >= 0 THEN
-        InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
-        FOR k = 0 TO InnerTotalSteps
-            CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
-            IF CurrentAngle <= Angle THEN
-                ROTZ -CurrentAngle
-                ADDX -CurveRadius - PoleWidth/2
-                IF TopTubeVisible THEN CALL "GF_TopTube"
-                ROTZ -LightAngle
-                IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
-                    CALL "GF_Light" PARAMETERS LightStrength = LightStrength
-                ENDIF
-
-                IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-                    ADDZ TopTubeLightHeight
-                    CALL "FenceLight" PARAMETERS LightStrength = LightStrength
-                    DEL 1
-                ENDIF
-
-                RightLightBool = NOT(RightLightBool)
-                DEL 3
-            ENDIF
-        NEXT k
-        LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
-        ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
-        FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
-        RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
-    ELSE
-        RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
-    ENDIF
-
-    DEL 1 ! Clears ADDX CurveRadius
+	DEL 1
 RETURN
 
 !-----Makes The Left Curving Part-----------------------------------------------------------------------------------------------------------------------------------
 "CurveLeft":
-    Angle = LeftAngle[i]
-    CurveRadius = CurveLeft[i-1]
+	Angle = LeftAngle[i]
+	CurveRadius = CurveLeft[i-1]
 
-    ! Pure Track Geometric End Position (Positive Magnitude)
-    EndingX = -(CurveRadius - CurveRadius * COS(Angle))
-    EndingY = CurveRadius * SIN(Angle)
+	! Pure Track Geometric End Position (Positive Magnitude)
+	EndingX = -(CurveRadius - CurveRadius * COS(Angle))
+	EndingY = CurveRadius * SIN(Angle)
 
-    GOSUB "LeftTopTube"
-    GOSUB "LeftCurveLights"
+	GOSUB "LeftTopTube"
+	GOSUB "LeftCurveLights"
 
-    ! Apply actual signed values
-    ADDX EndingX
-    ADDY EndingY
-    ROTZ Angle
+	! Apply actual signed values
+	ADDX EndingX
+	ADDY EndingY
+	ROTZ Angle
 RETURN
 
 "LeftTopTube":
-    TubeFi     = 0.080
-    PoleHeigth = 1.148 - TubeFi / 2
-    TubeOffset = 0.1 / 2 - 0.042 / 2
+	TubeFi     = 0.080
+	PoleHeigth = 1.148 - TubeFi / 2
+	TubeOffset = 0.1 / 2 - 0.042 / 2
 
-    TubeRadius = CurveRadius + TubeOffset
-    ADDZ PoleHeigth - TubeFi / 4
+	TubeRadius = CurveRadius + TubeOffset
+	ADDZ PoleHeigth - TubeFi / 4
 	ADDX (0.1/2 - 0.042/2)
-    PUT 0, -1, 0, 0
-    PUT 0,  0, 0, 0
+	PUT 0, -1, 0, 0
+	PUT 0,  0, 0, 0
 
-    FOR n = 0 TO SegmentsResolution
-        AngleSegment = (n / SegmentsResolution) * LeftAngle[i]
-        _curX = -(TubeRadius - TubeRadius * COS(AngleSegment))
-        _curY = TubeRadius * SIN(AngleSegment)
-        PUT _curX, _curY, 0, 0
-    NEXT n
-    _lastX   = -(TubeRadius - TubeRadius * COS(LeftAngle[i]))
-    _lastY   = TubeRadius * SIN(LeftAngle[i])
-    _xEndOut = _lastX - SIN(LeftAngle[i])
-    _yEndOut = _lastY + COS(LeftAngle[i])
-    PUT _xEndOut, _yEndOut, 0, 0
-    GOSUB "LightTube"
-    DEL 2  ! Clean up ADDZ
+	FOR n = 0 TO SegmentsResolution
+		AngleSegment = (n / SegmentsResolution) * LeftAngle[i]
+		_curX = -(TubeRadius - TubeRadius * COS(AngleSegment))
+		_curY = TubeRadius * SIN(AngleSegment)
+		PUT _curX, _curY, 0, 0
+	NEXT n
+	_lastX   = -(TubeRadius - TubeRadius * COS(LeftAngle[i]))
+	_lastY   = TubeRadius * SIN(LeftAngle[i])
+	_xEndOut = _lastX - SIN(LeftAngle[i])
+	_yEndOut = _lastY + COS(LeftAngle[i])
+	PUT _xEndOut, _yEndOut, 0, 0
+	GOSUB "LightTube"
+	DEL 2  ! Clean up ADDZ
 RETURN
 
 "LeftCurveLights":
-    ADDX -CurveRadius
-    InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
-    InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
-    InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
-    RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
-    IF RemainingCurveLengthIn >= 0 THEN
-        InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
-        FOR k = 0 TO InnerTotalSteps
-            CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
-            IF CurrentAngle <= Angle THEN
-                ROTZ CurrentAngle
-                ADDX CurveRadius - PoleWidth/2
-                IF TopTubeVisible THEN CALL "GF_TopTube"
-                ROTZ -LightAngle
-                IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
-                    CALL "GF_Light" PARAMETERS LightStrength = LightStrength
-                ENDIF
-                IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
-                    ADDZ TopTubeLightHeight
-                    CALL "FenceLight" PARAMETERS LightStrength = LightStrength
-                    DEL 1
-                ENDIF
-                RightLightBool = NOT(RightLightBool)
-                DEL 3
-            ENDIF
-        NEXT k
-        LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
-        ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
-        FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
-        RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
-    ELSE
-        RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
-    ENDIF
-    DEL 1
+	ADDX -CurveRadius
+	InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
+	CurrentArcDistance = RightLightRemainingDistance
+	IF CurrentArcDistance <= InnerCurveArcLength THEN
+		WHILE CurrentArcDistance <= InnerCurveArcLength DO
+			StepDist = StandardLightMargin
+			IF CurentPost + 1 <= VARDIM1(LightDistance1) THEN
+				StepDist = StepDist + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			ENDIF
+			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
+				StepDist = StepDist + LightDistanceAll[CurentPost+1]
+			ENDIF
+			CurrentAngle = (CurrentArcDistance / CurveRadius) * (180 / PI)
+			IF CurrentAngle <= Angle THEN
+				ROTZ CurrentAngle
+				ADDX CurveRadius - PoleWidth / 2
+				IF RightLightBool OR TopTubeVisible THEN GOSUB "LightDistanceHotSpot"
+				IF TopTubeVisible THEN CALL "GF_TopTube"
+				ROTZ -LightAngle
+				IF RightLightBool AND LightVisible AND NOT(TopTubeVisible) THEN 
+					CALL "GF_Light" PARAMETERS LightStrength = LightStrength
+				ENDIF
+				IF RightLightBool AND LightVisible AND TopTubeVisible THEN 
+					ADDZ TopTubeLightHeight
+					CALL "FenceLight" PARAMETERS LightStrength = LightStrength
+					DEL 1
+				ENDIF
+				RightLightBool = NOT(RightLightBool)
+				DEL 3
+			ENDIF
+			CurrentArcDistance = CurrentArcDistance + StepDist
+			CurentPost = CurentPost + 1
+		ENDWHILE
+		FinalLeftoverLinearIn = InnerCurveArcLength - (CurrentArcDistance - StepDist)
+		RightLightRemainingDistance = StepDist - FinalLeftoverLinearIn
+	ELSE
+		RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
+	ENDIF
+	DEL 1
 RETURN
 
 !---Hot Spots-------------------------------------------------------------------------------------------------------------------------------------
@@ -358,6 +365,15 @@ RETURN
 	HOTSPOT 0, -1,				0, unID, NextLength[i], 3 : unID = unID + 1
 RETURN
 
+"LightDistanceHotSpot":
+	HOTSPOT -0.5,			0,	0,	unID, LightDistance1[CurentPost], 1	: unID = unID + 1
+	HOTSPOT -0.5,			0,	0,	unID, LightDistance1[CurentPost], 2	: unID = unID + 1
+	HOTSPOT -0.5,			-1,	0,	unID, LightDistance1[CurentPost], 3	: unID = unID + 1
+
+	HOTSPOT 0.5,			0,	0,	unID, LightDistanceAll[CurentPost], 1	: unID = unID + 1
+	HOTSPOT 0.5,			0,	0,	unID, LightDistanceAll[CurentPost], 2	: unID = unID + 1
+	HOTSPOT 0.5,			-1,	0,	unID, LightDistanceAll[CurentPost], 3	: unID = unID + 1
+RETURN
 !----------------------------------------------------------------------------------------------------------------------------------------
 "LightTube":
 	IF TopTubeVisible THEN
@@ -413,7 +429,7 @@ GOSUB "LightAngleHotSpot2D"
 !-------Main Loop Places All 2D Objects-----------------------------------------------------------------------------------------------------------
 i = 1
 GOSUB "StraightHotSpot2D"
-IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
+IF NextLength[1] < ESP AND CurveLeft[1] < ESP AND CurveRight[1] < ESP THEN
 	GOSUB "RightHotSpot2D"
 	GOSUB "LeftHotSpot2D"
 ENDIF
@@ -468,28 +484,35 @@ END
 	ENDIF
 	! --- Right Edge Lights (2D Symbol Placement) ---
 	IF RightLightRemainingDistance <= NextLength[i-1] THEN
-		NumLightsRight = INT((NextLength[i-1] - RightLightRemainingDistance) / LightDistance)
-		FOR j = 0 TO NumLightsRight
-			CurrentPosRight = RightLightRemainingDistance + (LightDistance * j)
-			IF CurrentPosRight <= NextLength[i-1] THEN
-				ADD2 -PoleWidth/2, CurrentPosRight
-				LightBool = NOT(LightBool)
-				IF TopTubeVisible THEN GOSUB "PoleIndicator"
-				IF NOT(TopTubeVisible) THEN
-					IF LightBool THEN GOSUB "PoleIndicator"
-				ENDIF
-				ROT2 -LightAngle
-				IF LightBool THEN GOSUB "DrawLightSymbol2D"
-				RightLightBool = NOT(RightLightBool)
-				DEL 2
+		CurrentArcDistance = RightLightRemainingDistance
+		WHILE CurrentArcDistance <= NextLength[i-1] DO
+			! Compute step distance with bounds safety
+			StepDist = StandardLightMargin
+			IF CurentPost + 1 <= VARDIM1(LightDistance1) THEN
+				StepDist = StepDist + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
 			ENDIF
-			LastLightPosRight = CurrentPosRight
-		NEXT j
-		RightLightRemainingDistance = LightDistance - (NextLength[i-1] - LastLightPosRight)
+			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
+				StepDist = StepDist + LightDistanceAll[CurentPost+1]
+			ENDIF
+			ADD2 0, CurrentArcDistance
+			IF RightLightBool OR TopTubeVisible THEN  GOSUB "LightDistanceHotSpot"
+			ADD2 -PoleWidth / 2, 0
+			IF TopTubeVisible THEN GOSUB "PoleIndicator"
+			IF NOT(TopTubeVisible) THEN
+				IF RightLightBool THEN GOSUB "PoleIndicator"
+			ENDIF
+			ROT2 -LightAngle
+			IF RightLightBool THEN GOSUB "DrawLightSymbol2D"
+			RightLightBool = NOT(RightLightBool)
+			DEL 3
+			CurrentArcDistance = CurrentArcDistance + StepDist
+			CurentPost = CurentPost + 1
+		ENDWHILE
+		FinalLeftoverLinearIn = NextLength[i-1] - (CurrentArcDistance - StepDist)
+		RightLightRemainingDistance = StepDist - FinalLeftoverLinearIn
 	ELSE
 		RightLightRemainingDistance = RightLightRemainingDistance - NextLength[i-1]
 	ENDIF
-
 	ADD2 0, NextLength[i-1]
 RETURN
 
@@ -509,44 +532,42 @@ RETURN
 	Orietation = Orietation + Angle
 RETURN
 
+
 "RightCurveLights2D":
 	ADD2 CurveRadius, 0
-
 	InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
-	InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
-
-	InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
-	RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
-
-	IF RemainingCurveLengthIn >= 0 THEN
-		InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
-		FOR k = 0 TO InnerTotalSteps
-			CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
+	CurrentArcDistance = RightLightRemainingDistance
+	IF CurrentArcDistance <= InnerCurveArcLength THEN
+		WHILE CurrentArcDistance <= InnerCurveArcLength DO
+			StepDist = StandardLightMargin
+			IF CurentPost + 1 <= VARDIM1(LightDistance1) THEN
+				StepDist = StepDist + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			ENDIF
+			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
+				StepDist = StepDist + LightDistanceAll[CurentPost+1]
+			ENDIF
+			CurrentAngle = (CurrentArcDistance / CurveRadius) * (180 / PI)
 			IF CurrentAngle <= Angle THEN
 				ROT2 -CurrentAngle
-				ADD2 -CurveRadius - PoleWidth/2, 0
-				LightBool = NOT(LightBool)
+				ADD2 -CurveRadius - PoleWidth / 2, 0
+				IF RightLightBool OR TopTubeVisible THEN GOSUB "LightDistanceHotSpot"
 				IF TopTubeVisible THEN GOSUB "PoleIndicator"
 				IF NOT(TopTubeVisible) THEN
-					IF LightBool THEN GOSUB "PoleIndicator"
+					IF RightLightBool THEN GOSUB "PoleIndicator"
 				ENDIF
 				ROT2 -LightAngle
-
-				IF LightBool THEN GOSUB "DrawLightSymbol2D"
+				IF RightLightBool THEN GOSUB "DrawLightSymbol2D"
 				RightLightBool = NOT(RightLightBool)
 				DEL 3
 			ENDIF
-		NEXT k
-
-		LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
-		ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
-		FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
-
-		RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
+			CurrentArcDistance = CurrentArcDistance + StepDist
+			CurentPost = CurentPost + 1
+		ENDWHILE
+		FinalLeftoverLinearIn = InnerCurveArcLength - (CurrentArcDistance - StepDist)
+		RightLightRemainingDistance = StepDist - FinalLeftoverLinearIn
 	ELSE
 		RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
 	ENDIF
-
 	DEL 1
 RETURN
 
@@ -568,42 +589,39 @@ RETURN
 
 "LeftCurveLights2D":
 	ADD2 -CurveRadius, 0
-
 	InnerCurveArcLength = CurveRadius * (Angle * PI / 180)
-	InnerAngleStep = (LightDistance / CurveRadius) * (180 / PI)
-
-	InnerStartAngleOffset = (RightLightRemainingDistance / CurveRadius) * (180 / PI)
-	RemainingCurveLengthIn = InnerCurveArcLength - RightLightRemainingDistance
-
-	IF RemainingCurveLengthIn >= 0 THEN
-		InnerTotalSteps = INT(RemainingCurveLengthIn / LightDistance)
-		FOR k = 0 TO InnerTotalSteps
-			CurrentAngle = InnerStartAngleOffset + (InnerAngleStep * k)
+	CurrentArcDistance = RightLightRemainingDistance
+	IF CurrentArcDistance <= InnerCurveArcLength THEN
+		WHILE CurrentArcDistance <= InnerCurveArcLength DO
+			StepDist = StandardLightMargin
+			IF CurentPost + 1 <= VARDIM1(LightDistance1) THEN
+				StepDist = StepDist + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			ENDIF
+			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
+				StepDist = StepDist + LightDistanceAll[CurentPost+1]
+			ENDIF
+			CurrentAngle = (CurrentArcDistance / CurveRadius) * (180 / PI)
 			IF CurrentAngle <= Angle THEN
 				ROT2 CurrentAngle
-				ADD2 CurveRadius - PoleWidth/2, 0
-				LightBool = NOT(LightBool)
+				ADD2 CurveRadius - PoleWidth / 2, 0
+				IF RightLightBool OR TopTubeVisible THEN GOSUB "LightDistanceHotSpot"
 				IF TopTubeVisible THEN GOSUB "PoleIndicator"
 				IF NOT(TopTubeVisible) THEN
-					IF LightBool THEN GOSUB "PoleIndicator"
+					IF RightLightBool THEN GOSUB "PoleIndicator"
 				ENDIF
 				ROT2 -LightAngle
-
-				IF LightBool THEN GOSUB "DrawLightSymbol2D"
+				IF RightLightBool THEN GOSUB "DrawLightSymbol2D"
 				RightLightBool = NOT(RightLightBool)
 				DEL 3
 			ENDIF
-		NEXT k
-
-		LastArcAngleUsedIn = InnerStartAngleOffset + (InnerAngleStep * InnerTotalSteps)
-		ArcDistanceUsedIn = LastArcAngleUsedIn * (PI / 180) * CurveRadius
-		FinalLeftoverLinearIn = InnerCurveArcLength - ArcDistanceUsedIn
-
-		RightLightRemainingDistance = LightDistance - FinalLeftoverLinearIn
+			CurrentArcDistance = CurrentArcDistance + StepDist
+			CurentPost = CurentPost + 1
+		ENDWHILE
+		FinalLeftoverLinearIn = InnerCurveArcLength - (CurrentArcDistance - StepDist)
+		RightLightRemainingDistance = StepDist - FinalLeftoverLinearIn
 	ELSE
 		RightLightRemainingDistance = RightLightRemainingDistance - InnerCurveArcLength
 	ENDIF
-
 	DEL 1
 RETURN
 
@@ -734,6 +752,29 @@ RETURN
 	ENDIF
 RETURN
 
+"LightDistanceHotSpot":
+	HOTSPOT2 -0.5,			0,	unID, LightDistance1[CurentPost], 1	: unID = unID + 1
+	HOTSPOT2 -0.5,			0,	unID, LightDistance1[CurentPost], 2	: unID = unID + 1
+	HOTSPOT2 -0.5,			-1,	unID, LightDistance1[CurentPost], 3	: unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			17, 0,
+			-0.5,             	0, 900,
+			CircleSize/2,            360, 4001
+	ENDIF
+
+	HOTSPOT2 0.5,			0,	unID, LightDistanceAll[CurentPost], 1	: unID = unID + 1
+	HOTSPOT2 0.5,			0,	unID, LightDistanceAll[CurentPost], 2	: unID = unID + 1
+	HOTSPOT2 0.5,			-1,	unID, LightDistanceAll[CurentPost], 3	: unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			80, 0,
+			0.5,             	0, 900,
+			CircleSize/2,            360, 4001
+	ENDIF
+RETURN
+
+
 "PoleIndicator":
 	PEN 20
 	_armLen = 0.20
@@ -767,14 +808,16 @@ CircleColor = 11
 RightLightDistance = 0
 LeftLightDistance = 0
 LightMargin = 0.2
-LightDistance = 3/2
+! LightDistance = 3/2
 RightLightBool = 1
 LeftLightBool = 0
+
+CurentPost = 1
 
 TempWidth = 7
 
 TopTubeLightHeight = 0.85
-
+StandardLightMargin = 1.5
 PoleWidth = 0.042
 
 RightLightRemainingDistance = 0
@@ -783,7 +826,6 @@ TotalLength_Calc = 0
 ColorCircles = 1
 LibraryBool = LIBRARYGLOBAL ("Erik_MVO", "ColorCircles", ColorCircles)
 !succ2 = LIBRARYGLOBAL ("LibraryGlobals_Karting", "LibGlo_KONS1", L_Glo_res)
-BREAKPOINT 1
 FOR i = 1 TO 120
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
 	IF RightAngle[i] < ESP THEN RightAngle[i] = 90
@@ -928,6 +970,7 @@ LOCK "NumberOfPosts"
 PARAMETERS NumberOfPosts = NumberOfPosts
 
 VALUES "LightAngle" 45, 90, 135, 225, 270, 315
+!VALUES "LightDistance" 1.5
 
 if not(TopTubeVisible) and not(LightVisible) then
     if GLOB_MODPAR_NAME = "TopTubeVisible" then
@@ -1013,7 +1056,7 @@ endif
 		<Length Name="NextLength">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
-				<AVal Row="1">0.1</AVal>
+				<AVal Row="1">5</AVal>
 				<AVal Row="2">0</AVal>
 				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
@@ -2242,11 +2285,11 @@ endif
 		</Integer>
 		<Length Name="TotalTrackLength">
 			<Description><![CDATA[""]]></Description>
-			<Value>0.1</Value>
+			<Value>5</Value>
 		</Length>
 		<Integer Name="NumberOfPosts">
 			<Description><![CDATA[""]]></Description>
-			<Value>1</Value>
+			<Value>4</Value>
 		</Integer>
 		<Boolean Name="LightVisible">
 			<Description><![CDATA[""]]></Description>
@@ -2278,12 +2321,627 @@ endif
 		</Length>
 		<Boolean Name="LastLightBool">
 			<Description><![CDATA[""]]></Description>
-			<Value>1</Value>
+			<Value>0</Value>
 		</Boolean>
 		<Boolean Name="FloorPlanLights">
 			<Description><![CDATA[""]]></Description>
 			<Value>1</Value>
 		</Boolean>
+		<Length Name="LightDistance">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">1.5</AVal>
+				<AVal Row="2">1.5</AVal>
+				<AVal Row="3">0.5</AVal>
+				<AVal Row="4">1.5</AVal>
+				<AVal Row="5">1.5</AVal>
+				<AVal Row="6">1.5</AVal>
+				<AVal Row="7">1.5</AVal>
+				<AVal Row="8">1.5</AVal>
+				<AVal Row="9">1.5</AVal>
+				<AVal Row="10">1.5</AVal>
+				<AVal Row="11">1.5</AVal>
+				<AVal Row="12">1.5</AVal>
+				<AVal Row="13">1.5</AVal>
+				<AVal Row="14">1.5</AVal>
+				<AVal Row="15">1.5</AVal>
+				<AVal Row="16">1.5</AVal>
+				<AVal Row="17">1.5</AVal>
+				<AVal Row="18">1.5</AVal>
+				<AVal Row="19">1.5</AVal>
+				<AVal Row="20">1.5</AVal>
+				<AVal Row="21">1.5</AVal>
+				<AVal Row="22">1.5</AVal>
+				<AVal Row="23">1.5</AVal>
+				<AVal Row="24">1.5</AVal>
+				<AVal Row="25">1.5</AVal>
+				<AVal Row="26">1.5</AVal>
+				<AVal Row="27">1.5</AVal>
+				<AVal Row="28">1.5</AVal>
+				<AVal Row="29">1.5</AVal>
+				<AVal Row="30">1.5</AVal>
+				<AVal Row="31">1.5</AVal>
+				<AVal Row="32">1.5</AVal>
+				<AVal Row="33">1.5</AVal>
+				<AVal Row="34">1.5</AVal>
+				<AVal Row="35">1.5</AVal>
+				<AVal Row="36">1.5</AVal>
+				<AVal Row="37">1.5</AVal>
+				<AVal Row="38">1.5</AVal>
+				<AVal Row="39">1.5</AVal>
+				<AVal Row="40">1.5</AVal>
+				<AVal Row="41">1.5</AVal>
+				<AVal Row="42">1.5</AVal>
+				<AVal Row="43">1.5</AVal>
+				<AVal Row="44">1.5</AVal>
+				<AVal Row="45">1.5</AVal>
+				<AVal Row="46">1.5</AVal>
+				<AVal Row="47">1.5</AVal>
+				<AVal Row="48">1.5</AVal>
+				<AVal Row="49">1.5</AVal>
+				<AVal Row="50">1.5</AVal>
+				<AVal Row="51">1.5</AVal>
+				<AVal Row="52">1.5</AVal>
+				<AVal Row="53">1.5</AVal>
+				<AVal Row="54">1.5</AVal>
+				<AVal Row="55">1.5</AVal>
+				<AVal Row="56">1.5</AVal>
+				<AVal Row="57">1.5</AVal>
+				<AVal Row="58">1.5</AVal>
+				<AVal Row="59">1.5</AVal>
+				<AVal Row="60">1.5</AVal>
+				<AVal Row="61">1.5</AVal>
+				<AVal Row="62">1.5</AVal>
+				<AVal Row="63">1.5</AVal>
+				<AVal Row="64">1.5</AVal>
+				<AVal Row="65">1.5</AVal>
+				<AVal Row="66">1.5</AVal>
+				<AVal Row="67">1.5</AVal>
+				<AVal Row="68">1.5</AVal>
+				<AVal Row="69">1.5</AVal>
+				<AVal Row="70">1.5</AVal>
+				<AVal Row="71">1.5</AVal>
+				<AVal Row="72">1.5</AVal>
+				<AVal Row="73">1.5</AVal>
+				<AVal Row="74">1.5</AVal>
+				<AVal Row="75">1.5</AVal>
+				<AVal Row="76">1.5</AVal>
+				<AVal Row="77">1.5</AVal>
+				<AVal Row="78">1.5</AVal>
+				<AVal Row="79">1.5</AVal>
+				<AVal Row="80">1.5</AVal>
+				<AVal Row="81">1.5</AVal>
+				<AVal Row="82">1.5</AVal>
+				<AVal Row="83">1.5</AVal>
+				<AVal Row="84">1.5</AVal>
+				<AVal Row="85">1.5</AVal>
+				<AVal Row="86">1.5</AVal>
+				<AVal Row="87">1.5</AVal>
+				<AVal Row="88">1.5</AVal>
+				<AVal Row="89">1.5</AVal>
+				<AVal Row="90">1.5</AVal>
+				<AVal Row="91">1.5</AVal>
+				<AVal Row="92">1.5</AVal>
+				<AVal Row="93">1.5</AVal>
+				<AVal Row="94">1.5</AVal>
+				<AVal Row="95">1.5</AVal>
+				<AVal Row="96">1.5</AVal>
+				<AVal Row="97">1.5</AVal>
+				<AVal Row="98">1.5</AVal>
+				<AVal Row="99">1.5</AVal>
+				<AVal Row="100">1.5</AVal>
+				<AVal Row="101">1.5</AVal>
+				<AVal Row="102">1.5</AVal>
+				<AVal Row="103">1.5</AVal>
+				<AVal Row="104">1.5</AVal>
+				<AVal Row="105">1.5</AVal>
+				<AVal Row="106">1.5</AVal>
+				<AVal Row="107">1.5</AVal>
+				<AVal Row="108">1.5</AVal>
+				<AVal Row="109">1.5</AVal>
+				<AVal Row="110">1.5</AVal>
+				<AVal Row="111">1.5</AVal>
+				<AVal Row="112">1.5</AVal>
+				<AVal Row="113">1.5</AVal>
+				<AVal Row="114">1.5</AVal>
+				<AVal Row="115">1.5</AVal>
+				<AVal Row="116">1.5</AVal>
+				<AVal Row="117">1.5</AVal>
+				<AVal Row="118">1.5</AVal>
+				<AVal Row="119">1.5</AVal>
+				<AVal Row="120">1.5</AVal>
+				<AVal Row="121">1.5</AVal>
+				<AVal Row="122">1.5</AVal>
+				<AVal Row="123">1.5</AVal>
+				<AVal Row="124">1.5</AVal>
+				<AVal Row="125">1.5</AVal>
+				<AVal Row="126">1.5</AVal>
+				<AVal Row="127">1.5</AVal>
+				<AVal Row="128">1.5</AVal>
+				<AVal Row="129">1.5</AVal>
+				<AVal Row="130">1.5</AVal>
+				<AVal Row="131">1.5</AVal>
+				<AVal Row="132">1.5</AVal>
+				<AVal Row="133">1.5</AVal>
+				<AVal Row="134">1.5</AVal>
+				<AVal Row="135">1.5</AVal>
+				<AVal Row="136">1.5</AVal>
+				<AVal Row="137">1.5</AVal>
+				<AVal Row="138">1.5</AVal>
+				<AVal Row="139">1.5</AVal>
+				<AVal Row="140">1.5</AVal>
+				<AVal Row="141">1.5</AVal>
+				<AVal Row="142">1.5</AVal>
+				<AVal Row="143">1.5</AVal>
+				<AVal Row="144">1.5</AVal>
+				<AVal Row="145">1.5</AVal>
+				<AVal Row="146">1.5</AVal>
+				<AVal Row="147">1.5</AVal>
+				<AVal Row="148">1.5</AVal>
+				<AVal Row="149">1.5</AVal>
+				<AVal Row="150">1.5</AVal>
+				<AVal Row="151">1.5</AVal>
+				<AVal Row="152">1.5</AVal>
+				<AVal Row="153">1.5</AVal>
+				<AVal Row="154">1.5</AVal>
+				<AVal Row="155">1.5</AVal>
+				<AVal Row="156">1.5</AVal>
+				<AVal Row="157">1.5</AVal>
+				<AVal Row="158">1.5</AVal>
+				<AVal Row="159">1.5</AVal>
+				<AVal Row="160">1.5</AVal>
+				<AVal Row="161">1.5</AVal>
+				<AVal Row="162">1.5</AVal>
+				<AVal Row="163">1.5</AVal>
+				<AVal Row="164">1.5</AVal>
+				<AVal Row="165">1.5</AVal>
+				<AVal Row="166">1.5</AVal>
+				<AVal Row="167">1.5</AVal>
+				<AVal Row="168">1.5</AVal>
+				<AVal Row="169">1.5</AVal>
+				<AVal Row="170">1.5</AVal>
+				<AVal Row="171">1.5</AVal>
+				<AVal Row="172">1.5</AVal>
+				<AVal Row="173">1.5</AVal>
+				<AVal Row="174">1.5</AVal>
+				<AVal Row="175">1.5</AVal>
+				<AVal Row="176">1.5</AVal>
+				<AVal Row="177">1.5</AVal>
+				<AVal Row="178">1.5</AVal>
+				<AVal Row="179">1.5</AVal>
+				<AVal Row="180">1.5</AVal>
+				<AVal Row="181">1.5</AVal>
+				<AVal Row="182">1.5</AVal>
+				<AVal Row="183">1.5</AVal>
+				<AVal Row="184">1.5</AVal>
+				<AVal Row="185">1.5</AVal>
+				<AVal Row="186">1.5</AVal>
+				<AVal Row="187">1.5</AVal>
+				<AVal Row="188">1.5</AVal>
+				<AVal Row="189">1.5</AVal>
+				<AVal Row="190">1.5</AVal>
+				<AVal Row="191">1.5</AVal>
+				<AVal Row="192">1.5</AVal>
+				<AVal Row="193">1.5</AVal>
+				<AVal Row="194">1.5</AVal>
+				<AVal Row="195">1.5</AVal>
+				<AVal Row="196">1.5</AVal>
+				<AVal Row="197">1.5</AVal>
+				<AVal Row="198">1.5</AVal>
+				<AVal Row="199">1.5</AVal>
+				<AVal Row="200">1.5</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="LightDistance1">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
+		<Length Name="LightDistanceAll">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="200" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+				<AVal Row="16">0</AVal>
+				<AVal Row="17">0</AVal>
+				<AVal Row="18">0</AVal>
+				<AVal Row="19">0</AVal>
+				<AVal Row="20">0</AVal>
+				<AVal Row="21">0</AVal>
+				<AVal Row="22">0</AVal>
+				<AVal Row="23">0</AVal>
+				<AVal Row="24">0</AVal>
+				<AVal Row="25">0</AVal>
+				<AVal Row="26">0</AVal>
+				<AVal Row="27">0</AVal>
+				<AVal Row="28">0</AVal>
+				<AVal Row="29">0</AVal>
+				<AVal Row="30">0</AVal>
+				<AVal Row="31">0</AVal>
+				<AVal Row="32">0</AVal>
+				<AVal Row="33">0</AVal>
+				<AVal Row="34">0</AVal>
+				<AVal Row="35">0</AVal>
+				<AVal Row="36">0</AVal>
+				<AVal Row="37">0</AVal>
+				<AVal Row="38">0</AVal>
+				<AVal Row="39">0</AVal>
+				<AVal Row="40">0</AVal>
+				<AVal Row="41">0</AVal>
+				<AVal Row="42">0</AVal>
+				<AVal Row="43">0</AVal>
+				<AVal Row="44">0</AVal>
+				<AVal Row="45">0</AVal>
+				<AVal Row="46">0</AVal>
+				<AVal Row="47">0</AVal>
+				<AVal Row="48">0</AVal>
+				<AVal Row="49">0</AVal>
+				<AVal Row="50">0</AVal>
+				<AVal Row="51">0</AVal>
+				<AVal Row="52">0</AVal>
+				<AVal Row="53">0</AVal>
+				<AVal Row="54">0</AVal>
+				<AVal Row="55">0</AVal>
+				<AVal Row="56">0</AVal>
+				<AVal Row="57">0</AVal>
+				<AVal Row="58">0</AVal>
+				<AVal Row="59">0</AVal>
+				<AVal Row="60">0</AVal>
+				<AVal Row="61">0</AVal>
+				<AVal Row="62">0</AVal>
+				<AVal Row="63">0</AVal>
+				<AVal Row="64">0</AVal>
+				<AVal Row="65">0</AVal>
+				<AVal Row="66">0</AVal>
+				<AVal Row="67">0</AVal>
+				<AVal Row="68">0</AVal>
+				<AVal Row="69">0</AVal>
+				<AVal Row="70">0</AVal>
+				<AVal Row="71">0</AVal>
+				<AVal Row="72">0</AVal>
+				<AVal Row="73">0</AVal>
+				<AVal Row="74">0</AVal>
+				<AVal Row="75">0</AVal>
+				<AVal Row="76">0</AVal>
+				<AVal Row="77">0</AVal>
+				<AVal Row="78">0</AVal>
+				<AVal Row="79">0</AVal>
+				<AVal Row="80">0</AVal>
+				<AVal Row="81">0</AVal>
+				<AVal Row="82">0</AVal>
+				<AVal Row="83">0</AVal>
+				<AVal Row="84">0</AVal>
+				<AVal Row="85">0</AVal>
+				<AVal Row="86">0</AVal>
+				<AVal Row="87">0</AVal>
+				<AVal Row="88">0</AVal>
+				<AVal Row="89">0</AVal>
+				<AVal Row="90">0</AVal>
+				<AVal Row="91">0</AVal>
+				<AVal Row="92">0</AVal>
+				<AVal Row="93">0</AVal>
+				<AVal Row="94">0</AVal>
+				<AVal Row="95">0</AVal>
+				<AVal Row="96">0</AVal>
+				<AVal Row="97">0</AVal>
+				<AVal Row="98">0</AVal>
+				<AVal Row="99">0</AVal>
+				<AVal Row="100">0</AVal>
+				<AVal Row="101">0</AVal>
+				<AVal Row="102">0</AVal>
+				<AVal Row="103">0</AVal>
+				<AVal Row="104">0</AVal>
+				<AVal Row="105">0</AVal>
+				<AVal Row="106">0</AVal>
+				<AVal Row="107">0</AVal>
+				<AVal Row="108">0</AVal>
+				<AVal Row="109">0</AVal>
+				<AVal Row="110">0</AVal>
+				<AVal Row="111">0</AVal>
+				<AVal Row="112">0</AVal>
+				<AVal Row="113">0</AVal>
+				<AVal Row="114">0</AVal>
+				<AVal Row="115">0</AVal>
+				<AVal Row="116">0</AVal>
+				<AVal Row="117">0</AVal>
+				<AVal Row="118">0</AVal>
+				<AVal Row="119">0</AVal>
+				<AVal Row="120">0</AVal>
+				<AVal Row="121">0</AVal>
+				<AVal Row="122">0</AVal>
+				<AVal Row="123">0</AVal>
+				<AVal Row="124">0</AVal>
+				<AVal Row="125">0</AVal>
+				<AVal Row="126">0</AVal>
+				<AVal Row="127">0</AVal>
+				<AVal Row="128">0</AVal>
+				<AVal Row="129">0</AVal>
+				<AVal Row="130">0</AVal>
+				<AVal Row="131">0</AVal>
+				<AVal Row="132">0</AVal>
+				<AVal Row="133">0</AVal>
+				<AVal Row="134">0</AVal>
+				<AVal Row="135">0</AVal>
+				<AVal Row="136">0</AVal>
+				<AVal Row="137">0</AVal>
+				<AVal Row="138">0</AVal>
+				<AVal Row="139">0</AVal>
+				<AVal Row="140">0</AVal>
+				<AVal Row="141">0</AVal>
+				<AVal Row="142">0</AVal>
+				<AVal Row="143">0</AVal>
+				<AVal Row="144">0</AVal>
+				<AVal Row="145">0</AVal>
+				<AVal Row="146">0</AVal>
+				<AVal Row="147">0</AVal>
+				<AVal Row="148">0</AVal>
+				<AVal Row="149">0</AVal>
+				<AVal Row="150">0</AVal>
+				<AVal Row="151">0</AVal>
+				<AVal Row="152">0</AVal>
+				<AVal Row="153">0</AVal>
+				<AVal Row="154">0</AVal>
+				<AVal Row="155">0</AVal>
+				<AVal Row="156">0</AVal>
+				<AVal Row="157">0</AVal>
+				<AVal Row="158">0</AVal>
+				<AVal Row="159">0</AVal>
+				<AVal Row="160">0</AVal>
+				<AVal Row="161">0</AVal>
+				<AVal Row="162">0</AVal>
+				<AVal Row="163">0</AVal>
+				<AVal Row="164">0</AVal>
+				<AVal Row="165">0</AVal>
+				<AVal Row="166">0</AVal>
+				<AVal Row="167">0</AVal>
+				<AVal Row="168">0</AVal>
+				<AVal Row="169">0</AVal>
+				<AVal Row="170">0</AVal>
+				<AVal Row="171">0</AVal>
+				<AVal Row="172">0</AVal>
+				<AVal Row="173">0</AVal>
+				<AVal Row="174">0</AVal>
+				<AVal Row="175">0</AVal>
+				<AVal Row="176">0</AVal>
+				<AVal Row="177">0</AVal>
+				<AVal Row="178">0</AVal>
+				<AVal Row="179">0</AVal>
+				<AVal Row="180">0</AVal>
+				<AVal Row="181">0</AVal>
+				<AVal Row="182">0</AVal>
+				<AVal Row="183">0</AVal>
+				<AVal Row="184">0</AVal>
+				<AVal Row="185">0</AVal>
+				<AVal Row="186">0</AVal>
+				<AVal Row="187">0</AVal>
+				<AVal Row="188">0</AVal>
+				<AVal Row="189">0</AVal>
+				<AVal Row="190">0</AVal>
+				<AVal Row="191">0</AVal>
+				<AVal Row="192">0</AVal>
+				<AVal Row="193">0</AVal>
+				<AVal Row="194">0</AVal>
+				<AVal Row="195">0</AVal>
+				<AVal Row="196">0</AVal>
+				<AVal Row="197">0</AVal>
+				<AVal Row="198">0</AVal>
+				<AVal Row="199">0</AVal>
+				<AVal Row="200">0</AVal>
+			</ArrayValues>
+		</Length>
 	</Parameters>
 </ParamSection>
 
