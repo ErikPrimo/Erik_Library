@@ -32,7 +32,7 @@ MATERIAL Asfalt
 RESOL 64
 ROTZ ObjectAngle
 CurentPost = 1
-
+PARAMETERS NumberOfPosts = 100
 !----Light Angle----------------------------------------------------------------------------------------------------------------------------------------------
 GOSUB "LightAngleHotSpot"
 !-----------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -325,14 +325,14 @@ RETURN
 
 "RightAngleHotSpot":
 	IF CurveRight[i] < ESP THEN 
-		centerX = 1 + CurveRight[i-1]
+		centerX = CurveRight[i-1]
 		centerY = 0
 		RightRadius = CurveRight[i-1] - 1
 		refX = centerX - RightRadius * COS(RightAngle[i])
 		refY = centerY - RightRadius * SIN(RightAngle[i])
 		HOTSPOT centerX,	centerY,	0, unID, RightAngle[i], 518 		: unID = unID + 1
 		HOTSPOT refX,		refY,		0, unID, RightAngle[i], 4 + 128 	: unID = unID + 1
-		HOTSPOT 1 + 1,	 	0,			0, unID, RightAngle[i], 5   		: unID = unID + 1
+		HOTSPOT 1,	 		0,			0, unID, RightAngle[i], 5   		: unID = unID + 1
 	ENDIF
 RETURN
 
@@ -412,8 +412,7 @@ RETURN
 <![CDATA[
 SET FILL "Solid Fill"
 PEN 1
-PROJECT2{3} 3, 270, 3 + 16, 4 + 8
-
+IF NOT(GLOB_FEEDBACK_MODE) THEN PROJECT2{3} 3, 270, 3 + 16, 4 + 8
 LightAngle = LightAngle + 90
 LightBool = 0
 !------Object Angle-----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -671,18 +670,18 @@ RETURN
 
 "RightAngleHotSpot2D":
 	IF CurveRight[i] < ESP THEN 
-		centerX = 1 + CurveRight[i-1]
+		centerX = CurveRight[i-1]
 		centerY = 0
 		RightRadius = CurveRight[i-1] - 1
 		refX = centerX - RightRadius * COS(RightAngle[i])
 		refY = centerY - RightRadius * SIN(RightAngle[i])
 		HOTSPOT2 centerX, centerY, unID, RightAngle[i], 518     : unID = unID + 1
 		HOTSPOT2 refX,    refY,    unID, RightAngle[i], 4 + 128 : unID = unID + 1
-		HOTSPOT2 2,       0,       unID, RightAngle[i], 5       : unID = unID + 1
+		HOTSPOT2 1,       0,       unID, RightAngle[i], 5       : unID = unID + 1
 		IF ColorCircles THEN
 			POLY2_B 2, 1+2+4,
 				6, 0,
-				2, 0, 900,
+				1, 0, 900,
 				CircleSize, 360, 4001
 		ENDIF
 	ENDIF
@@ -839,48 +838,63 @@ FOR i = 1 TO 120
 NEXT i
 
 
-!------Calculate Length----------------------------------------------------------------------------------------------------------------------
-TotalLength_Calc = 0
+NumberOfPosts = 0
+CounterRemainingDistance = RightLightRemainingDistance
+CounterPost = CurentPost
+CounterRightLightBool = RightLightBool
 
-! --- 1. First Straight Evaluation ---
-IF NextLength[1] = 0 AND CurveLeft[1] = 0 AND CurveRight[1] = 0 THEN
-	TotalLength_Calc = TotalLength_Calc + BeginningDistance
-ENDIF
-
-! --- 2. Iterate Segments to Calculate Total Length ---
 i = 1
 WHILE ObjectOrder[i] <> 0 DO
-	IF NextLength[i] > ESP        THEN ObjectOrder[i+1] = 2
-	IF CurveLeft[i]  > ESP        THEN ObjectOrder[i+1] = 3
-	IF CurveRight[i] > ESP        THEN ObjectOrder[i+1] = 4
+    IF NextLength[i] > ESP THEN ObjectOrder[i+1] = 2
+    IF CurveLeft[i] > ESP THEN ObjectOrder[i+1] = 3
+    IF CurveRight[i] > ESP THEN ObjectOrder[i+1] = 4
 
-	IF ObjectOrder[i] = 2 THEN
-		TotalLength_Calc = TotalLength_Calc + NextLength[i-1]
-		GOTO "NextMasterIter"
-	ENDIF
+    IF ObjectOrder[i] = 2 THEN
+        CounterSegmentLength = NextLength[i-1]
+        GOTO "CountSegment"
+    ENDIF
 
-	IF ObjectOrder[i] = 3 THEN
-		
-		TotalLength_Calc = TotalLength_Calc + (CurveLeft[i-1] * (LeftAngle[i] * PI / 180))
+    IF ObjectOrder[i] = 3 THEN
+        CounterSegmentLength = CurveLeft[i-1] * (LeftAngle[i] * PI / 180)
+        ObjectOrder[i+1] = 2
+        GOTO "CountSegment"
+    ENDIF
 
-		ObjectOrder[i+1] = 2
-		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
-		GOTO "NextMasterIter"
-	ENDIF
+    IF ObjectOrder[i] = 4 THEN
+        CounterSegmentLength = CurveRight[i-1] * (RightAngle[i] * PI / 180)
+        ObjectOrder[i+1] = 2
+        GOTO "CountSegment"
+    ENDIF
 
-	IF ObjectOrder[i] = 4 THEN
-		TotalLength_Calc = TotalLength_Calc + (CurveRight[i-1] * (RightAngle[i] * PI / 180))
-		
-		ObjectOrder[i+1] = 2
-		IF NextLength[i] <= 0 THEN NextLength[i] = ESP
-		GOTO "NextMasterIter"
-	ENDIF
+    GOTO "NextCounterIter"
 
-	"NextMasterIter":
-	i = i + 1
+    "CountSegment":
+    IF CounterRemainingDistance <= CounterSegmentLength THEN
+        CounterCurrentDistance = CounterRemainingDistance
+        WHILE CounterCurrentDistance <= CounterSegmentLength DO
+            CounterStepDist = StandardLightMargin
+            IF CounterPost + 1 <= VARDIM1(LightDistance1) THEN
+                CounterStepDist = CounterStepDist + LightDistance1[CounterPost+1] - LightDistance1[CounterPost]
+            ENDIF
+            IF CounterPost + 1 <= VARDIM1(LightDistanceAll) THEN
+                CounterStepDist = CounterStepDist + LightDistanceAll[CounterPost+1]
+            ENDIF
+            IF TopTubeVisible OR CounterRightLightBool THEN NumberOfPosts = NumberOfPosts + 1
+            CounterRightLightBool = NOT(CounterRightLightBool)
+            CounterCurrentDistance = CounterCurrentDistance + CounterStepDist
+            CounterPost = CounterPost + 1
+        ENDWHILE
+        CounterFinalLeftover = CounterSegmentLength - (CounterCurrentDistance - CounterStepDist)
+        CounterRemainingDistance = CounterStepDist - CounterFinalLeftover
+    ELSE
+        CounterRemainingDistance = CounterRemainingDistance - CounterSegmentLength
+    ENDIF
+
+    "NextCounterIter":
+    i = i + 1
 ENDWHILE
 
-NumberOfPosts = INT(TotalLength_Calc / 1.5 + 0.9999)
+IF LastLightBool THEN NumberOfPosts = NumberOfPosts + 1
 ]]>
 </Script_1D>
 
@@ -947,6 +961,18 @@ UI_INFIELD  "LastLightBool",		20,  260,  20, 20
 
 UI_OUTFIELD "Floor Plan Lights",	100,  240,  100, 15
 UI_INFIELD  "FloorPlanLights",		100,  260,  100, 20
+! ==============================================================================
+! TAB 2: ERP DESCRIPTION & QUANTITIES
+! ==============================================================================
+UI_PAGE 2, -1, "ERP Description"
+TABID_ERP = 1
+UI_LISTFIELD TABID_ERP, 10, 5, 280, 220, 0, "Description", "Value"
+
+_itemID = 1
+UI_LISTITEM _itemID, TABID_ERP, "ERP_Code_Pole", 0, "", "" : _itemID = _itemID + 1
+IF TopTubeVisible THEN
+	UI_LISTITEM _itemID, TABID_ERP, "ERP_Code_Light", 0, "", "" : _itemID = _itemID + 1
+ENDIF
 ]]>
 </Script_UI>
 
@@ -958,7 +984,7 @@ DIM vlist[]
 n = 1
 FOR i = 1 TO 100
 	IF NextLength[i] > ESP THEN 
-    	vlist[n] = i
+		vlist[n] = i
 		n = n + 1
 	ENDIF
 NEXT i
@@ -968,18 +994,20 @@ PARAMETERS TotalTrackLength = TotalLength_Calc
 
 LOCK "NumberOfPosts"
 PARAMETERS NumberOfPosts = NumberOfPosts
+PARAMETERS ERP_Code_Pole = "B.1111" + "|" + STR(NumberOfPosts, 2, 0) + "|"
+PARAMETERS ERP_Code_Light = "B.1111" + "|" + STR(NumberOfPosts/2, 2, 0) + "|"
 
 VALUES "LightAngle" 45, 90, 135, 225, 270, 315
 !VALUES "LightDistance" 1.5
 
 if not(TopTubeVisible) and not(LightVisible) then
-    if GLOB_MODPAR_NAME = "TopTubeVisible" then
-        LightVisible = 1
-        parameters LightVisible = 1
-    else
-        TopTubeVisible = 1
-        parameters TopTubeVisible = 1
-    endif
+	if GLOB_MODPAR_NAME = "TopTubeVisible" then
+		LightVisible = 1
+		parameters LightVisible = 1
+	else
+		TopTubeVisible = 1
+		parameters TopTubeVisible = 1
+	endif
 endif
 ]]>
 </Script_VL>
@@ -1056,7 +1084,7 @@ endif
 		<Length Name="NextLength">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
-				<AVal Row="1">5</AVal>
+				<AVal Row="1">0.1</AVal>
 				<AVal Row="2">0</AVal>
 				<AVal Row="3">0</AVal>
 				<AVal Row="4">0</AVal>
@@ -2285,11 +2313,11 @@ endif
 		</Integer>
 		<Length Name="TotalTrackLength">
 			<Description><![CDATA[""]]></Description>
-			<Value>5</Value>
+			<Value>0</Value>
 		</Length>
 		<Integer Name="NumberOfPosts">
 			<Description><![CDATA[""]]></Description>
-			<Value>4</Value>
+			<Value>1</Value>
 		</Integer>
 		<Boolean Name="LightVisible">
 			<Description><![CDATA[""]]></Description>
@@ -2942,6 +2970,14 @@ endif
 				<AVal Row="200">0</AVal>
 			</ArrayValues>
 		</Length>
+		<String Name="ERP_Code_Pole">
+			<Description><![CDATA[""]]></Description>
+			<Value><![CDATA["B.1111| 1|"]]></Value>
+		</String>
+		<String Name="ERP_Code_Light">
+			<Description><![CDATA[""]]></Description>
+			<Value><![CDATA["B.1111| 1|"]]></Value>
+		</String>
 	</Parameters>
 </ParamSection>
 
