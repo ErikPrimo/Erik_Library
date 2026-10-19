@@ -6,6 +6,10 @@
 </Ancestry>
 
 <CalledMacros SectVersion="2" SectionFlags="0" SubIdent="0">
+	<Macro>
+		<MName><![CDATA["Erik_MVO"]]></MName>
+		<MainGUID>F1CB3256-3CB8-463B-BECE-D04237B17F4A</MainGUID>
+	</Macro>
 </CalledMacros>
 
 <!-- GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT ===== GDL SCRIPT -->
@@ -354,27 +358,51 @@ RETURN
 RETURN
 
 "CatRightHotSpots":
-	HOTSPOT2	CatWalkLength,		0,	unID, CatRight[i], 1 : unID = unID + 1
-	HOTSPOT2	CatWalkLength,		0,	unID, CatRight[i], 2 : unID = unID + 1
-	HOTSPOT2	CatWalkLength-1,	0,	unID, CatRight[i], 3 : unID = unID + 1
+	HOTSPOT2	CatRight[i] + CatWalkLength,		0,	unID, CatRight[i], 1 : unID = unID + 1
+	HOTSPOT2	CatRight[i] + CatWalkLength,		0,	unID, CatRight[i], 2 : unID = unID + 1
+	HOTSPOT2	CatRight[i] + CatWalkLength-1,		0,	unID, CatRight[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			4, 0,
+			CatRight[i] + CatWalkLength, 0, 900,
+			CircleSize, 360, 4001
+	ENDIF
 RETURN
 
 "CatLeftHotSpots":
-	HOTSPOT2	0,		0, unID, CatLeft[i], 1 : unID = unID + 1
-	HOTSPOT2	0,		0, unID, CatLeft[i], 2 : unID = unID + 1
-	HOTSPOT2	-1,		0, unID, CatLeft[i], 3 : unID = unID + 1
+	HOTSPOT2	CatLeft[i],		0, unID, CatLeft[i], 1 : unID = unID + 1
+	HOTSPOT2	CatLeft[i],		0, unID, CatLeft[i], 2 : unID = unID + 1
+	HOTSPOT2	CatLeft[i]-1,	0, unID, CatLeft[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			4, 0,
+			CatLeft[i], 0, 900,
+			CircleSize, 360, 4001
+	ENDIF
 RETURN
 
 "RightRadiHotSpots":
 	HOTSPOT2	CatWalkLength + SegmentWidthCat[i]/2,		0, unID, RightRadi[i], 1 : unID = unID + 1
 	HOTSPOT2	CatWalkLength + SegmentWidthCat[i]/2,		0, unID, RightRadi[i], 2 : unID = unID + 1
 	HOTSPOT2	CatWalkLength + SegmentWidthCat[i]/2-1,		0, unID, RightRadi[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			8, 0,
+			CatWalkLength + SegmentWidthCat[i]/2, 0, 900,
+			CircleSize, 360, 4001
+	ENDIF
 RETURN
 
 "LeftRadiHotSpots":
 	HOTSPOT2		-SegmentWidthCat[i]/2,			0,	unID, LeftRadi[i], 1 : unID = unID + 1
 	HOTSPOT2		-SegmentWidthCat[i]/2,			0,	unID, LeftRadi[i], 2 : unID = unID + 1
 	HOTSPOT2		-SegmentWidthCat[i]/2+1,		0,	unID, LeftRadi[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			8, 0,
+			-SegmentWidthCat[i]/2, 0, 900,
+			CircleSize, 360, 4001
+	ENDIF
 RETURN
 
 "RightRadiDirectionHotSpots":
@@ -392,19 +420,33 @@ RETURN
 "AngleRightHotSpot":
 	IF R_Direction < -ESP THEN : AngleNum = 518 : ELSE : AngleNum = 6 : ENDIF
 	IF RightRadi[i] > ESP THEN
-		HOTSPOT2		CatWalkLength,					R_Direction * RightRadiSt,	unID, AngleRight[i], AngleNum	: unID = unID + 1
-		HOTSPOT2		CatWalkLength+RightRadiSt,		R_Direction * RightRadiSt,	unID, AngleRight[i], 5			: unID = unID + 1
-		HOTSPOT2		CatWalkLength,					0,							unID, AngleRight[i], 4			: unID = unID + 1
+		HOTSPOT2	CatWalkLength,										R_Direction * RightRadiSt,								unID, AngleRight[i], AngleNum	: unID = unID + 1
+		HOTSPOT2	CatWalkLength + RightRadiSt * SIN(AngleRight[i]),	R_Direction * RightRadiSt * (1 - COS(AngleRight[i])),	unID, AngleRight[i], 5			: unID = unID + 1
+		HOTSPOT2	CatWalkLength,										0,														unID, AngleRight[i], 4			: unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				6, 0,
+				CatWalkLength + RightRadiSt * SIN(AngleRight[i]), R_Direction * RightRadiSt * (1 - COS(AngleRight[i])), 900,
+				CircleSize, 360, 4001
+		ENDIF
 	ENDIF
+
 RETURN
 
 "AngleLeftHotSpot":
 	IF L_Direction < -ESP THEN : AngleNum = 6 : ELSE : AngleNum = 518 : ENDIF
-	!IF LeftRadi[i] > 2.2 THEN
-		HOTSPOT2		0,					L_Direction * LeftRadiSt,	unID, AngleLeft[i], AngleNum	: unID = unID + 1
-		HOTSPOT2		-LeftRadiSt,		L_Direction * LeftRadiSt,	unID, AngleLeft[i], 5			: unID = unID + 1
-		HOTSPOT2		0,					0,							unID, AngleLeft[i], 4			: unID = unID + 1
-	!ENDIF
+	EPS= 0.0000001
+	IF LeftRadi[i] > ESP THEN
+		HOTSPOT2	0,												L_Direction * LeftRadiSt,								unID, AngleLeft[i], AngleNum	: unID = unID + 1
+		HOTSPOT2	-LeftRadiSt * SIN(AngleLeft[i]),				L_Direction * LeftRadiSt * (1 - COS(AngleLeft[i])),		unID, AngleLeft[i], 5			: unID = unID + 1
+		HOTSPOT2	0,												0,														unID, AngleLeft[i], 4			: unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				6, 0,
+				-LeftRadiSt * SIN(AngleLeft[i]),	L_Direction * LeftRadiSt * (1 - COS(AngleLeft[i])), 900,
+				CircleSize, 360, 4001
+		ENDIF
+	ENDIF
 RETURN
 !--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ]]>
@@ -421,10 +463,15 @@ TrackThickness = 0.01
 ExtrudeValues =  1+2+4
 CatWalkThickness = 1
 CatWalkLength = Length
+CircleSize = 0.11
+
 
 PitBoxMargin = 0.05
 PitBoxLine = 0.1
 PitBoxLength = 2.2
+
+ColorCircles = 1
+LibraryBool = LIBRARYGLOBAL ("Erik_MVO", "ColorCircles", ColorCircles)
 
 Width = 0
 !------While Being Edited Show Outline------------------------------------------------------------------------------------------------------------------------------------
@@ -435,9 +482,10 @@ ELSE
 ENDIF
 !------------------------------------------------------------------------------------------------------------------------------------------
 
+
 FOR i = 1 TO 15
-	IF AngleRight[i] < ESP THEN AngleRight[i] = 90
-	IF AngleLeft[i] < ESP THEN AngleLeft[i] = 90
+	IF AngleRight[i] < ESP THEN AngleRight[i] = 50
+	IF AngleLeft[i] < ESP THEN AngleLeft[i] = 50
 NEXT i
 SegmentNum = 1
 
@@ -449,7 +497,7 @@ WHILE SegmentOrder[SegmentNum] <> 0 DO
 ENDWHILE
 
 PitRadi = Width/3
-!IF PitRadi < 2.2 THEN PitRadi = 2.2
+IF PitRadi < 5.2 AND Width/2 > 5.2 THEN PitRadi = 5.2
 ]]>
 </Script_1D>
 
@@ -498,8 +546,12 @@ NEXT i
 <![CDATA[
 VALUES "Length" RANGE [1, )
 VALUES "Width"  RANGE [1, )
-VALUES "RightRadi" 0, RANGE [2.2, )
-VALUES "LeftRadi" 0, RANGE [2.2, )
+VALUES "CatRight" RANGE [-100, 100] STEP 0.5, 0.5
+VALUES "CatLeft"  RANGE [-100, 100] STEP 0.5, 0.5
+VALUES "RightRadi" 0, 5.2
+VALUES "LeftRadi"  0, 5.2
+VALUES "AngleRight" RANGE [0, 50] STEP 5, 5
+VALUES "AngleLeft"  RANGE [0, 50] STEP 5, 5
 VALUES "PitRadi"  RANGE [1, Width/2)
 
 !-----Length Jumps To The Next PitBox--------------------------------------------------------------
@@ -750,6 +802,26 @@ VALUES "CatColor" colorList
 				<AVal Row="15">0</AVal>
 			</ArrayValues>
 		</Length>
+		<Length Name="CatLeft">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="15" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+			</ArrayValues>
+		</Length>
 		<Angle Name="AngleRight">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="15" SecondDimension="0">
@@ -813,21 +885,21 @@ VALUES "CatColor" colorList
 		<Length Name="LeftRadi">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="15" SecondDimension="0">
-				<AVal Row="1">1.e-5</AVal>
-				<AVal Row="2">1.e-5</AVal>
-				<AVal Row="3">1.e-5</AVal>
-				<AVal Row="4">1.e-5</AVal>
-				<AVal Row="5">1.e-5</AVal>
-				<AVal Row="6">1.e-5</AVal>
-				<AVal Row="7">1.e-5</AVal>
-				<AVal Row="8">1.e-5</AVal>
-				<AVal Row="9">1.e-5</AVal>
-				<AVal Row="10">1.e-5</AVal>
-				<AVal Row="11">1.e-5</AVal>
-				<AVal Row="12">1.e-5</AVal>
-				<AVal Row="13">1.e-5</AVal>
-				<AVal Row="14">1.e-5</AVal>
-				<AVal Row="15">1.e-5</AVal>
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
 			</ArrayValues>
 		</Length>
 		<Length Name="RightRadiDirection">
@@ -851,26 +923,6 @@ VALUES "CatColor" colorList
 			</ArrayValues>
 		</Length>
 		<Length Name="LeftRadiDirection">
-			<Description><![CDATA[""]]></Description>
-			<ArrayValues FirstDimension="15" SecondDimension="0">
-				<AVal Row="1">0</AVal>
-				<AVal Row="2">0</AVal>
-				<AVal Row="3">0</AVal>
-				<AVal Row="4">0</AVal>
-				<AVal Row="5">0</AVal>
-				<AVal Row="6">0</AVal>
-				<AVal Row="7">0</AVal>
-				<AVal Row="8">0</AVal>
-				<AVal Row="9">0</AVal>
-				<AVal Row="10">0</AVal>
-				<AVal Row="11">0</AVal>
-				<AVal Row="12">0</AVal>
-				<AVal Row="13">0</AVal>
-				<AVal Row="14">0</AVal>
-				<AVal Row="15">0</AVal>
-			</ArrayValues>
-		</Length>
-		<Length Name="CatLeft">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="15" SecondDimension="0">
 				<AVal Row="1">0</AVal>
