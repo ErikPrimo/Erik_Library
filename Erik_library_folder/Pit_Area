@@ -355,6 +355,12 @@ RETURN
 	HOTSPOT2	 0,	0, unID, Length, 1 : unID = unID + 1
 	HOTSPOT2	 0,	0, unID, Length, 2 : unID = unID + 1
 	HOTSPOT2	-1,	0, unID, Length, 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			80, 0,
+			0,              0, 900,
+			CircleSize,            360, 4001
+	ENDIF
 RETURN
 
 "CatRightHotSpots":

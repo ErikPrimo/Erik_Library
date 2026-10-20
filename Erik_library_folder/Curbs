@@ -291,6 +291,7 @@ RETURN
 	pushedTransforms = 0
 	IF rCurbInner > 0.0001 THEN
 		SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
+		IF RightAngle[i] < SegmentAngle THEN RightAngle[i] = SegmentAngle + 0.1
 		MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
 		StepAngle    = SegmentAngle + MarginAngle
 		! Convert incoming remainder length to angle
@@ -335,6 +336,7 @@ RETURN
 	! ---------------------------------------------------------
 	! 4. INITIAL LEFTOVER SEGMENT (Only when RemainingSegment > 0)
 	! ---------------------------------------------------------
+	BREAKPOINT 1
 	IF RemainingSegmentAngle > 0.0001 THEN
 		! IF RemainingSegmentAngle < MarginAngle THEN 
 		! 	ADDX CurveRadius
@@ -468,6 +470,7 @@ RETURN
 
 	IF rCurbInner > 0.0001 THEN
 		SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
+		IF LeftAngle[i] < SegmentAngle THEN LeftAngle[i] = SegmentAngle + 0.1
 		MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
 		StepAngle    = SegmentAngle + MarginAngle
 
@@ -683,7 +686,7 @@ RETURN
 		RightRadius = CurveRight[i-1]
 		refX = centerX - RightRadius * COS(RightAngle[i])
 		refY = centerY - RightRadius * SIN(RightAngle[i])
-
+		
 		HOTSPOT centerX,	centerY,	0, unID, RightAngle[i], 6		: unID = unID + 1
 		HOTSPOT refX,		refY,		0, unID, RightAngle[i], 4 + 128	: unID = unID + 1
 		HOTSPOT 1,	 		0,			0, unID, RightAngle[i], 5   	: unID = unID + 1
@@ -1241,6 +1244,18 @@ FOR i = 1 TO 200
 	LeftAngle[i]  = MIN(180, MAX(0, LeftAngle[i]))
 	!-------------------------------------------------------------------------------------------------------------------------------------
 	!IF NOT(NextLength[i] < ESP) THEN NextLength[i] = INT(NextLength[i] / SegmentSizeWithMargin) * SegmentSizeWithMargin
+	IF i > 2 THEN
+		IF CurveRight[i-1] > ESP THEN
+			MasterCurveRadius = CurveRight[i-1] - LineOffsetMargin
+			MasterSegmentAngle = CurbeSegmentWidth  * 180 / (PI * MasterCurveRadius)
+			IF RightAngle[i] < MasterSegmentAngle THEN RightAngle[i] = MasterSegmentAngle + 0.1
+		ENDIF
+		IF CurveLeft[i-1] > ESP THEN
+			MasterCurveRadius = CurveLeft[i-1] - LineOffsetMargin
+			MasterSegmentAngle = CurbeSegmentWidth  * 180 / (PI * MasterCurveRadius)
+			IF LeftAngle[i] < MasterSegmentAngle THEN LeftAngle[i] = MasterSegmentAngle + 0.1
+		ENDIF
+	ENDIF
 NEXT i
 
 ! ----------------------------------------------------------------------------------------------------------------------------------------
@@ -1632,7 +1647,8 @@ VALUES{2} "BSO_Angle",
     7.4,    "10°",
     9.86,   "12°",
     12.29,  "14°"
-
+VALUES "CurveRight" 0, RANGE [0.35, )
+VALUES "CurveLeft" 0, RANGE [0.35, )
 DIM colorList[]
 index = 1
 FOR i = 741 TO 760
