@@ -106,7 +106,7 @@ END
 	! --- Right Edge Lights --------------------------------------------------------------------------------------------------
 	IF RightLightRemainingDistance <= NextLength[i-1] THEN
 		WHILE RightLightRemainingDistance <= NextLength[i-1] DO
-			StepDist = StandardLightMargin + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			StepDist = StandardLightMargin + LightDistance[CurentPost+1] - LightDistance[CurentPost]
 			StepDist = StepDist + LightDistanceAll[CurentPost+1]
 			ADDY RightLightRemainingDistance
 			IF RightLightBool OR TopTubeVisible THEN GOSUB "LightDistanceHotSpot"
@@ -185,8 +185,8 @@ RETURN
 	IF CurrentArcDistance <= InnerCurveArcLength THEN
 		WHILE CurrentArcDistance <= InnerCurveArcLength DO
 			StepDist = StandardLightMargin
-			IF CurentPost + 1 <= VARDIM1(LightDistance1) THEN
-				StepDist = StepDist + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			IF CurentPost + 1 <= VARDIM1(LightDistance) THEN
+				StepDist = StepDist + LightDistance[CurentPost+1] - LightDistance[CurentPost]
 			ENDIF
 			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
 				StepDist = StepDist + LightDistanceAll[CurentPost+1]
@@ -271,8 +271,8 @@ RETURN
 	IF CurrentArcDistance <= InnerCurveArcLength THEN
 		WHILE CurrentArcDistance <= InnerCurveArcLength DO
 			StepDist = StandardLightMargin
-			IF CurentPost + 1 <= VARDIM1(LightDistance1) THEN
-				StepDist = StepDist + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			IF CurentPost + 1 <= VARDIM1(LightDistance) THEN
+				StepDist = StepDist + LightDistance[CurentPost+1] - LightDistance[CurentPost]
 			ENDIF
 			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
 				StepDist = StepDist + LightDistanceAll[CurentPost+1]
@@ -366,9 +366,9 @@ RETURN
 RETURN
 
 "LightDistanceHotSpot":
-	HOTSPOT -0.5,			0,	0,	unID, LightDistance1[CurentPost], 1	: unID = unID + 1
-	HOTSPOT -0.5,			0,	0,	unID, LightDistance1[CurentPost], 2	: unID = unID + 1
-	HOTSPOT -0.5,			-1,	0,	unID, LightDistance1[CurentPost], 3	: unID = unID + 1
+	HOTSPOT -0.5,			0,	0,	unID, LightDistance[CurentPost], 1	: unID = unID + 1
+	HOTSPOT -0.5,			0,	0,	unID, LightDistance[CurentPost], 2	: unID = unID + 1
+	HOTSPOT -0.5,			-1,	0,	unID, LightDistance[CurentPost], 3	: unID = unID + 1
 
 	HOTSPOT 0.5,			0,	0,	unID, LightDistanceAll[CurentPost], 1	: unID = unID + 1
 	HOTSPOT 0.5,			0,	0,	unID, LightDistanceAll[CurentPost], 2	: unID = unID + 1
@@ -487,8 +487,8 @@ END
 		WHILE CurrentArcDistance <= NextLength[i-1] DO
 			! Compute step distance with bounds safety
 			StepDist = StandardLightMargin
-			IF CurentPost + 1 <= VARDIM1(LightDistance1) THEN
-				StepDist = StepDist + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			IF CurentPost + 1 <= VARDIM1(LightDistance) THEN
+				StepDist = StepDist + LightDistance[CurentPost+1] - LightDistance[CurentPost]
 			ENDIF
 			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
 				StepDist = StepDist + LightDistanceAll[CurentPost+1]
@@ -539,8 +539,8 @@ RETURN
 	IF CurrentArcDistance <= InnerCurveArcLength THEN
 		WHILE CurrentArcDistance <= InnerCurveArcLength DO
 			StepDist = StandardLightMargin
-			IF CurentPost + 1 <= VARDIM1(LightDistance1) THEN
-				StepDist = StepDist + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			IF CurentPost + 1 <= VARDIM1(LightDistance) THEN
+				StepDist = StepDist + LightDistance[CurentPost+1] - LightDistance[CurentPost]
 			ENDIF
 			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
 				StepDist = StepDist + LightDistanceAll[CurentPost+1]
@@ -593,8 +593,8 @@ RETURN
 	IF CurrentArcDistance <= InnerCurveArcLength THEN
 		WHILE CurrentArcDistance <= InnerCurveArcLength DO
 			StepDist = StandardLightMargin
-			IF CurentPost + 1 <= VARDIM1(LightDistance1) THEN
-				StepDist = StepDist + LightDistance1[CurentPost+1] - LightDistance1[CurentPost]
+			IF CurentPost + 1 <= VARDIM1(LightDistance) THEN
+				StepDist = StepDist + LightDistance[CurentPost+1] - LightDistance[CurentPost]
 			ENDIF
 			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
 				StepDist = StepDist + LightDistanceAll[CurentPost+1]
@@ -752,24 +752,26 @@ RETURN
 RETURN
 
 "LightDistanceHotSpot":
-	HOTSPOT2 -0.5,			0,	unID, LightDistance1[CurentPost], 1	: unID = unID + 1
-	HOTSPOT2 -0.5,			0,	unID, LightDistance1[CurentPost], 2	: unID = unID + 1
-	HOTSPOT2 -0.5,			-1,	unID, LightDistance1[CurentPost], 3	: unID = unID + 1
-	IF ColorCircles THEN
-		POLY2_B 2, 1+2+4,
-			17, 0,
-			-0.5,             	0, 900,
-			CircleSize/2,            360, 4001
-	ENDIF
+	IF IndividualLightPosition THEN
+		HOTSPOT2 -0.5,			0,	unID, LightDistance[CurentPost], 1	: unID = unID + 1
+		HOTSPOT2 -0.5,			0,	unID, LightDistance[CurentPost], 2	: unID = unID + 1
+		HOTSPOT2 -0.5,			-1,	unID, LightDistance[CurentPost], 3	: unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				17, 0,
+				-0.5,             	0, 900,
+				CircleSize/2,            360, 4001
+		ENDIF
 
-	HOTSPOT2 0.5,			0,	unID, LightDistanceAll[CurentPost], 1	: unID = unID + 1
-	HOTSPOT2 0.5,			0,	unID, LightDistanceAll[CurentPost], 2	: unID = unID + 1
-	HOTSPOT2 0.5,			-1,	unID, LightDistanceAll[CurentPost], 3	: unID = unID + 1
-	IF ColorCircles THEN
-		POLY2_B 2, 1+2+4,
-			80, 0,
-			0.5,             	0, 900,
-			CircleSize/2,            360, 4001
+		HOTSPOT2 0.5,			0,	unID, LightDistanceAll[CurentPost], 1	: unID = unID + 1
+		HOTSPOT2 0.5,			0,	unID, LightDistanceAll[CurentPost], 2	: unID = unID + 1
+		HOTSPOT2 0.5,			-1,	unID, LightDistanceAll[CurentPost], 3	: unID = unID + 1
+		IF ColorCircles THEN
+			POLY2_B 2, 1+2+4,
+				80, 0,
+				0.5,             	0, 900,
+				CircleSize/2,            360, 4001
+		ENDIF
 	ENDIF
 RETURN
 
@@ -873,8 +875,8 @@ WHILE ObjectOrder[i] <> 0 DO
         CounterCurrentDistance = CounterRemainingDistance
         WHILE CounterCurrentDistance <= CounterSegmentLength DO
             CounterStepDist = StandardLightMargin
-            IF CounterPost + 1 <= VARDIM1(LightDistance1) THEN
-                CounterStepDist = CounterStepDist + LightDistance1[CounterPost+1] - LightDistance1[CounterPost]
+            IF CounterPost + 1 <= VARDIM1(LightDistance) THEN
+                CounterStepDist = CounterStepDist + LightDistance[CounterPost+1] - LightDistance[CounterPost]
             ENDIF
             IF CounterPost + 1 <= VARDIM1(LightDistanceAll) THEN
                 CounterStepDist = CounterStepDist + LightDistanceAll[CounterPost+1]
@@ -961,6 +963,9 @@ UI_INFIELD  "LastLightBool",		20,  260,  20, 20
 
 UI_OUTFIELD "Floor Plan Lights",	100,  240,  100, 15
 UI_INFIELD  "FloorPlanLights",		100,  260,  100, 20
+
+UI_OUTFIELD "Individual Light Position",	200,  240,  150, 15
+UI_INFIELD  "IndividualLightPosition",		200,  260,  100, 20
 ! ==============================================================================
 ! TAB 2: ERP DESCRIPTION & QUANTITIES
 ! ==============================================================================
@@ -969,8 +974,10 @@ TABID_ERP = 1
 UI_LISTFIELD TABID_ERP, 10, 5, 280, 220, 0, "Description", "Value"
 
 _itemID = 1
-UI_LISTITEM _itemID, TABID_ERP, "ERP_Code_Pole", 0, "", "" : _itemID = _itemID + 1
 IF TopTubeVisible THEN
+	UI_LISTITEM _itemID, TABID_ERP, "ERP_Code_Pole", 0, "", "" : _itemID = _itemID + 1
+ENDIF
+IF LightVisible THEN 
 	UI_LISTITEM _itemID, TABID_ERP, "ERP_Code_Light", 0, "", "" : _itemID = _itemID + 1
 ENDIF
 ]]>
@@ -994,11 +1001,23 @@ PARAMETERS TotalTrackLength = TotalLength_Calc
 
 LOCK "NumberOfPosts"
 PARAMETERS NumberOfPosts = NumberOfPosts
-PARAMETERS ERP_Code_Pole = "B.1111" + "|" + STR(NumberOfPosts, 2, 0) + "|"
-PARAMETERS ERP_Code_Light = "B.1111" + "|" + STR(NumberOfPosts/2, 2, 0) + "|"
+
+IF TopTubeVisible THEN
+	PARAMETERS ERP_Code_Pole = "B.6537" + "||" + STR(NumberOfPosts, 2, 0) + "|"
+	IF LightVisible THEN 
+		PARAMETERS ERP_Code_Light = "B.1111" + "||" + STR(NumberOfPosts/2, 2, 0) + "|"
+	ENDIF
+ENDIF
+
+IF LightVisible AND NOT(TopTubeVisible) THEN 
+	PARAMETERS ERP_Code_Light = "B.6425" + "||" + STR(NumberOfPosts, 2, 0) + "|"
+ENDIF
 
 VALUES "LightAngle" 45, 90, 135, 225, 270, 315
-!VALUES "LightDistance" 1.5
+VALUES "LightDistance" 0, RANGE [-1.5,1.5]
+VALUES "LightDistanceAll" 0, RANGE [-1.5,1.5]
+VALUES "CurveRight" 0, RANGE [0.5, )
+VALUES "CurveLeft" 0, RANGE [0.5, )
 
 if not(TopTubeVisible) and not(LightVisible) then
 	if GLOB_MODPAR_NAME = "TopTubeVisible" then
@@ -2358,211 +2377,6 @@ endif
 		<Length Name="LightDistance">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="200" SecondDimension="0">
-				<AVal Row="1">1.5</AVal>
-				<AVal Row="2">1.5</AVal>
-				<AVal Row="3">0.5</AVal>
-				<AVal Row="4">1.5</AVal>
-				<AVal Row="5">1.5</AVal>
-				<AVal Row="6">1.5</AVal>
-				<AVal Row="7">1.5</AVal>
-				<AVal Row="8">1.5</AVal>
-				<AVal Row="9">1.5</AVal>
-				<AVal Row="10">1.5</AVal>
-				<AVal Row="11">1.5</AVal>
-				<AVal Row="12">1.5</AVal>
-				<AVal Row="13">1.5</AVal>
-				<AVal Row="14">1.5</AVal>
-				<AVal Row="15">1.5</AVal>
-				<AVal Row="16">1.5</AVal>
-				<AVal Row="17">1.5</AVal>
-				<AVal Row="18">1.5</AVal>
-				<AVal Row="19">1.5</AVal>
-				<AVal Row="20">1.5</AVal>
-				<AVal Row="21">1.5</AVal>
-				<AVal Row="22">1.5</AVal>
-				<AVal Row="23">1.5</AVal>
-				<AVal Row="24">1.5</AVal>
-				<AVal Row="25">1.5</AVal>
-				<AVal Row="26">1.5</AVal>
-				<AVal Row="27">1.5</AVal>
-				<AVal Row="28">1.5</AVal>
-				<AVal Row="29">1.5</AVal>
-				<AVal Row="30">1.5</AVal>
-				<AVal Row="31">1.5</AVal>
-				<AVal Row="32">1.5</AVal>
-				<AVal Row="33">1.5</AVal>
-				<AVal Row="34">1.5</AVal>
-				<AVal Row="35">1.5</AVal>
-				<AVal Row="36">1.5</AVal>
-				<AVal Row="37">1.5</AVal>
-				<AVal Row="38">1.5</AVal>
-				<AVal Row="39">1.5</AVal>
-				<AVal Row="40">1.5</AVal>
-				<AVal Row="41">1.5</AVal>
-				<AVal Row="42">1.5</AVal>
-				<AVal Row="43">1.5</AVal>
-				<AVal Row="44">1.5</AVal>
-				<AVal Row="45">1.5</AVal>
-				<AVal Row="46">1.5</AVal>
-				<AVal Row="47">1.5</AVal>
-				<AVal Row="48">1.5</AVal>
-				<AVal Row="49">1.5</AVal>
-				<AVal Row="50">1.5</AVal>
-				<AVal Row="51">1.5</AVal>
-				<AVal Row="52">1.5</AVal>
-				<AVal Row="53">1.5</AVal>
-				<AVal Row="54">1.5</AVal>
-				<AVal Row="55">1.5</AVal>
-				<AVal Row="56">1.5</AVal>
-				<AVal Row="57">1.5</AVal>
-				<AVal Row="58">1.5</AVal>
-				<AVal Row="59">1.5</AVal>
-				<AVal Row="60">1.5</AVal>
-				<AVal Row="61">1.5</AVal>
-				<AVal Row="62">1.5</AVal>
-				<AVal Row="63">1.5</AVal>
-				<AVal Row="64">1.5</AVal>
-				<AVal Row="65">1.5</AVal>
-				<AVal Row="66">1.5</AVal>
-				<AVal Row="67">1.5</AVal>
-				<AVal Row="68">1.5</AVal>
-				<AVal Row="69">1.5</AVal>
-				<AVal Row="70">1.5</AVal>
-				<AVal Row="71">1.5</AVal>
-				<AVal Row="72">1.5</AVal>
-				<AVal Row="73">1.5</AVal>
-				<AVal Row="74">1.5</AVal>
-				<AVal Row="75">1.5</AVal>
-				<AVal Row="76">1.5</AVal>
-				<AVal Row="77">1.5</AVal>
-				<AVal Row="78">1.5</AVal>
-				<AVal Row="79">1.5</AVal>
-				<AVal Row="80">1.5</AVal>
-				<AVal Row="81">1.5</AVal>
-				<AVal Row="82">1.5</AVal>
-				<AVal Row="83">1.5</AVal>
-				<AVal Row="84">1.5</AVal>
-				<AVal Row="85">1.5</AVal>
-				<AVal Row="86">1.5</AVal>
-				<AVal Row="87">1.5</AVal>
-				<AVal Row="88">1.5</AVal>
-				<AVal Row="89">1.5</AVal>
-				<AVal Row="90">1.5</AVal>
-				<AVal Row="91">1.5</AVal>
-				<AVal Row="92">1.5</AVal>
-				<AVal Row="93">1.5</AVal>
-				<AVal Row="94">1.5</AVal>
-				<AVal Row="95">1.5</AVal>
-				<AVal Row="96">1.5</AVal>
-				<AVal Row="97">1.5</AVal>
-				<AVal Row="98">1.5</AVal>
-				<AVal Row="99">1.5</AVal>
-				<AVal Row="100">1.5</AVal>
-				<AVal Row="101">1.5</AVal>
-				<AVal Row="102">1.5</AVal>
-				<AVal Row="103">1.5</AVal>
-				<AVal Row="104">1.5</AVal>
-				<AVal Row="105">1.5</AVal>
-				<AVal Row="106">1.5</AVal>
-				<AVal Row="107">1.5</AVal>
-				<AVal Row="108">1.5</AVal>
-				<AVal Row="109">1.5</AVal>
-				<AVal Row="110">1.5</AVal>
-				<AVal Row="111">1.5</AVal>
-				<AVal Row="112">1.5</AVal>
-				<AVal Row="113">1.5</AVal>
-				<AVal Row="114">1.5</AVal>
-				<AVal Row="115">1.5</AVal>
-				<AVal Row="116">1.5</AVal>
-				<AVal Row="117">1.5</AVal>
-				<AVal Row="118">1.5</AVal>
-				<AVal Row="119">1.5</AVal>
-				<AVal Row="120">1.5</AVal>
-				<AVal Row="121">1.5</AVal>
-				<AVal Row="122">1.5</AVal>
-				<AVal Row="123">1.5</AVal>
-				<AVal Row="124">1.5</AVal>
-				<AVal Row="125">1.5</AVal>
-				<AVal Row="126">1.5</AVal>
-				<AVal Row="127">1.5</AVal>
-				<AVal Row="128">1.5</AVal>
-				<AVal Row="129">1.5</AVal>
-				<AVal Row="130">1.5</AVal>
-				<AVal Row="131">1.5</AVal>
-				<AVal Row="132">1.5</AVal>
-				<AVal Row="133">1.5</AVal>
-				<AVal Row="134">1.5</AVal>
-				<AVal Row="135">1.5</AVal>
-				<AVal Row="136">1.5</AVal>
-				<AVal Row="137">1.5</AVal>
-				<AVal Row="138">1.5</AVal>
-				<AVal Row="139">1.5</AVal>
-				<AVal Row="140">1.5</AVal>
-				<AVal Row="141">1.5</AVal>
-				<AVal Row="142">1.5</AVal>
-				<AVal Row="143">1.5</AVal>
-				<AVal Row="144">1.5</AVal>
-				<AVal Row="145">1.5</AVal>
-				<AVal Row="146">1.5</AVal>
-				<AVal Row="147">1.5</AVal>
-				<AVal Row="148">1.5</AVal>
-				<AVal Row="149">1.5</AVal>
-				<AVal Row="150">1.5</AVal>
-				<AVal Row="151">1.5</AVal>
-				<AVal Row="152">1.5</AVal>
-				<AVal Row="153">1.5</AVal>
-				<AVal Row="154">1.5</AVal>
-				<AVal Row="155">1.5</AVal>
-				<AVal Row="156">1.5</AVal>
-				<AVal Row="157">1.5</AVal>
-				<AVal Row="158">1.5</AVal>
-				<AVal Row="159">1.5</AVal>
-				<AVal Row="160">1.5</AVal>
-				<AVal Row="161">1.5</AVal>
-				<AVal Row="162">1.5</AVal>
-				<AVal Row="163">1.5</AVal>
-				<AVal Row="164">1.5</AVal>
-				<AVal Row="165">1.5</AVal>
-				<AVal Row="166">1.5</AVal>
-				<AVal Row="167">1.5</AVal>
-				<AVal Row="168">1.5</AVal>
-				<AVal Row="169">1.5</AVal>
-				<AVal Row="170">1.5</AVal>
-				<AVal Row="171">1.5</AVal>
-				<AVal Row="172">1.5</AVal>
-				<AVal Row="173">1.5</AVal>
-				<AVal Row="174">1.5</AVal>
-				<AVal Row="175">1.5</AVal>
-				<AVal Row="176">1.5</AVal>
-				<AVal Row="177">1.5</AVal>
-				<AVal Row="178">1.5</AVal>
-				<AVal Row="179">1.5</AVal>
-				<AVal Row="180">1.5</AVal>
-				<AVal Row="181">1.5</AVal>
-				<AVal Row="182">1.5</AVal>
-				<AVal Row="183">1.5</AVal>
-				<AVal Row="184">1.5</AVal>
-				<AVal Row="185">1.5</AVal>
-				<AVal Row="186">1.5</AVal>
-				<AVal Row="187">1.5</AVal>
-				<AVal Row="188">1.5</AVal>
-				<AVal Row="189">1.5</AVal>
-				<AVal Row="190">1.5</AVal>
-				<AVal Row="191">1.5</AVal>
-				<AVal Row="192">1.5</AVal>
-				<AVal Row="193">1.5</AVal>
-				<AVal Row="194">1.5</AVal>
-				<AVal Row="195">1.5</AVal>
-				<AVal Row="196">1.5</AVal>
-				<AVal Row="197">1.5</AVal>
-				<AVal Row="198">1.5</AVal>
-				<AVal Row="199">1.5</AVal>
-				<AVal Row="200">1.5</AVal>
-			</ArrayValues>
-		</Length>
-		<Length Name="LightDistance1">
-			<Description><![CDATA[""]]></Description>
-			<ArrayValues FirstDimension="200" SecondDimension="0">
 				<AVal Row="1">0</AVal>
 				<AVal Row="2">0</AVal>
 				<AVal Row="3">0</AVal>
@@ -2972,12 +2786,16 @@ endif
 		</Length>
 		<String Name="ERP_Code_Pole">
 			<Description><![CDATA[""]]></Description>
-			<Value><![CDATA["B.1111| 1|"]]></Value>
+			<Value><![CDATA["B.6537|| 1|"]]></Value>
 		</String>
 		<String Name="ERP_Code_Light">
 			<Description><![CDATA[""]]></Description>
-			<Value><![CDATA["B.1111| 1|"]]></Value>
+			<Value><![CDATA["B.1111|| 1|"]]></Value>
 		</String>
+		<Boolean Name="IndividualLightPosition">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
 	</Parameters>
 </ParamSection>
 
