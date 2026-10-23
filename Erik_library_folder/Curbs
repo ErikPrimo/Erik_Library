@@ -7,8 +7,8 @@
 
 <CalledMacros SectVersion="2" SectionFlags="0" SubIdent="0">
 	<Macro>
-		<MName><![CDATA["Erik_MVO"]]></MName>
-		<MainGUID>F1CB3256-3CB8-463B-BECE-D04237B17F4A</MainGUID>
+		<MName><![CDATA["LibraryGlobals_Karting"]]></MName>
+		<MainGUID>5F715D7D-71BE-064D-8D6D-870480C2AD72</MainGUID>
 	</Macro>
 	<Macro>
 		<MName><![CDATA["LibraryGlobals_Karting_Colors"]]></MName>
@@ -83,6 +83,7 @@ GOSUB "LastStraight"
 END
 
 "FirstStraight":
+	BREAKPOINT 1
 	ADDX LineOffsetMargin
 	GOSUB "FirstStraightOrientationHotSpot"
 	IF NOT(FirstStraightOrientation < -ESP) THEN
@@ -145,7 +146,9 @@ END
 	MATERIAL 753
 	
 	ADDY TransitionLength
+	Switch = 1
 	LineFillerX = CurbeSegmentMargin : GOSUB "LineFiller"
+	!Switch = 0
 	ADDY CurbeSegmentMargin
 RETURN
 
@@ -662,12 +665,21 @@ RETURN
 			LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin,				0,					1
 	ENDIF
 	IF Directions < -LineOffsetMargin THEN
-		EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
-			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin,				0,					1,
-			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin + LineWidth,	0,					1,
-			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin + LineWidth,	LineFillerX,		1,
-			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin,				LineFillerX,		1,
-			LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin,				0,					1
+		IF NOT(Switch) THEN
+			EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
+				-LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin,				0,					1,
+				-LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin - LineWidth,	0,					1,
+				-LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin - LineWidth,	LineFillerX,		1,
+				-LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin,				LineFillerX,		1,
+				-LineOffsetMargin - CurbeSegmentHeight - TransitionLineMargin,				0,					1
+		ELSE
+			EXTRUDE 5, 0, 0, Thickness, ExtrudeValues,
+				LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin,				0,					1,
+				LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin + LineWidth,	0,					1,
+				LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin + LineWidth,	LineFillerX,		1,
+				LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin,				LineFillerX,		1,
+				LineOffsetMargin + CurbeSegmentHeight + TransitionLineMargin,				0,					1
+		ENDIF
 	ENDIF
 RETURN
 !---Hot Spots-------------------------------------------------------------------------------------------------------------------------------------
@@ -780,19 +792,29 @@ RETURN
 <![CDATA[
 SET FILL "Solid Fill"
 PEN 1
+!IF (GLOB_FEEDBACK_MODE) THEN ColorCircles = 1
 
-! 3D projekcija modela v tloris
 PROJECT2{3} 3, 270, 3 + 16, 4 + 8
 
-
-! Globalni zasuk objekta in luči
 ROT2 ObjectAngle
 GOSUB "ObjectAngleHotSpot"
 GOSUB "DirectionsHotSpot2D"
 
 HOTSPOT2  0,  0
 GOSUB "FirstStraightOrientationHotSpot"
+
+StaticHotSpotOffset = -LineWidth
+IF Directions < -ESP THEN StaticHotSpotOffset = LineWidth
+IF (FirstStraightOrientation < -ESP) THEN StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
+IF (FirstStraightOrientation < -ESP) AND Directions < -ESP THEN StaticHotSpotOffset = +CurbeSegmentHeight+LineMargin+LineWidth
+ADD2 StaticHotSpotOffset, 0 : GOSUB "HotSpot" : DEL 1
+
 ADD2 0, TransitionLength
+
+StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
+IF Directions < -ESP THEN StaticHotSpotOffset = CurbeSegmentHeight+LineMargin+LineWidth
+ADD2 StaticHotSpotOffset, 0 : GOSUB "HotSpot" : DEL 1
+
 
 i = 1
 ADD2 0, CurbeSegmentMargin
@@ -835,8 +857,22 @@ WHILE ObjectOrder[i] <> 0 DO
     "NextIter2D":
     i = i + 1
 ENDWHILE
+
+StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
+IF Directions < -ESP THEN StaticHotSpotOffset = CurbeSegmentHeight+LineMargin+LineWidth
+ADD2 StaticHotSpotOffset, 0 : GOSUB "HotSpot" : DEL 1
+
+
+StaticHotSpotOffset = -LineWidth
+IF Directions < -ESP THEN StaticHotSpotOffset = LineWidth
+IF (LastStraightOrientation < -ESP) THEN StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
+IF (LastStraightOrientation < -ESP) AND Directions < -ESP THEN StaticHotSpotOffset = +CurbeSegmentHeight+LineMargin+LineWidth
+
+ADD2 StaticHotSpotOffset, TransitionLength : GOSUB "HotSpot" : DEL 1
+
+
 GOSUB "LastStraightOrientationHotSpot2D"
-! Zaključni prehod (LastStraight)
+
 IF Directions < -ESP THEN MUL2 -1, 1
 ADD2 0, TransitionLength
 IF Directions < -ESP THEN DEL 1
@@ -1179,6 +1215,9 @@ RETURN
 		ENDIF
 	ENDIF
 RETURN
+"HotSpot":
+	HOTSPOT2  0,	0
+RETURN
 ]]>
 </Script_2D>
 
@@ -1195,9 +1234,12 @@ ELSE
 ENDIF
 
 ColorCircles = 1
-LibraryBool = LIBRARYGLOBAL ("Erik_MVO", "ColorCircles", ColorCircles)
+CircleSize = 0.1
+LibraryBool = LIBRARYGLOBAL ("LibraryGlobals_Karting", "ColorCircles", ColorCircles)
+LibraryBool = LIBRARYGLOBAL ("LibraryGlobals_Karting", "CircleSize", CircleSize)
 
-CircleSize = 0.11
+!ColorCircles = 1
+
 TrackColor = 22
 CircleColor = 11
 
@@ -1221,6 +1263,10 @@ TransitionOrientation = 1
 SegmentSizeWithMargin = CurbeSegmentWidth + CurbeSegmentMargin
 AlternatingColorsBool = 1
 LineFillerX = 0
+
+StaticHotSpotOffset = 0
+
+Switch = 0
 
 IF LineOffsetMarginBool THEN
 	IF Directions < -ESP THEN

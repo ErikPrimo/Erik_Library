@@ -7,8 +7,8 @@
 
 <CalledMacros SectVersion="2" SectionFlags="0" SubIdent="0">
 	<Macro>
-		<MName><![CDATA["Erik_MVO"]]></MName>
-		<MainGUID>F1CB3256-3CB8-463B-BECE-D04237B17F4A</MainGUID>
+		<MName><![CDATA["LibraryGlobals_Karting"]]></MName>
+		<MainGUID>5F715D7D-71BE-064D-8D6D-870480C2AD72</MainGUID>
 	</Macro>
 	<Macro>
 		<MName><![CDATA["GF_TopTube"]]></MName>
@@ -802,7 +802,6 @@ unID = 1
 ESP = 0.000001
 ExtrudeValues = 0
 
-CircleSize = 0.11
 TrackColor = 22
 CircleColor = 11
 
@@ -825,7 +824,10 @@ RightLightRemainingDistance = 0
 TotalLength_Calc = 0
 
 ColorCircles = 1
-LibraryBool = LIBRARYGLOBAL ("Erik_MVO", "ColorCircles", ColorCircles)
+CircleSize = 0.1
+LibraryBool = LIBRARYGLOBAL ("LibraryGlobals_Karting", "ColorCircles", ColorCircles)
+LibraryBool = LIBRARYGLOBAL ("LibraryGlobals_Karting", "CircleSize", CircleSize)
+
 !succ2 = LIBRARYGLOBAL ("LibraryGlobals_Karting", "LibGlo_KONS1", L_Glo_res)
 FOR i = 1 TO 120
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------

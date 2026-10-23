@@ -7,8 +7,8 @@
 
 <CalledMacros SectVersion="2" SectionFlags="0" SubIdent="0">
 	<Macro>
-		<MName><![CDATA["Erik_MVO"]]></MName>
-		<MainGUID>F1CB3256-3CB8-463B-BECE-D04237B17F4A</MainGUID>
+		<MName><![CDATA["LibraryGlobals_Karting"]]></MName>
+		<MainGUID>5F715D7D-71BE-064D-8D6D-870480C2AD72</MainGUID>
 	</Macro>
 </CalledMacros>
 
@@ -20,7 +20,7 @@ MATERIAL Asfalt
 RESOL 64
 
 !---------HOT SPOTS-------------------------------------------------------------------------------------------------------------------------------------------------------------
-GOSUB "SizeAndShapeHotSpots"
+GOSUB "SizeHotSpots"
 !-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 !-----Main Area--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -158,7 +158,7 @@ RETURN
 RETURN
 
 !---------HOT SPOTS-------------------------------------------------------------------------------------------------------------------------------------------------------------
-"SizeAndShapeHotSpots":
+"SizeHotSpots":
 	HOTSPOT   0,	0,	0, unID, Length, 1 : unID = unID + 1
 	HOTSPOT   0,	0,	0, unID, Length, 2 : unID = unID + 1
 	HOTSPOT  -1,	0,	0, unID, Length, 3 : unID = unID + 1
@@ -237,7 +237,7 @@ PEN 1
 PROJECT2{3} 3, 270, 3 + 16, 4 + 8
 
 !--------- 2D HOT SPOTS -------------------------------------------------------------------------------------------------------------------------
-GOSUB "SizeAndShapeHotSpots"
+GOSUB "SizeHotSpots"
 !------------------------------------------------------------------------------------------------------------------------------------------------
 
 ! !----- Main Area --------------------------------------------------------------------------------------------------
@@ -351,15 +351,23 @@ RETURN
 RETURN
 
 !--------- 2D HOT SPOTS -------------------------------------------------------------------------------------------------------------------------
-"SizeAndShapeHotSpots":
+"SizeHotSpots":
 	HOTSPOT2	 0,	0, unID, Length, 1 : unID = unID + 1
 	HOTSPOT2	 0,	0, unID, Length, 2 : unID = unID + 1
 	HOTSPOT2	-1,	0, unID, Length, 3 : unID = unID + 1
 	IF ColorCircles THEN
 		POLY2_B 2, 1+2+4,
 			80, 0,
-			0,              0, 900,
-			CircleSize,            360, 4001
+			0,             0, 900,
+			CircleSize,               360, 4001
+
+		! Larger arrow pointing to the right
+		arrX = CircleSize + 0.06
+		arrLen = 0.15
+		arrSize = 0.06
+		LINE2 arrX, 0, arrX + arrLen, 0
+		LINE2 arrX + arrLen, 0, arrX + arrLen - arrSize, arrSize
+		LINE2 arrX + arrLen, 0, arrX + arrLen - arrSize, -arrSize
 	ENDIF
 RETURN
 
@@ -469,15 +477,15 @@ TrackThickness = 0.01
 ExtrudeValues =  1+2+4
 CatWalkThickness = 1
 CatWalkLength = Length
-CircleSize = 0.11
-
 
 PitBoxMargin = 0.05
 PitBoxLine = 0.1
 PitBoxLength = 2.2
 
 ColorCircles = 1
-LibraryBool = LIBRARYGLOBAL ("Erik_MVO", "ColorCircles", ColorCircles)
+CircleSize = 0.1
+LibraryBool = LIBRARYGLOBAL ("LibraryGlobals_Karting", "ColorCircles", ColorCircles)
+LibraryBool = LIBRARYGLOBAL ("LibraryGlobals_Karting", "CircleSize", CircleSize)
 
 Width = 0
 !------While Being Edited Show Outline------------------------------------------------------------------------------------------------------------------------------------
