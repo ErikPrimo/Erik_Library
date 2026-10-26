@@ -24,24 +24,26 @@ GOSUB "SizeHotSpots"
 !-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 !-----Main Area--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EXTRUDE 17, 0, 0, TrackThickness, ExtrudeValues,
-	0,					0,						1,
-	Length,				0,						1,
-	Length,				0 + PitRadi,			900,
-	Length + PitRadi,	0 + PitRadi,			3001, 
-	Length + PitRadi,	0 + PitRadi,			1,
-	Length + PitRadi,	Width - PitRadi,		1,
-	Length,				Width - PitRadi,		900,
-	Length,				Width,					3001,
-	Length,				Width,					1,
-	0,					Width,					1,
-	0,					Width - PitRadi,		900,
-	-PitRadi,			Width - PitRadi,		3001,
-	-PitRadi,			Width - PitRadi,		1,
-	-PitRadi,			0 + PitRadi,			1,
-	0,					0 + PitRadi,			900,
-	0,					0,						3001,
-	0,					0,						1
+IF GLOB_CONTEXT <> 2 THEN
+	EXTRUDE 17, 0, 0, TrackThickness, ExtrudeValues,
+		0,					0,						1,
+		Length,				0,						1,
+		Length,				0 + PitRadi,			900,
+		Length + PitRadi,	0 + PitRadi,			3001, 
+		Length + PitRadi,	0 + PitRadi,			1,
+		Length + PitRadi,	Width - PitRadi,		1,
+		Length,				Width - PitRadi,		900,
+		Length,				Width,					3001,
+		Length,				Width,					1,
+		0,					Width,					1,
+		0,					Width - PitRadi,		900,
+		-PitRadi,			Width - PitRadi,		3001,
+		-PitRadi,			Width - PitRadi,		1,
+		-PitRadi,			0 + PitRadi,			1,
+		0,					0 + PitRadi,			900,
+		0,					0,						3001,
+		0,					0,						1
+ENDIF
 ADDZ TrackThickness
 !-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -234,36 +236,40 @@ RETURN
 <![CDATA[
 SET FILL "Solid Fill"
 PEN 1
-PROJECT2{3} 3, 270, 3 + 16, 4 + 8
 
 !--------- 2D HOT SPOTS -------------------------------------------------------------------------------------------------------------------------
 GOSUB "SizeHotSpots"
 !------------------------------------------------------------------------------------------------------------------------------------------------
 
-! !----- Main Area --------------------------------------------------------------------------------------------------
-! POLY2_B 15, 1 + 2 + 4,
-! 		TrackColor, 0,
-! 		0, 						0,					1,
-! 		Length, 				0,					1,
-! 		Length, 				PitRadi,			900,
-! 		0, 						90,					4001,
-! 		Length + PitRadi,		Width - PitRadi,	1,
-! 		Length,					Width - PitRadi,	900,
-! 		0,						90,					4001,
-! 		0,						Width,				1,
-! 		0,						Width - PitRadi,	900,
-! 		0,						90,					4001,
-! 		-PitRadi,				PitRadi,			1,
-! 		0,						PitRadi,			900,
-! 		0,						90,					4001,
-! 		0,						0,					1,
-! 		0,						0,					-1
-! !------------------------------------------------------------------------------------------------------------------------------------------------
-	FOR i = 1 TO SegmentNum
-		IF SegmentOrder[i] = 1 THEN GOSUB "CatWalk"
-		IF SegmentOrder[i] = 2 THEN GOSUB "PitBox"
-		IF SegmentOrder[i] = 3 THEN GOSUB "Space"
-	NEXT i
+!----- Main Area --------------------------------------------------------------------------------------------------
+POLY2_B 17, 1 + 2 + 4,
+	TrackColor, 0,
+	0,					0,						1,
+	Length,				0,						1,
+	Length,				0 + PitRadi,			900,
+	Length + PitRadi,	0 + PitRadi,			3001, 
+	Length + PitRadi,	0 + PitRadi,			1,
+	Length + PitRadi,	Width - PitRadi,		1,
+	Length,				Width - PitRadi,		900,
+	Length,				Width,					3001,
+	Length,				Width,					1,
+	0,					Width,					1,
+	0,					Width - PitRadi,		900,
+	-PitRadi,			Width - PitRadi,		3001,
+	-PitRadi,			Width - PitRadi,		1,
+	-PitRadi,			0 + PitRadi,			1,
+	0,					0 + PitRadi,			900,
+	0,					0,						3001,
+	0,					0,						1
+!------------------------------------------------------------------------------------------------------------------------------------------------
+
+PROJECT2{3} 3, 270, 3 + 16, 4 + 8
+
+FOR i = 1 TO SegmentNum
+	IF SegmentOrder[i] = 1 THEN GOSUB "CatWalk"
+	IF SegmentOrder[i] = 2 THEN GOSUB "PitBox"
+	IF SegmentOrder[i] = 3 THEN GOSUB "Space"
+NEXT i
 END
 
 "PitBox":

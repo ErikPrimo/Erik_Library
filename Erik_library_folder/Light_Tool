@@ -753,23 +753,23 @@ RETURN
 
 "LightDistanceHotSpot":
 	IF IndividualLightPosition THEN
-		HOTSPOT2 -0.5,			0,	unID, LightDistance[CurentPost], 1	: unID = unID + 1
-		HOTSPOT2 -0.5,			0,	unID, LightDistance[CurentPost], 2	: unID = unID + 1
-		HOTSPOT2 -0.5,			-1,	unID, LightDistance[CurentPost], 3	: unID = unID + 1
+		HOTSPOT2 -0.25,			0,	unID, LightDistance[CurentPost], 1	: unID = unID + 1
+		HOTSPOT2 -0.25,			0,	unID, LightDistance[CurentPost], 2	: unID = unID + 1
+		HOTSPOT2 -0.25,			-1,	unID, LightDistance[CurentPost], 3	: unID = unID + 1
 		IF ColorCircles THEN
 			POLY2_B 2, 1+2+4,
 				17, 0,
-				-0.5,             	0, 900,
+				-0.25,             	0, 900,
 				CircleSize/2,            360, 4001
 		ENDIF
 
-		HOTSPOT2 0.5,			0,	unID, LightDistanceAll[CurentPost], 1	: unID = unID + 1
-		HOTSPOT2 0.5,			0,	unID, LightDistanceAll[CurentPost], 2	: unID = unID + 1
-		HOTSPOT2 0.5,			-1,	unID, LightDistanceAll[CurentPost], 3	: unID = unID + 1
+		HOTSPOT2 0.25,			0,	unID, LightDistanceAll[CurentPost], 1	: unID = unID + 1
+		HOTSPOT2 0.25,			0,	unID, LightDistanceAll[CurentPost], 2	: unID = unID + 1
+		HOTSPOT2 0.25,			-1,	unID, LightDistanceAll[CurentPost], 3	: unID = unID + 1
 		IF ColorCircles THEN
 			POLY2_B 2, 1+2+4,
 				80, 0,
-				0.5,             	0, 900,
+				0.25,             	0, 900,
 				CircleSize/2,            360, 4001
 		ENDIF
 	ENDIF
@@ -979,7 +979,7 @@ _itemID = 1
 IF TopTubeVisible THEN
 	UI_LISTITEM _itemID, TABID_ERP, "ERP_Code_Pole", 0, "", "" : _itemID = _itemID + 1
 ENDIF
-IF LightVisible THEN 
+IF LightVisible AND NOT(TopTubeVisible) THEN 
 	UI_LISTITEM _itemID, TABID_ERP, "ERP_Code_Light", 0, "", "" : _itemID = _itemID + 1
 ENDIF
 ]]>
@@ -1006,9 +1006,9 @@ PARAMETERS NumberOfPosts = NumberOfPosts
 
 IF TopTubeVisible THEN
 	PARAMETERS ERP_Code_Pole = "B.6537" + "||" + STR(NumberOfPosts, 2, 0) + "|"
-	IF LightVisible THEN 
-		PARAMETERS ERP_Code_Light = "B.1111" + "||" + STR(NumberOfPosts/2, 2, 0) + "|"
-	ENDIF
+	! IF LightVisible THEN 
+	! 	PARAMETERS ERP_Code_Light = "B.1111" + "||" + STR(NumberOfPosts/2, 2, 0) + "|"
+	! ENDIF
 ENDIF
 
 IF LightVisible AND NOT(TopTubeVisible) THEN 
@@ -2792,7 +2792,7 @@ endif
 		</String>
 		<String Name="ERP_Code_Light">
 			<Description><![CDATA[""]]></Description>
-			<Value><![CDATA["B.1111|| 1|"]]></Value>
+			<Value><![CDATA["B.6425|| 1|"]]></Value>
 		</String>
 		<Boolean Name="IndividualLightPosition">
 			<Description><![CDATA[""]]></Description>
