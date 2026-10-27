@@ -209,23 +209,21 @@ RETURN
 	DEL 2
 RETURN
 
-"AngleRightHotSpot":
-	IF R_Direction < -ESP THEN : AngleNum = 518 : ELSE : AngleNum = 6 : ENDIF
-	IF RightRadi[i] > ESP THEN
-		HOTSPOT		CatWalkLength,					R_Direction*RightRadiSt,			0, unID, AngleRight[i], AngleNum	: unID = unID + 1
-		HOTSPOT		CatWalkLength+RightRadiSt,		R_Direction*RightRadiSt,			0, unID, AngleRight[i], 5			: unID = unID + 1
-		HOTSPOT		CatWalkLength,					0,									0, unID, AngleRight[i], 4			: unID = unID + 1
-	ENDIF
-RETURN
+! "AngleRightHotSpot":
+! 	IF R_Direction < -ESP THEN : AngleNum = 518 : ELSE : AngleNum = 6 : ENDIF
+! 	IF RightRadi[i] > ESP THEN
+! 		HOTSPOT		CatWalkLength,					R_Direction*RightRadiSt,			0, unID, AngleRight[i], AngleNum	: unID = unID + 1
+! 		HOTSPOT		CatWalkLength+RightRadiSt,		R_Direction*RightRadiSt,			0, unID, AngleRight[i], 5			: unID = unID + 1
+! 		HOTSPOT		CatWalkLength,					0,									0, unID, AngleRight[i], 4			: unID = unID + 1
+! 	ENDIF
+! RETURN
 
-"AngleLeftHotSpot":
-	IF L_Direction < -ESP THEN : AngleNum = 518 : ELSE : AngleNum = 6 : ENDIF
-	!IF LeftRadi[i] > ESP THEN
-		HOTSPOT		0,					L_Direction*LeftRadiSt,	0, unID, AngleLeft[i], AngleNum		: unID = unID + 1
-		HOTSPOT		-LeftRadiSt,		L_Direction*LeftRadiSt,	0, unID, AngleLeft[i], 5			: unID = unID + 1
-		HOTSPOT		0,					0,						0, unID, AngleLeft[i], 4			: unID = unID + 1
-	!ENDIF
-RETURN
+! "AngleLeftHotSpot":
+! 	IF L_Direction < -ESP THEN : AngleNum = 518 : ELSE : AngleNum = 6 : ENDIF
+! 	HOTSPOT		0,					L_Direction*LeftRadiSt,	0, unID, AngleLeft[i], AngleNum		: unID = unID + 1
+! 	HOTSPOT		-LeftRadiSt,		L_Direction*LeftRadiSt,	0, unID, AngleLeft[i], 5			: unID = unID + 1
+! 	HOTSPOT		0,					0,						0, unID, AngleLeft[i], 4			: unID = unID + 1
+! RETURN
 !-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ]]>
 </Script_3D>
@@ -236,10 +234,6 @@ RETURN
 <![CDATA[
 SET FILL "Solid Fill"
 PEN 1
-
-!--------- 2D HOT SPOTS -------------------------------------------------------------------------------------------------------------------------
-GOSUB "SizeHotSpots"
-!------------------------------------------------------------------------------------------------------------------------------------------------
 
 !----- Main Area --------------------------------------------------------------------------------------------------
 POLY2_B 17, 1 + 2 + 4,
@@ -263,13 +257,21 @@ POLY2_B 17, 1 + 2 + 4,
 	0,					0,						1
 !------------------------------------------------------------------------------------------------------------------------------------------------
 
+!-----Show 3D inn 2D-------------------------------------------------------------------------------------------------------------------------------------------
 PROJECT2{3} 3, 270, 3 + 16, 4 + 8
+!------------------------------------------------------------------------------------------------------------------------------------------------
 
 FOR i = 1 TO SegmentNum
 	IF SegmentOrder[i] = 1 THEN GOSUB "CatWalk"
 	IF SegmentOrder[i] = 2 THEN GOSUB "PitBox"
 	IF SegmentOrder[i] = 3 THEN GOSUB "Space"
 NEXT i
+
+DEL TOP
+!--------- 2D HOT SPOTS -------------------------------------------------------------------------------------------------------------------------
+GOSUB "SizeHotSpots"
+!------------------------------------------------------------------------------------------------------------------------------------------------
+
 END
 
 "PitBox":
