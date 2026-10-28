@@ -5398,11 +5398,11 @@ UI_OUTFIELD "Siderail",   			100, 30,  100, 15
 UI_INFIELD  "SiderailColor",       	100, 48,  40, 20
 UI_INFIELD  "SiderailBool",       	150, 48,  20, 20
 
-UI_OUTFIELD "Home Straight",        20,  130,  80, 15
+UI_OUTFIELD "Starting grid",        20,  130,  80, 15
 UI_INFIELD  "HomeStraight",         20,  148,  50, 20
 UI_INFIELD  "HomeStraightActive",   80,  148,  20, 20
 
-UI_OUTFIELD "Home Reverse",      110,  130,  80, 15
+UI_OUTFIELD "Grid Reverse",      110,  130,  80, 15
 UI_INFIELD  "HomeReverseBool",   110,  148,   20, 20
 
 IF HomeStraightActive THEN

@@ -185,12 +185,8 @@ RETURN
 	IF CurrentArcDistance <= InnerCurveArcLength THEN
 		WHILE CurrentArcDistance <= InnerCurveArcLength DO
 			StepDist = StandardLightMargin
-			IF CurentPost + 1 <= VARDIM1(LightDistance) THEN
-				StepDist = StepDist + LightDistance[CurentPost+1] - LightDistance[CurentPost]
-			ENDIF
-			IF CurentPost + 1 <= VARDIM1(LightDistanceAll) THEN
-				StepDist = StepDist + LightDistanceAll[CurentPost+1]
-			ENDIF
+			StepDist = StepDist + LightDistance[CurentPost+1] - LightDistance[CurentPost]
+			StepDist = StepDist + LightDistanceAll[CurentPost+1]
 			CurrentAngle = (CurrentArcDistance / CurveRadius) * (180 / PI)
 			IF CurrentAngle <= Angle THEN
 				ROTZ -CurrentAngle
@@ -808,7 +804,6 @@ CircleColor = 11
 RightLightDistance = 0
 LeftLightDistance = 0
 LightMargin = 0.2
-! LightDistance = 3/2
 RightLightBool = 1
 LeftLightBool = 0
 
@@ -828,7 +823,6 @@ CircleSize = 0.1
 LibraryBool = LIBRARYGLOBAL ("LibraryGlobals_Karting", "ColorCircles", ColorCircles)
 LibraryBool = LIBRARYGLOBAL ("LibraryGlobals_Karting", "CircleSize", CircleSize)
 
-!succ2 = LIBRARYGLOBAL ("LibraryGlobals_Karting", "LibGlo_KONS1", L_Glo_res)
 FOR i = 1 TO 120
 	!----Sets Every Angle To Default 90 Degrees And Offsets So Its Easier To Set Angle----------------------------------------------------
 	IF RightAngle[i] < ESP THEN RightAngle[i] = 90
@@ -849,53 +843,49 @@ CounterRightLightBool = RightLightBool
 
 i = 1
 WHILE ObjectOrder[i] <> 0 DO
-    IF NextLength[i] > ESP THEN ObjectOrder[i+1] = 2
-    IF CurveLeft[i] > ESP THEN ObjectOrder[i+1] = 3
-    IF CurveRight[i] > ESP THEN ObjectOrder[i+1] = 4
+	IF NextLength[i] > ESP THEN ObjectOrder[i+1] = 2
+	IF CurveLeft[i] > ESP THEN ObjectOrder[i+1] = 3
+	IF CurveRight[i] > ESP THEN ObjectOrder[i+1] = 4
 
-    IF ObjectOrder[i] = 2 THEN
-        CounterSegmentLength = NextLength[i-1]
-        GOTO "CountSegment"
-    ENDIF
+	IF ObjectOrder[i] = 2 THEN
+		CounterSegmentLength = NextLength[i-1]
+		GOTO "CountSegment"
+	ENDIF
 
-    IF ObjectOrder[i] = 3 THEN
-        CounterSegmentLength = CurveLeft[i-1] * (LeftAngle[i] * PI / 180)
-        ObjectOrder[i+1] = 2
-        GOTO "CountSegment"
-    ENDIF
+	IF ObjectOrder[i] = 3 THEN
+		CounterSegmentLength = CurveLeft[i-1] * (LeftAngle[i] * PI / 180)
+		ObjectOrder[i+1] = 2
+		GOTO "CountSegment"
+	ENDIF
 
-    IF ObjectOrder[i] = 4 THEN
-        CounterSegmentLength = CurveRight[i-1] * (RightAngle[i] * PI / 180)
-        ObjectOrder[i+1] = 2
-        GOTO "CountSegment"
-    ENDIF
+	IF ObjectOrder[i] = 4 THEN
+		CounterSegmentLength = CurveRight[i-1] * (RightAngle[i] * PI / 180)
+		ObjectOrder[i+1] = 2
+		GOTO "CountSegment"
+	ENDIF
 
-    GOTO "NextCounterIter"
+	GOTO "NextCounterIter"
 
-    "CountSegment":
-    IF CounterRemainingDistance <= CounterSegmentLength THEN
-        CounterCurrentDistance = CounterRemainingDistance
-        WHILE CounterCurrentDistance <= CounterSegmentLength DO
-            CounterStepDist = StandardLightMargin
-            IF CounterPost + 1 <= VARDIM1(LightDistance) THEN
-                CounterStepDist = CounterStepDist + LightDistance[CounterPost+1] - LightDistance[CounterPost]
-            ENDIF
-            IF CounterPost + 1 <= VARDIM1(LightDistanceAll) THEN
-                CounterStepDist = CounterStepDist + LightDistanceAll[CounterPost+1]
-            ENDIF
-            IF TopTubeVisible OR CounterRightLightBool THEN NumberOfPosts = NumberOfPosts + 1
-            CounterRightLightBool = NOT(CounterRightLightBool)
-            CounterCurrentDistance = CounterCurrentDistance + CounterStepDist
-            CounterPost = CounterPost + 1
-        ENDWHILE
-        CounterFinalLeftover = CounterSegmentLength - (CounterCurrentDistance - CounterStepDist)
-        CounterRemainingDistance = CounterStepDist - CounterFinalLeftover
-    ELSE
-        CounterRemainingDistance = CounterRemainingDistance - CounterSegmentLength
-    ENDIF
+	"CountSegment":
+	IF CounterRemainingDistance <= CounterSegmentLength THEN
+		CounterCurrentDistance = CounterRemainingDistance
+		WHILE CounterCurrentDistance <= CounterSegmentLength DO
+			CounterStepDist = StandardLightMargin
+			CounterStepDist = CounterStepDist + LightDistance[CounterPost+1] - LightDistance[CounterPost]
+			CounterStepDist = CounterStepDist + LightDistanceAll[CounterPost+1]
+			IF TopTubeVisible OR CounterRightLightBool THEN NumberOfPosts = NumberOfPosts + 1
+			CounterRightLightBool = NOT(CounterRightLightBool)
+			CounterCurrentDistance = CounterCurrentDistance + CounterStepDist
+			CounterPost = CounterPost + 1
+		ENDWHILE
+		CounterFinalLeftover = CounterSegmentLength - (CounterCurrentDistance - CounterStepDist)
+		CounterRemainingDistance = CounterStepDist - CounterFinalLeftover
+	ELSE
+		CounterRemainingDistance = CounterRemainingDistance - CounterSegmentLength
+	ENDIF
 
-    "NextCounterIter":
-    i = i + 1
+	"NextCounterIter":
+	i = i + 1
 ENDWHILE
 
 IF LastLightBool THEN NumberOfPosts = NumberOfPosts + 1
@@ -966,7 +956,7 @@ UI_INFIELD  "LastLightBool",		20,  260,  20, 20
 UI_OUTFIELD "Floor Plan Lights",	100,  240,  100, 15
 UI_INFIELD  "FloorPlanLights",		100,  260,  100, 20
 
-UI_OUTFIELD "Individual Light Position",	200,  240,  150, 15
+UI_OUTFIELD "Set Light Position",			200,  240,  150, 15
 UI_INFIELD  "IndividualLightPosition",		200,  260,  100, 20
 ! ==============================================================================
 ! TAB 2: ERP DESCRIPTION & QUANTITIES

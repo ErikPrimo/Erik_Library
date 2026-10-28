@@ -56,32 +56,34 @@ END
 
 "PitBox":
 	MATERIAL 753
-    ADDZ TrackThickness  ! Position the pit box geometry directly on top of the base track
-    ADDY PitBoxMargin
-    ADDX PitBoxMargin
-    ActualBoxWidth = SegmentWidthPit[i] - PitBoxMargin * 2
-    FOR j = 1 TO SegmentCount
-        PRISM_ 9, PitBoxHeight,
-            0,              0,                              1,
-            PitBoxLength,   0,                              1,
-            PitBoxLength,   PitBoxLine,                     1,
-            PitBoxLine,     PitBoxLine,                     1,
-            PitBoxLine,     ActualBoxWidth - PitBoxLine,    1,
-            PitBoxLength,   ActualBoxWidth - PitBoxLine,    1,
-            PitBoxLength,   ActualBoxWidth,                 1,
-            0,              ActualBoxWidth,                 1,
-            0,              0,                              1
-
-        ADDX PitBoxLength
-    NEXT j
-    PRISM_ 5, PitBoxHeight,
-        0,          0,              1,
-        PitBoxLine, 0,              1,
-        PitBoxLine, ActualBoxWidth, 1,
-        0,          ActualBoxWidth, 1,
-        0,          0,              1
-    DEL 3 + SegmentCount
-    ADDY SegmentWidthPit[i]
+	ADDX SegmentRemainder[i]/2
+	ADDZ TrackThickness
+	ADDY PitBoxMargin
+	ADDX PitBoxMargin
+	ActualBoxWidth = SegmentWidthPit[i] - PitBoxMargin * 2
+	FOR j = 1 TO SegmentCount[i]
+		PRISM_ 9, PitBoxHeight,
+			0,               0,                            1,
+			PitBoxLength[i], 0,                            1,
+			PitBoxLength[i], PitBoxLine,                   1,
+			PitBoxLine,      PitBoxLine,                   1,
+			PitBoxLine,      ActualBoxWidth - PitBoxLine,  1,
+			PitBoxLength[i], ActualBoxWidth - PitBoxLine,  1,
+			PitBoxLength[i], ActualBoxWidth,               1,
+			0,               ActualBoxWidth,               1,
+			0,               0,                            1
+			
+		ADDX PitBoxLength[i]
+	NEXT j
+	PRISM_ 5, PitBoxHeight,
+		0,          0,              1,
+		PitBoxLine, 0,              1,
+		PitBoxLine, ActualBoxWidth, 1,
+		0,          ActualBoxWidth, 1,
+		0,          0,              1
+	DEL 3 + SegmentCount[i]
+	DEL 1
+	ADDY SegmentWidthPit[i]
 RETURN
 
 "CatWalk":
@@ -109,6 +111,8 @@ RETURN
 
 "CatWalkGeometry":
 	RightRadiSt = RightRadi[i]
+	IF RightRadi[i] < ESP THEN AngleRight[i] = 0
+	IF LeftRadi[i] < ESP THEN AngleLeft[i] = 0
 	LeftRadiSt = LeftRadi[i]
 	R_InnerRadi = RightRadiSt - CatWalkWidth/2
 	R_OuterRadi = RightRadiSt + CatWalkWidth/2
@@ -134,7 +138,7 @@ RETURN
 		CatWalkLength + CatRight[i] + R_InnerRadi * SIN(AngleRight[i]),			R_Direction * R_InnerRadi * (1 - COS(AngleRight[i]))-(CatWalkWidth/2)*(-R_Direction),	3000,			!4
 		CatWalkLength + CatRight[i] + R_InnerRadi * SIN(AngleRight[i]),			R_Direction * R_InnerRadi * (1 - COS(AngleRight[i]))-(CatWalkWidth/2)*(-R_Direction),	1,				!5
 		CatWalkLength + CatRight[i] + RightRadiSt * SIN(AngleRight[i]),			R_Direction * RightRadiSt * (1 - COS(AngleRight[i])),									900,			!6
-		0,																		-R_Direction * 180,																		4000,			!7
+		0,																		-R_Direction * 180 * RightSegmentEnd[i],												4000,			!7
 		CatWalkLength + CatRight[i] + R_OuterRadi * SIN(AngleRight[i]),			R_Direction * R_OuterRadi * (1 - COS(AngleRight[i]))+(CatWalkWidth/2)*(-R_Direction),	1,				!8
 		CatWalkLength + CatRight[i],											R_Direction * RightRadiSt,																900,			!9
 		CatWalkLength + CatRight[i],											-R_Direction * CatWalkWidth/2,															3000,			!10
@@ -148,7 +152,7 @@ RETURN
 		CatLeft[i] - L_InnerRadi * SIN(AngleLeft[i]),							L_Direction * L_InnerRadi * (1 - COS(AngleLeft[i]))-(CatWalkWidth/2)*(-L_Direction),	3000,			!4
 		CatLeft[i] - L_InnerRadi * SIN(AngleLeft[i]),							L_Direction * L_InnerRadi * (1 - COS(AngleLeft[i]))-(CatWalkWidth/2)*(-L_Direction),	1,				!5
 		CatLeft[i] - LeftRadiSt * SIN(AngleLeft[i]),							L_Direction * LeftRadiSt * (1 - COS(AngleLeft[i])),										900,			!6
-		0,																		L_Direction * 180,																		4000,			!7
+		0,																		L_Direction * 180 * LeftSegmentEnd[i],													4000,			!7
 		CatLeft[i] - L_OuterRadi * SIN(AngleLeft[i]),							L_Direction * L_OuterRadi * (1 - COS(AngleLeft[i]))+(CatWalkWidth/2)*(-L_Direction),	1,				!8
 		CatLeft[i],																L_Direction * LeftRadiSt,																900,			!9
 		CatLeft[i],																-L_Direction * CatWalkWidth/2,															3000,			!10
@@ -299,10 +303,14 @@ END
 	! 	0,			ActualBoxWidth,	1,
 	! 	0,			0,				1
 	! DEL 1 + SegmentCount
+	GOSUB "WidthPitHotSpot"
+	GOSUB "PitBoxLengthHotSpot"
 	ADD2 0, SegmentWidthPit[i]
 RETURN
 
 "CatWalk":
+	GOSUB "CatWidthHotSpots"
+
 	ADD2 0, SegmentWidthCat[i] / 2
 	! IF RightRadiSt < ESP THEN RightRadiSt = ESP
 	! IF LeftRadiSt < ESP THEN LeftRadiSt = ESP
@@ -355,11 +363,13 @@ RETURN
 RETURN
 
 "Space":
+	GOSUB "SpaceHotspot"
 	ADD2 0, SegmentWidthSpace[i]
 RETURN
 
 !--------- 2D HOT SPOTS -------------------------------------------------------------------------------------------------------------------------
 "SizeHotSpots":
+	ADD2 0, -0.5
 	HOTSPOT2	 0,	0, unID, Length, 1 : unID = unID + 1
 	HOTSPOT2	 0,	0, unID, Length, 2 : unID = unID + 1
 	HOTSPOT2	-1,	0, unID, Length, 3 : unID = unID + 1
@@ -377,6 +387,7 @@ RETURN
 		LINE2 arrX + arrLen, 0, arrX + arrLen - arrSize, arrSize
 		LINE2 arrX + arrLen, 0, arrX + arrLen - arrSize, -arrSize
 	ENDIF
+	DEL 1 
 RETURN
 
 "CatRightHotSpots":
@@ -439,6 +450,54 @@ RETURN
 	HOTSPOT2	-SegmentWidthCat[i]/2,		1, unID, LeftRadiDirection[i], 3 : unID = unID + 1
 RETURN
 
+"CatWidthHotSpots":
+	HOTSPOT2	0,		0, unID,		SegmentWidthCat[i], 1 : unID = unID + 1
+	HOTSPOT2	0,		0, unID,		SegmentWidthCat[i], 2 : unID = unID + 1
+	HOTSPOT2	0,		-1, unID,		SegmentWidthCat[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			100, 0,
+			0, 0, 900,
+			CircleSize, 360, 4001
+	ENDIF
+RETURN
+
+"WidthPitHotSpot":
+	HOTSPOT2	0,		0, unID,		SegmentWidthPit[i], 1 : unID = unID + 1
+	HOTSPOT2	0,		0, unID,		SegmentWidthPit[i], 2 : unID = unID + 1
+	HOTSPOT2	0,		-1, unID,		SegmentWidthPit[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			100, 0,
+			0, 0, 900,
+			CircleSize, 360, 4001
+	ENDIF
+RETURN
+
+"PitBoxLengthHotSpot":
+	HOTSPOT2	0,		SegmentWidthPit[i]/2, unID,		PitBoxLength[i], 1 : unID = unID + 1
+	HOTSPOT2	0,		SegmentWidthPit[i]/2, unID,		PitBoxLength[i], 2 : unID = unID + 1
+	HOTSPOT2	-1,		SegmentWidthPit[i]/2, unID,		PitBoxLength[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			11, 0,
+			0, SegmentWidthPit[i]/2, 900,
+			CircleSize, 360, 4001
+	ENDIF
+RETURN
+
+"SpaceHotspot":
+	HOTSPOT2	0,		0, unID,		SegmentWidthSpace[i], 1 : unID = unID + 1
+	HOTSPOT2	0,		0, unID,		SegmentWidthSpace[i], 2 : unID = unID + 1
+	HOTSPOT2	0,		-1, unID,		SegmentWidthSpace[i], 3 : unID = unID + 1
+	IF ColorCircles THEN
+		POLY2_B 2, 1+2+4,
+			100, 0,
+			0, 0, 900,
+			CircleSize, 360, 4001
+	ENDIF
+RETURN
+
 "AngleRightHotSpot":
 	IF R_Direction < -ESP THEN : AngleNum = 518 : ELSE : AngleNum = 6 : ENDIF
 	IF RightRadi[i] > ESP THEN
@@ -452,7 +511,6 @@ RETURN
 				CircleSize, 360, 4001
 		ENDIF
 	ENDIF
-
 RETURN
 
 "AngleLeftHotSpot":
@@ -488,7 +546,7 @@ CatWalkLength = Length
 
 PitBoxMargin = 0.05
 PitBoxLine = 0.1
-PitBoxLength = 2.2
+!PitBoxLength = 2.2
 
 ColorCircles = 1
 CircleSize = 0.1
@@ -534,11 +592,36 @@ IF PitRadi < 5.2 AND Width/2 > 5.2 THEN PitRadi = 5.2
 <Script_UI SectVersion="20" SectionFlags="0" SubIdent="0">
 <![CDATA[
 UI_DIALOG "Settings", 480, 300
-UI_PAGE 1, -1, "Layout"
-Y_Offset = 20
-FOR i = 1 TO SegmentNum
-	UI_OUTFIELD STR(i, 1, 0) + ". ",										20, Y_Offset + 10, 15, 15
 
+!-----Top Line-------------------------------------------------------------------------------------------------
+UI_PAGE 1, -1, "Layout"
+UI_OUTFIELD "Combined Cat Length",		40, 3, 120, 20
+UI_INFIELD "CombinedCatWalkLength",		160, 0, 50, 20
+UI_OUTFIELD "Width",					220, 3, 60, 20
+UI_OUTFIELD "Color/Length",				290, 3, 100, 20
+UI_OUTFIELD "(L)",						390, 3, 100, 20
+UI_OUTFIELD "(R) END",					410, 3, 100, 20
+!------------------------------------------------------------------------------------------------------
+
+!-----Separators-------------------------------------------------------------------------------------------------
+UI_SEPARATOR 10, 20, 500, 20
+FOR i = 0 TO 7 ! Horizontal Separator
+    UI_SEPARATOR 10, 57 + 33 * i, 500, 57 + 33 * i
+NEXT i
+DIM x_pos[4]
+x_pos[1] = 33
+x_pos[2] = 215
+x_pos[3] = 285
+x_pos[4] = 385
+FOR i = 1 TO 4! Vertical Separator
+    UI_SEPARATOR x_pos[i], 2, x_pos[i], 420
+NEXT i
+!------------------------------------------------------------------------------------------------------
+
+!------Segment Selector------------------------------------------------------------------------------------------------
+Y_Offset = 25
+FOR i = 1 TO SegmentNum
+	UI_OUTFIELD STR(i, 1, 0) + ". ",										20, Y_Offset + 10, 10, 15
 	UI_INFIELD{3} SegmentOrder[i], 											40, Y_Offset + 0, 170, 32,
 		2, "",
 		4,
@@ -548,17 +631,20 @@ FOR i = 1 TO SegmentNum
 		"CatWalk.png", "CatWalk", 1,
 		"PitBox.png",  "PitBox",  2,
 		"", "Space",   3
-
 	IF SegmentOrder[i] = 1 THEN 
 		UI_INFIELD{2} SegmentWidthCat[i],									220, Y_Offset + 7, 60, 20
 		UI_INFIELD{2} CatColor[i],											290, Y_Offset + 7, 90, 20
+		UI_INFIELD{2} RightSegmentEnd[i],									410, Y_Offset + 7, 20, 20
+		UI_INFIELD{2} LeftSegmentEnd[i],									390, Y_Offset + 7, 20, 20
 	ENDIF
-	IF SegmentOrder[i] = 2 THEN UI_INFIELD{2} SegmentWidthPit[i],			220, Y_Offset + 7, 60, 20
+	IF SegmentOrder[i] = 2 THEN 
+		UI_INFIELD{2} SegmentWidthPit[i],									220, Y_Offset + 7, 60, 20
+		UI_INFIELD{2} PitBoxLength[i],										290, Y_Offset + 7, 60, 20
+	ENDIF
 	IF SegmentOrder[i] = 3 THEN UI_INFIELD{2} SegmentWidthSpace[i],			220, Y_Offset + 7, 60, 20
 	Y_Offset = Y_Offset + 33
 NEXT i
-
-
+!------------------------------------------------------------------------------------------------------
 ]]>
 </Script_UI>
 
@@ -576,25 +662,62 @@ VALUES "AngleRight" RANGE [0, 50] STEP 5, 5
 VALUES "AngleLeft"  RANGE [0, 50] STEP 5, 5
 VALUES "PitRadi"  RANGE [1, Width/2)
 
-!-----Length Jumps To The Next PitBox--------------------------------------------------------------
-Length = INT((Length / PitBoxLength) + 0.5) * PitBoxLength
+!-----Length Jumps To The Next PitBox---------------------------------------------------------------------------------------------
+LargestBox = 0
+FOR i = 1 TO SegmentNum
+    IF PitBoxLength[i] > LargestBox THEN LargestBox = PitBoxLength[i]
+NEXT i
+Length = INT((Length / LargestBox) + 0.5) * LargestBox
+Length = INT(Length * 2 + 0.5) / 2
 IF Length < 0 THEN Length = 0
-SegmentCount = INT(Length / PitBoxLength)
-PARAMETERS	Length = Length,
-			SegmentCount = SegmentCount
-VALUES "Length" RANGE [0, ] STEP 0, PitBoxLength
+FOR i = 1 TO SegmentNum
+    IF PitBoxLength[i] > 0 THEN
+        SegmentCount[i] = INT(Length / PitBoxLength[i])
+        SegmentRemainder[i] = Length - (SegmentCount[i] * PitBoxLength[i])
+    ELSE
+        SegmentCount[i] = 0
+        SegmentRemainder[i] = Length
+    ENDIF
+NEXT i
+PARAMETERS Length = Length,
+           SegmentCount = SegmentCount,
+           SegmentRemainder = SegmentRemainder
+VALUES "Length" RANGE [0, ] STEP 0.5, 0.5
 VALUES "SegmentCount" RANGE [0, ]
-!-------------------------------------------------------------------
+VALUES "SegmentRemainder" RANGE [0, ]
+!--------------------------------------------------------------------------------------------------------------------------
 
+!----Sum of Cat Walk Length--------------------------------------------------------------------------------------------
+CombinedCatWalkLength = 0
+FOR i = 1 TO SegmentNum
+    IF SegmentOrder[i] = 1 THEN
+        RightRadiSt = RightRadi[i]
+        IF RightRadi[i] < ESP THEN AngleRight[i] = 0
+        IF LeftRadi[i] < ESP THEN AngleLeft[i] = 0
+        LeftRadiSt = LeftRadi[i]
+        
+        ArcRight = RightRadiSt * AngleRight[i] * PI / 180
+        ArcLeft = LeftRadiSt * AngleLeft[i] * PI / 180
+        
+        CombinedCatWalkLength = CombinedCatWalkLength + CatWalkLength + CatLeft[i] + CatRight[i] + ArcRight + ArcLeft
+    ENDIF
+NEXT i
+PARAMETERS CombinedCatWalkLength = CombinedCatWalkLength
+LOCK "CombinedCatWalkLength"
+!------------------------------------------------------------------------------------------------------------------------
+
+!-----Sets Limits On Segments--------------------------------------------------------------------------------------------
 FOR i = 1 TO SegmentNum
 	VALUES{2} "SegmentOrder" 0, "Prazno", 1, "CatWalk", 2, "PitBox", 3, "Space"
 	IF SegmentOrder[i] = 1 THEN VALUES "SegmentWidthCat" .50, .60, .75, 1.00
 	IF SegmentOrder[i] = 2 THEN VALUES "SegmentWidthPit" RANGE [1.0, 3.0] STEP 1, 0.05
+	IF SegmentOrder[i] = 2 THEN VALUES "PitBoxLength" RANGE [1.0, 3.0] STEP 1, 0.05
 	IF SegmentOrder[i] = 3 THEN VALUES "SegmentWidthSpace" RANGE [0.1, 4.0]
 	PARAMETERS SegmentOrder[i]  = SegmentOrder[i]
 NEXT i
+!--------------------------------------------------------------------------------------------------------------------------------
 
-!----Cat Color Limit---------------------------------------------------------------
+!----Cat Color Limit-----------------------------------------------------------------------------------------------------------------
 DIM colorList[]
 index = 1
 FOR i = 741 TO 760
@@ -602,17 +725,7 @@ FOR i = 741 TO 760
     index = index + 1
 NEXT i
 VALUES "CatColor" colorList
-!-------------------------------------------------------------------
-
-! !----Limits colors to 360 colors---------------------------------------------------------------
-! DIM colorList[]
-! index = 1
-! FOR i = 741 TO 760
-!     colorList[index] = i
-!     index = index + 1
-! NEXT i
-! VALUES "CatWalkColor" colorList
-! !-------------------------------------------------------------------
+!---------------------------------------------------------------------------------------------------------------------------------
 ]]>
 </Script_VL>
 
@@ -686,7 +799,7 @@ VALUES "CatColor" colorList
 		</Length>
 		<Length Name="Length">
 			<Description><![CDATA[""]]></Description>
-			<Value>11</Value>
+			<Value>22</Value>
 		</Length>
 		<Length Name="Width">
 			<Description><![CDATA[""]]></Description>
@@ -740,6 +853,26 @@ VALUES "CatColor" colorList
 				<AVal Row="15">1.8</AVal>
 			</ArrayValues>
 		</Length>
+		<Length Name="PitBoxLength">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="15" SecondDimension="0">
+				<AVal Row="1">2</AVal>
+				<AVal Row="2">2</AVal>
+				<AVal Row="3">2</AVal>
+				<AVal Row="4">2</AVal>
+				<AVal Row="5">2</AVal>
+				<AVal Row="6">2</AVal>
+				<AVal Row="7">2</AVal>
+				<AVal Row="8">2</AVal>
+				<AVal Row="9">2</AVal>
+				<AVal Row="10">2</AVal>
+				<AVal Row="11">2</AVal>
+				<AVal Row="12">2</AVal>
+				<AVal Row="13">2</AVal>
+				<AVal Row="14">2</AVal>
+				<AVal Row="15">2</AVal>
+			</ArrayValues>
+		</Length>
 		<Length Name="SegmentWidthCat">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="15" SecondDimension="0">
@@ -782,8 +915,44 @@ VALUES "CatColor" colorList
 		</Length>
 		<Integer Name="SegmentCount">
 			<Description><![CDATA[""]]></Description>
-			<Value>5</Value>
+			<ArrayValues FirstDimension="15" SecondDimension="0">
+				<AVal Row="1">11</AVal>
+				<AVal Row="2">11</AVal>
+				<AVal Row="3">11</AVal>
+				<AVal Row="4">11</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+			</ArrayValues>
 		</Integer>
+		<Length Name="SegmentRemainder">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="15" SecondDimension="0">
+				<AVal Row="1">0</AVal>
+				<AVal Row="2">0</AVal>
+				<AVal Row="3">0</AVal>
+				<AVal Row="4">0</AVal>
+				<AVal Row="5">0</AVal>
+				<AVal Row="6">0</AVal>
+				<AVal Row="7">0</AVal>
+				<AVal Row="8">0</AVal>
+				<AVal Row="9">0</AVal>
+				<AVal Row="10">0</AVal>
+				<AVal Row="11">0</AVal>
+				<AVal Row="12">0</AVal>
+				<AVal Row="13">0</AVal>
+				<AVal Row="14">0</AVal>
+				<AVal Row="15">0</AVal>
+			</ArrayValues>
+		</Length>
 		<Material Name="CatColor">
 			<Description><![CDATA[""]]></Description>
 			<ArrayValues FirstDimension="15" SecondDimension="0">
@@ -963,6 +1132,50 @@ VALUES "CatColor" colorList
 				<AVal Row="14">0</AVal>
 				<AVal Row="15">0</AVal>
 			</ArrayValues>
+		</Length>
+		<Boolean Name="RightSegmentEnd">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="15" SecondDimension="0">
+				<AVal Row="1">1</AVal>
+				<AVal Row="2">1</AVal>
+				<AVal Row="3">1</AVal>
+				<AVal Row="4">1</AVal>
+				<AVal Row="5">1</AVal>
+				<AVal Row="6">1</AVal>
+				<AVal Row="7">1</AVal>
+				<AVal Row="8">1</AVal>
+				<AVal Row="9">1</AVal>
+				<AVal Row="10">1</AVal>
+				<AVal Row="11">1</AVal>
+				<AVal Row="12">1</AVal>
+				<AVal Row="13">1</AVal>
+				<AVal Row="14">1</AVal>
+				<AVal Row="15">1</AVal>
+			</ArrayValues>
+		</Boolean>
+		<Boolean Name="LeftSegmentEnd">
+			<Description><![CDATA[""]]></Description>
+			<ArrayValues FirstDimension="15" SecondDimension="0">
+				<AVal Row="1">1</AVal>
+				<AVal Row="2">1</AVal>
+				<AVal Row="3">1</AVal>
+				<AVal Row="4">1</AVal>
+				<AVal Row="5">1</AVal>
+				<AVal Row="6">1</AVal>
+				<AVal Row="7">1</AVal>
+				<AVal Row="8">1</AVal>
+				<AVal Row="9">1</AVal>
+				<AVal Row="10">1</AVal>
+				<AVal Row="11">1</AVal>
+				<AVal Row="12">1</AVal>
+				<AVal Row="13">1</AVal>
+				<AVal Row="14">1</AVal>
+				<AVal Row="15">1</AVal>
+			</ArrayValues>
+		</Boolean>
+		<Length Name="CombinedCatWalkLength">
+			<Description><![CDATA[""]]></Description>
+			<Value>44</Value>
 		</Length>
 	</Parameters>
 </ParamSection>

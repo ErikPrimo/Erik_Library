@@ -27,7 +27,7 @@ ROTY 45
 LIGHT   1.0, 1.0, 1.0,           ! RGB (Yellow light)
         1,                      ! Shadow on
         0,                    	! Radius / Source size
-        30.0, 40.0,             ! Cone angles (alpha, beta)
+        45.0, 60.0,             ! Cone angles (alpha, beta)
         0.3,                    ! Angle falloff
         0.2, 8.0,               ! Distance 1 & 2
         0.0,                    ! Constant intensity (no falloff over distance)
