@@ -25,13 +25,14 @@ AlternatingColorsBool  = 0
 ROTZ ObjectAngle
 GOSUB "BSO_AngleHotSpot"
 ROTX BSO_Angle
+MATERIAL 753
 
 !---Directions HotSpot--------------------------------------------------------------------------------------------------------------------------------------------------------------
 GOSUB "DirectionsHotSpot"
 !-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 !-------Main Loop Places All Objects------------------------------------------------------------------------------------------------------------------------------
-GOSUB "FirstStraight"
+IF FirstTransitionBool THEN : GOSUB "FirstStraight" : ELSE : Switch = 1 : ENDIF
 i = 1
 GOSUB "StraightHotSpot"
 IF NextLength[1] < ESP AND CurveLeft[1] < ESP AND CurveRight[1] < ESP THEN
@@ -78,7 +79,7 @@ WHILE ObjectOrder[i] <> 0 DO
 	"NextIter":
 	i = i + 1
 ENDWHILE
-GOSUB "LastStraight"
+IF LastTransitionBool THEN GOSUB "LastStraight"
 
 END
 
@@ -799,22 +800,22 @@ PROJECT2{3} 3, 270, 3 + 16, 4 + 8
 ROT2 ObjectAngle
 GOSUB "ObjectAngleHotSpot"
 GOSUB "DirectionsHotSpot2D"
+IF FirstTransitionBool THEN
+	HOTSPOT2  0,  0
+	GOSUB "FirstStraightOrientationHotSpot"
 
-HOTSPOT2  0,  0
-GOSUB "FirstStraightOrientationHotSpot"
+	StaticHotSpotOffset = -LineWidth
+	IF Directions < -ESP THEN StaticHotSpotOffset = LineWidth
+	IF (FirstStraightOrientation < -ESP) THEN StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
+	IF (FirstStraightOrientation < -ESP) AND Directions < -ESP THEN StaticHotSpotOffset = +CurbeSegmentHeight+LineMargin+LineWidth
+	ADD2 StaticHotSpotOffset, 0 : GOSUB "HotSpot" : DEL 1
 
-StaticHotSpotOffset = -LineWidth
-IF Directions < -ESP THEN StaticHotSpotOffset = LineWidth
-IF (FirstStraightOrientation < -ESP) THEN StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
-IF (FirstStraightOrientation < -ESP) AND Directions < -ESP THEN StaticHotSpotOffset = +CurbeSegmentHeight+LineMargin+LineWidth
-ADD2 StaticHotSpotOffset, 0 : GOSUB "HotSpot" : DEL 1
+	ADD2 0, TransitionLength
 
-ADD2 0, TransitionLength
-
-StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
-IF Directions < -ESP THEN StaticHotSpotOffset = CurbeSegmentHeight+LineMargin+LineWidth
-ADD2 StaticHotSpotOffset, 0 : GOSUB "HotSpot" : DEL 1
-
+	StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
+	IF Directions < -ESP THEN StaticHotSpotOffset = CurbeSegmentHeight+LineMargin+LineWidth
+	ADD2 StaticHotSpotOffset, 0 : GOSUB "HotSpot" : DEL 1
+ENDIF
 
 i = 1
 ADD2 0, CurbeSegmentMargin
@@ -857,22 +858,20 @@ WHILE ObjectOrder[i] <> 0 DO
     "NextIter2D":
     i = i + 1
 ENDWHILE
+IF LastTransitionBool THEN
+	StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
+	IF Directions < -ESP THEN StaticHotSpotOffset = CurbeSegmentHeight+LineMargin+LineWidth
+	ADD2 StaticHotSpotOffset, 0 : GOSUB "HotSpot" : DEL 1
 
-StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
-IF Directions < -ESP THEN StaticHotSpotOffset = CurbeSegmentHeight+LineMargin+LineWidth
-ADD2 StaticHotSpotOffset, 0 : GOSUB "HotSpot" : DEL 1
+	StaticHotSpotOffset = -LineWidth
+	IF Directions < -ESP THEN StaticHotSpotOffset = LineWidth
+	IF (LastStraightOrientation < -ESP) THEN StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
+	IF (LastStraightOrientation < -ESP) AND Directions < -ESP THEN StaticHotSpotOffset = +CurbeSegmentHeight+LineMargin+LineWidth
 
+	ADD2 StaticHotSpotOffset, TransitionLength : GOSUB "HotSpot" : DEL 1
 
-StaticHotSpotOffset = -LineWidth
-IF Directions < -ESP THEN StaticHotSpotOffset = LineWidth
-IF (LastStraightOrientation < -ESP) THEN StaticHotSpotOffset = -CurbeSegmentHeight-LineMargin-LineWidth
-IF (LastStraightOrientation < -ESP) AND Directions < -ESP THEN StaticHotSpotOffset = +CurbeSegmentHeight+LineMargin+LineWidth
-
-ADD2 StaticHotSpotOffset, TransitionLength : GOSUB "HotSpot" : DEL 1
-
-
-GOSUB "LastStraightOrientationHotSpot2D"
-
+	GOSUB "LastStraightOrientationHotSpot2D"
+ENDIF
 IF Directions < -ESP THEN MUL2 -1, 1
 ADD2 0, TransitionLength
 IF Directions < -ESP THEN DEL 1
@@ -1215,6 +1214,7 @@ RETURN
 		ENDIF
 	ENDIF
 RETURN
+
 "HotSpot":
 	HOTSPOT2  0,	0
 RETURN
@@ -1308,25 +1308,25 @@ NEXT i
 ! GEOMETRIC CONSTANTS & INITIALIZATION
 ! ----------------------------------------------------------------------------------------------------------------------------------------
 CurbUnitArea = CurbeSegmentHeight * CurbeSegmentWidth  ! Rectangular area per full block
-
 TotalArea_Line        = 0.0
 TotalArea_Curbs_White = 0.0
 TotalArea_Curbs_Color = 0.0
 TotalCurbCount        = 0
 RemainingSegment      = 0
-
+BREAKPOINT 1
 ! -------------------------------------------------------------------------
 ! 1. FIRST STRAIGHT (TRANSITION)
 ! -------------------------------------------------------------------------
-LineArea_First = LineWidth * TransitionLength
-TotalArea_Line = TotalArea_Line + LineArea_First
-TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea * 0.5
-TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea * 1.0
-TotalCurbCount        = TotalCurbCount + 3
-
-! After Block 3 (White), active state is 1 (White)
-calcAlternatingBool = 0
-
+IF FirstTransitionBool THEN
+	calcAlternatingBool = 0
+	LineArea_First = LineWidth * TransitionLength
+	TotalArea_Line = TotalArea_Line + LineArea_First
+	TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea * 0.5
+	TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea * 1.0
+	TotalCurbCount        = TotalCurbCount + 3
+ELSE
+	calcAlternatingBool = 1
+ENDIF
 ! -------------------------------------------------------------------------
 ! 2. MAIN SEGMENT LOOP
 ! -------------------------------------------------------------------------
@@ -1339,7 +1339,6 @@ WHILE ObjectOrder[k] <> 0 DO
 	IF NextLength[k] > ESP THEN ObjectOrder[k+1] = 2
 	IF CurveLeft[k]  > ESP THEN ObjectOrder[k+1] = 3
 	IF CurveRight[k] > ESP THEN ObjectOrder[k+1] = 4
-
 	! =========================================================================
 	! --- STRAIGHT SEGMENT ---
 	! =========================================================================
@@ -1348,7 +1347,6 @@ WHILE ObjectOrder[k] <> 0 DO
 		IF CurveRight[k] < ESP AND CurveLeft[k] < ESP THEN
 			curLen = INT(curLen / SegmentSizeWithMargin) * SegmentSizeWithMargin
 		ENDIF
-
 		NumOfSegments = INT(curLen / SegmentSizeWithMargin)
 		TotalArea_Line = TotalArea_Line + (LineWidth * curLen)
 
@@ -1364,7 +1362,6 @@ WHILE ObjectOrder[k] <> 0 DO
 				TotalCurbCount = TotalCurbCount + 1
 			NEXT j
 		ENDIF
-
 		! Extra segment & RemainingSegment handover logic matching 3D
 		RemainingSegment = 0
 		IF NOT(CurveRight[k] < ESP AND CurveLeft[k] < ESP) THEN
@@ -1493,8 +1490,9 @@ WHILE ObjectOrder[k] <> 0 DO
 			InnerRadius = CurveRadius + CurbeSegmentHeight + TransitionLineMargin
 			OuterRadius = InnerRadius + LineWidth
 			angleRad    = RightAngle[k] * PI / 180
-			TotalArea_Line = TotalArea_Line + (0.5 * angleRad * (OuterRadius^2 - InnerRadius^2))
-
+			test = (0.5 * angleRad * (OuterRadius^2 - InnerRadius^2))
+			TotalArea_Line = TotalArea_Line + test
+			BREAKPOINT 1
 			! 2. Angular sizing & RemainingSegment conversion
 			SegmentAngle = CurbeSegmentWidth  * 180 / (PI * rCurbInner)
 			MarginAngle  = CurbeSegmentMargin * 180 / (PI * rCurbInner)
@@ -1580,25 +1578,27 @@ ENDWHILE
 ! -------------------------------------------------------------------------
 ! 3. LAST STRAIGHT (TRANSITION)
 ! -------------------------------------------------------------------------
-LineArea_Last  = LineWidth * TransitionLength
-TotalArea_Line = TotalArea_Line + LineArea_Last
+IF LastTransitionBool THEN
+	LineArea_Last  = LineWidth * TransitionLength
+	TotalArea_Line = TotalArea_Line + LineArea_Last
 
-calcAlternatingBool = NOT(calcAlternatingBool)
-curbFactor = 1.0
-IF calcAlternatingBool THEN
-	TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea
-	TotalArea_Curbs_Color = TotalArea_Curbs_Color + (CurbUnitArea * 0.5)
-ELSE
-	TotalArea_Curbs_White = TotalArea_Curbs_White + (CurbUnitArea * 0.5)
-	TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
+	calcAlternatingBool = NOT(calcAlternatingBool)
+	curbFactor = 1.0
+	IF calcAlternatingBool THEN
+		TotalArea_Curbs_White = TotalArea_Curbs_White + CurbUnitArea
+		TotalArea_Curbs_Color = TotalArea_Curbs_Color + (CurbUnitArea * 0.5)
+	ELSE
+		TotalArea_Curbs_White = TotalArea_Curbs_White + (CurbUnitArea * 0.5)
+		TotalArea_Curbs_Color = TotalArea_Curbs_Color + CurbUnitArea
+	ENDIF
+	TotalCurbCount = TotalCurbCount + 3
 ENDIF
-TotalCurbCount = TotalCurbCount + 3
+BREAKPOINT 1
 ! -------------------------------------------------------------------------
 ! 4. TOTALS
 ! -------------------------------------------------------------------------
 TotalArea_Curbs = TotalArea_Curbs_White + TotalArea_Curbs_Color
 TotalArea_All   = TotalArea_Line + TotalArea_Curbs
-
 
 ! ---------------------------------------------------------
 ! RAL CODE MAPPING & ERP STRING GENERATION
@@ -1631,8 +1631,8 @@ IF CurbColor = 759 THEN curbColorClean = LibG_cMet[4]
 ! If still unmapped, fall back to the raw number
 IF curbColorClean = "" THEN curbColorClean = STR(CurbColor, 4, 0)
 Total_White_Color = TotalArea_Line + TotalArea_Curbs_White
-ERP_Code_Color = "|Signocryl|cf:" + curbColorClean + "|" + STR(TotalArea_Curbs_Color, 4, 2)
-ERP_Code_White = "|Signocryl|cf:" + "RAL 9003" + "|" + STR(Total_White_Color, 4, 2)
+ERP_Code_Color = "|Signocryl|cf:" + curbColorClean	+ "|" + STR(TotalArea_Curbs_Color, 4, 2)
+ERP_Code_White = "|Signocryl|cf:" + "RAL 9003"		+ "|" + STR(Total_White_Color, 4, 2)
 
 ]]>
 </Script_1D>
@@ -1654,18 +1654,23 @@ UI_DIALOG "Settings", 480, 300
 ! ==============================================================================
 UI_PAGE 1, -1, "Curbs"
 ! --- Thickness ---
-UI_OUTFIELD "Curb Thickness",   20,  20, 100, 15
-UI_INFIELD  "Thickness",        20,  38, 100, 20
+UI_OUTFIELD "Curb Thickness",	20,  20, 100, 15
+UI_INFIELD  "Thickness",		20,  38, 100, 20
 ! --- BSO Options ---
-UI_OUTFIELD "BSO",              20,  70,  50, 15
-UI_INFIELD  "BSO_Bool",         20,  88,  20, 20
+UI_OUTFIELD "BSO",				20,  70,  50, 15
+UI_INFIELD  "BSO_Bool",			20,  88,  20, 20
 IF BSO_Bool THEN
-    UI_OUTFIELD "Angle",        80,  70,  60, 15
-    UI_INFIELD  "BSO_Angle",    80,  88,  60, 20
+    UI_OUTFIELD "Angle",		80,  70,  60, 15
+    UI_INFIELD  "BSO_Angle",	80,  88,  60, 20
 ENDIF
 ! --- Material / Color ---
-UI_OUTFIELD "Curb Color",       20, 120, 100, 15
-UI_INFIELD  "CurbColor",        20, 138, 100, 20
+UI_OUTFIELD "Curb Color",		20, 120, 100, 15
+UI_INFIELD  "CurbColor",		20, 138, 100, 20
+
+UI_OUTFIELD "Transition",				20, 180, 100, 15
+UI_OUTFIELD "Start  End",				20, 195, 100, 15
+UI_INFIELD  "LastTransitionBool",		50, 210, 20, 20
+UI_INFIELD  "FirstTransitionBool",		20, 210, 20, 20
 
 !UI_OUTFIELD "Line Offset",				20, 170, 100, 15
 !UI_INFIELD  "LineOffsetMarginBool",		20, 198, 100, 20
@@ -3100,6 +3105,14 @@ LOCK "TotalArea", "TotalCurbArea", "TotalLineArea", "TotalCurbCount"
 		<Boolean Name="LineOffsetMarginBool">
 			<Description><![CDATA[""]]></Description>
 			<Value>0</Value>
+		</Boolean>
+		<Boolean Name="LastTransitionBool">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
+		</Boolean>
+		<Boolean Name="FirstTransitionBool">
+			<Description><![CDATA[""]]></Description>
+			<Value>1</Value>
 		</Boolean>
 	</Parameters>
 </ParamSection>
